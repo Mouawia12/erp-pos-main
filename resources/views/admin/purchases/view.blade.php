@@ -117,6 +117,22 @@
                                     {{$data->branch_id}}
                                 </span>
                             </h6> 
+                            @if(!empty($data->supplier_invoice_no))
+                            <h6 class="text-right mt-1" style="font-weight: bold;">
+                                {{ __('main.supplier_invoice_no') }} :
+                                <span dir="ltr"> 
+                                    {{$data->supplier_invoice_no}}
+                                </span>
+                            </h6>
+                            @endif
+                            @if(!empty($data->supplier_invoice_copy))
+                            <h6 class="text-right mt-1" style="font-weight: bold;">
+                                {{ __('main.supplier_invoice_copy') }} :
+                                <span dir="ltr">
+                                    <a href="{{ asset('storage/'.$data->supplier_invoice_copy) }}" target="_blank">{{__('main.preview')}}</a>
+                                </span>
+                            </h6>
+                            @endif
                         </div>
                         <div class="col-4 text-center">
                             <h4 class="text-center mt-1" style="font-weight: bold;">

@@ -35,6 +35,17 @@
                             </div>
     
                             <div class="col-md-4">
+                                <label> السجل التجاري </label>
+                                <input class="form-control mg-b-20" name="cr_number" type="text">
+                            </div>
+
+                            <div class="col-md-4">
+                                <label> الرقم الضريبي </label>
+                                <input class="form-control mg-b-20" name="tax_number" type="text">
+                            </div>
+                        </div>
+                        <div class="row m-t-3 mb-3">
+                            <div class="col-md-4">
                                 <label> التلفون <span class="text-danger"> </span></label>
                                 <input class="form-control mg-b-20" min="1" dir="ltr" name="branch_phone" required="" type="number">
                             </div>
@@ -42,7 +53,18 @@
                             <div class="col-md-4">
                                 <label> العنوان <span class="text-danger"> </span></label>
                                 <input class="form-control mg-b-20" dir="rtl" name="branch_address" required="" type="text">
-                            </div> 
+                            </div>
+
+                            <div class="col-md-4">
+                                <label> مدير الفرع </label>
+                                <input class="form-control mg-b-20" name="manager_name" type="text">
+                            </div>
+                        </div>
+                        <div class="row m-t-3 mb-3">
+                            <div class="col-md-4">
+                                <label> البريد الإلكتروني </label>
+                                <input class="form-control mg-b-20" name="contact_email" type="email">
+                            </div>
                         </div>  
                         <div class="row">
                             <div class="col-xs-12 col-sm-12 col-md-12 text-center">

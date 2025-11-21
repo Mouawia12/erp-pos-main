@@ -25,14 +25,25 @@ style="width: 100%;">
                             <div class="form-group"> 
                                 <label>{{__('main.cash')}} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
                                 <input required type="number" id="cash" name="cash" min="0" step="any"
-                                       class="form-control" />
+                                       class="form-control" value="0" />
                             </div>
                         </div>
-                        <div class="col-6" >
-                            <div class="form-group">
-                                <label>{{__('main.visa')}} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
-                                <input required type="number"   id="visa" name="visa" min="0" step="any"
-                                       class="form-control"  placeholder="0" readonly />
+                        <div class="col-6">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <label class="mb-0">{{__('main.visa')}}</label>
+                                <button type="button" class="btn btn-sm btn-secondary" id="addCardRow">
+                                    + {{__('main.add_payment')}}
+                                </button>
+                            </div>
+                            <div id="cardRows">
+                                <div class="form-row card-row mb-1">
+                                    <div class="col-7">
+                                        <input type="text" class="form-control" name="card_bank[]" placeholder="{{__('main.method.payment')}}">
+                                    </div>
+                                    <div class="col-5">
+                                        <input type="number" class="form-control card_amount" name="card_amount[]" min="0" step="any" value="0">
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div> 
@@ -48,4 +59,45 @@ style="width: 100%;">
         </div>
     </div>
 </div>
- 
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+
+        function sumCards(){
+            var total = 0;
+            document.querySelectorAll('.card_amount').forEach(function(el){
+                var v = parseFloat(el.value);
+                if(!isNaN(v)){
+                    total += v;
+                }
+            });
+            return total;
+        }
+
+        var addBtn = document.getElementById('addCardRow');
+        if(addBtn){
+            addBtn.addEventListener('click', function (){
+                var wrapper = document.getElementById('cardRows');
+                var row = document.createElement('div');
+                row.className = 'form-row card-row mb-1';
+                row.innerHTML = '<div class="col-7"><input type="text" class="form-control" name="card_bank[]" placeholder="{{__('main.method.payment')}}"></div><div class="col-5"><input type="number" class="form-control card_amount" name="card_amount[]" min="0" step="any" value="0"></div>';
+                wrapper.appendChild(row);
+            });
+        }
+
+        var paymentBtn = document.getElementById('payment_btn');
+        if(paymentBtn){
+            paymentBtn.addEventListener('click', function (){
+                var money = parseFloat(document.getElementById('money').value) || 0;
+                var cash = parseFloat(document.getElementById('cash').value) || 0;
+                var cards = sumCards();
+
+                if(Number(money.toFixed(2)) === Number((cash + cards).toFixed(2))){
+                    document.getElementById('salesform').submit();
+                }else{
+                    alert('لابد ان يكون مجموع المبالغ مساويا لاجمالى الفاتورة');
+                }
+            });
+        }
+    });
+</script>

@@ -15,6 +15,8 @@ use App\Http\Requests\UpdateSalesRequest;
 use App\Models\SystemSettings;
 use App\Models\Warehouse;
 use App\Models\Branch;
+use App\Models\ProductUnit;
+use App\Models\Unit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -205,6 +207,8 @@ class SalesController extends Controller
             'warehouse_id' => 'required'
         ]);
 
+        $billDate = now()->format('Y-m-d H:i:s');
+
         $siteController = new SystemController();
         $total = 0;
         $tax = 0;
@@ -220,6 +224,8 @@ class SalesController extends Controller
         foreach ($request->product_id as $index=>$id){ 
             
             $productDetails = $siteController->getProductById($id);
+            $unitId = $request->unit_id[$index] ?? $productDetails->unit;
+            $unitFactor = $request->unit_factor[$index] ?? 1;
             $product = [
                 'sale_id' => 0,
                 'product_code' => $productDetails->code,
@@ -229,17 +235,17 @@ class SalesController extends Controller
                 'discount' => $request->discount_unit[$index] ?? 0,
                 'price_with_tax' => $request->price_with_tax[$index],
                 'warehouse_id' => $request->warehouse_id,
-                'unit_id' => $productDetails->unit,
+                'unit_id' => $unitId,
                 'tax' => $request->tax_excise[$index]> 0 ? $request->tax[$index] - $request->tax_excise[$index]:$request->tax[$index],
                 'tax_excise' => $request->tax_excise[$index], 
                 'total' => $request->total[$index],
                 'lista' => 0,
-                'profit'=> ($request->price_unit[$index] - $productDetails->cost) * $request->qnt[$index]
+                'profit'=> ($request->price_unit[$index] - ($productDetails->cost * $unitFactor)) * $request->qnt[$index]
             ];
 
             $item = new Product();
             $item -> product_id = $id;
-            $item -> quantity = $request->qnt[$index] ;
+            $item -> quantity = $request->qnt[$index] * $unitFactor;
             $item -> warehouse_id = $request->warehouse_id ;
             $qntProducts[] = $item ;
 
@@ -254,8 +260,9 @@ class SalesController extends Controller
         $net += $request -> additional_service ?? 0 ;
  
         $sale = Sales::create([
-            'date' => $request->bill_date,
+            'date' => $billDate,
             'invoice_no' => $request-> invoice_no,
+            'invoice_type' => $request->invoice_type ?? 'tax_invoice',
             'customer_id' => $request->customer_id,
             'customer_name' => $request->customer_name,//pos
             'customer_phone' => $request->customer_phone,//pos
@@ -339,6 +346,37 @@ class SalesController extends Controller
             ->select('sale_details.*','products.name as product_name','sales.pos')
             ->where('sale_details.sale_id',$id)
             ->get();
+
+        foreach ($saleItems as $saleItem){
+            $unitsOptions = ProductUnit::join('units','units.id','=','product_units.unit_id')
+                ->where('product_units.product_id',$saleItem->product_id)
+                ->select('product_units.*','units.name as unit_name')
+                ->get();
+
+            if($unitsOptions->isEmpty()){
+                $unitsOptions = collect([[
+                    'unit_id' => $saleItem->unit_id,
+                    'unit_name' => Unit::find($saleItem->unit_id)->name ?? '',
+                    'price' => $saleItem->price_unit,
+                    'conversion_factor' => 1,
+                    'barcode' => null
+                ]]);
+            }
+
+            $saleItem->units_options = $unitsOptions->map(function($u){
+                return [
+                    'unit_id' => $u->unit_id,
+                    'unit_name' => $u->unit_name,
+                    'price' => $u->price,
+                    'conversion_factor' => $u->conversion_factor ?? 1,
+                    'barcode' => $u->barcode
+                ];
+            });
+            $saleItem->selected_unit_id = $saleItem->unit_id;
+            $selected = $saleItem->units_options->firstWhere('unit_id',$saleItem->unit_id);
+            $saleItem->unit_factor = $selected['conversion_factor'] ?? 1;
+            $saleItem->price_withoute_tax = $saleItem->price_unit;
+        }
 
         $zeroItems = 0;
         foreach ($saleItems as $saleItem){
@@ -446,6 +484,8 @@ class SalesController extends Controller
         $qntProducts = array();
         foreach ($request->product_id as $index=>$id1){
             $productDetails = $siteController->getProductById($id1);
+            $unitId = $request->unit_id[$index] ?? $productDetails->unit;
+            $unitFactor = $request->unit_factor[$index] ?? 1;
             $product = [
                 'sale_id' => 0,
                 'product_code' => $productDetails->code,
@@ -454,17 +494,17 @@ class SalesController extends Controller
                 'price_unit' => $request->price_unit[$index] * -1,
                 'price_with_tax' => $request->price_with_tax[$index] * -1,
                 'warehouse_id' => $request->warehouse_id,
-                'unit_id' => $productDetails->unit, 
+                'unit_id' => $unitId, 
                 'tax' => $request->tax[$index]*-1,
                 'tax_excise' => $request->tax_excise[$index]* -1, 
                 'total' => $request->total[$index] * -1,
                 'lista' => 0,
-                'profit'=> (($request->price_unit[$index] - $productDetails->cost) * $request->qnt[$index]) * -1
+                'profit'=> (($request->price_unit[$index] - ($productDetails->cost * $unitFactor)) * $request->qnt[$index]) * -1
             ];
 
             $item = new Product();
             $item -> product_id = $id1;
-            $item -> quantity = $request->qnt[$index]  * -1;
+            $item -> quantity = $request->qnt[$index]  * -1 * $unitFactor;
             $item -> warehouse_id = $request->warehouse_id ;
             $qntProducts[] = $item ;
 
@@ -653,4 +693,3 @@ class SalesController extends Controller
  
     }   
 }
-

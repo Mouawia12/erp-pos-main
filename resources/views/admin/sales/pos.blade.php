@@ -213,6 +213,19 @@ label.total {
                                 <div class="col-lg-8">    
                                     <label class="total">{{__('main.total.final')}} <span id="totalBig"><strong>0.00</strong></span>  </label>
                                 </div>
+                                <div class="col-lg-4">
+                                    <div class="form-group">
+                                        @php $defaultType = $settings->first()->default_invoice_type ?? 'simplified_tax_invoice'; @endphp
+                                        <select class="form-control" name="invoice_type" id="invoice_type">
+                                            <option value="simplified_tax_invoice" @if($defaultType=='simplified_tax_invoice') selected @endif>{{ __('main.invoice_type_simplified') }}</option>
+                                            <option value="tax_invoice" @if($defaultType=='tax_invoice') selected @endif>{{ __('main.invoice_type_tax') }}</option>
+                                            <option value="non_tax_invoice" @if($defaultType=='non_tax_invoice') selected @endif>{{ __('main.invoice_type_nontax') }}</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-lg-12 mb-2">
+                                    <textarea class="form-control" name="notes" rows="2" placeholder="{{__('main.notes')}}"></textarea>
+                                </div>
                             </div>  
                             <div class="row" > 
                                 <div class="col-md-12" id="sticker">
@@ -239,15 +252,18 @@ label.total {
                                                     <thead>
                                                         <tr>
                                                             <th class="text-center col-md-3">{{__('main.item_name_code')}}</th>
+                                                            <th class="text-center">{{__('main.available_qty')}}</th>
+                                                            <th class="text-center">{{__('main.cost')}}</th>
+                                                            <th class="text-center">{{__('main.last_sale_price')}}</th>
                                                             <th class="text-center col-md-2">{{__('main.prices')}}</th>
-                                                            <th class="text-center col-md-4">{{__('main.quantity')}} </th>
+                                                            <th class="text-center col-md-3">{{__('main.quantity')}} </th>
                                                             <th class="text-center">{{__('main.total')}}</th>
                                                             <th class="text-center">...</th> 
                                                         </tr>
                                                     </thead>
                                                     <tbody id="tbody"></tbody>
                                                     <tfoot>
-                                                        <th colspan="2" class="alert alert">
+                                                        <th colspan="5" class="alert alert">
                                                             {{__('main.sum')}}
                                                         </th>
                                                         <th class="text-center"> 
@@ -256,6 +272,7 @@ label.total {
                                                         <th class="text-center"> 
                                                             <span id="total_with_tax"></span> 
                                                         </th>  
+                                                        <th></th>
                                                     </tfoot>
                                                 </table> 
                                             </div>
@@ -316,6 +333,7 @@ label.total {
     var suggestionItems = {};
     var sItems = {};
     var count = 1;
+    var itemKey = 1;
     var Bill = null ;
     var product_row_number = 3;
     var counter = 5; 
@@ -646,47 +664,69 @@ label.total {
             sItems = {};
         }
 
-        if(sItems[item.id]){
-            sItems[item.id].qnt = sItems[item.id].qnt +1;
-        }
-        else{
-            var price = item.price;
-            var taxType = item.tax_method;
-            var taxRate = item.tax_rate == 1 ? 0 : 15;
-            var itemTax = 0;
-            var priceWithoutTax = 0;
-            var priceWithTax = 0;
-            var itemQnt = 1;
+        var isDuplicate = Object.values(sItems).some(function(existing){
+            return existing.product_id === item.id;
+        });
 
-            if(taxType == 1){
-                //included
-                priceWithTax = price;
-                priceWithoutTax = (price / (1+(taxRate/100)));
-                itemTax = priceWithTax - priceWithoutTax;
-            }else{
-                //excluded
-                itemTax = price * (taxRate/100);
-                priceWithoutTax = price;
-                priceWithTax = price + itemTax;
-            } 
-            //update 19-04-2024
-            var Excise = item.tax_excise;
-            var taxExcise = 0;
-            if(Excise > 0){    
-                taxExcise = (priceWithoutTax * (Excise/100));
-                itemTax = itemTax + taxExcise;
+        var price = item.price;
+        var taxType = item.tax_method;
+        var taxRate = item.tax_rate == 1 ? 0 : 15;
+        var itemTax = 0;
+        var priceWithoutTax = 0;
+        var priceWithTax = 0;
+        var itemQnt = 1;
+
+        var defaultUnit = item.unit ?? (item.units_options && item.units_options[0] ? item.units_options[0].unit_id : null);
+        var defaultFactor = 1;
+        if(item.units_options && item.units_options.length){
+            var firstUnit = item.units_options.find(function(u){ return u.unit_id == defaultUnit; }) || item.units_options[0];
+            defaultFactor = firstUnit.conversion_factor ?? 1;
+            if(firstUnit.price){
+                price = firstUnit.price;
             }
-            
-
-            sItems[item.id] = item;
-            sItems[item.id].price_with_tax = priceWithTax;
-            sItems[item.id].price_withoute_tax = priceWithoutTax;
-            sItems[item.id].item_tax = itemTax;
-            sItems[item.id].tax_rate = taxRate;
-            sItems[item.id].tax_excise = Excise;
-            sItems[item.id].qnt = 1;
-
         }
+
+        if(taxType == 1){
+            //included
+            priceWithTax = price;
+            priceWithoutTax = (price / (1+(taxRate/100)));
+            itemTax = priceWithTax - priceWithoutTax;
+        }else{
+            //excluded
+            itemTax = price * (taxRate/100);
+            priceWithoutTax = price;
+            priceWithTax = price + itemTax;
+        } 
+        //update 19-04-2024
+        var Excise = item.tax_excise;
+        var taxExcise = 0;
+        if(Excise > 0){    
+            taxExcise = (priceWithoutTax * (Excise/100));
+            itemTax = itemTax + taxExcise;
+        }
+        
+        var key = item.id + '_' + itemKey;
+        itemKey++;
+
+        sItems[key] = item;
+        sItems[key].product_id = item.id;
+        sItems[key].price_with_tax = priceWithTax;
+        sItems[key].price_withoute_tax = priceWithoutTax;
+        sItems[key].item_tax = itemTax;
+        sItems[key].tax_rate = taxRate;
+        sItems[key].tax_excise = Excise;
+        sItems[key].qnt = 1;
+        sItems[key].available_qty = item.qty ? Number(item.qty) : 0;
+        sItems[key].cost = item.cost ? Number(item.cost) : 0;
+        sItems[key].last_sale_price = item.last_sale_price ? Number(item.last_sale_price) : 0;
+        sItems[key].selected_unit_id = defaultUnit;
+        sItems[key].unit_factor = defaultFactor;
+        sItems[key].units_options = item.units_options ?? [];
+
+        if(isDuplicate){
+            alert('{{ __('main.duplicate_item_warning') }}');
+        }
+
         count++;
         loadItems(); 
         document.getElementById('add_item').value = '' ;
@@ -780,6 +820,27 @@ label.total {
 
         });
 
+        $(document).on('change','.selectUnit',function () {
+            var row = $(this).closest('tr');
+            var item_id = row.attr('data-item-id');
+            var selectedPrice = parseFloat($(this).find(':selected').data('price')) || sItems[item_id].price_withoute_tax;
+            var factor = parseFloat($(this).find(':selected').data('factor')) || 1;
+
+            var item_tax = 0;
+            var tax_rate = sItems[item_id].tax_rate;
+            var tax_excise = sItems[item_id].tax_excise;
+            var priceWithTax = selectedPrice;
+            priceWithTax = selectedPrice + (selectedPrice * (tax_rate/100));
+            item_tax = (selectedPrice * (tax_rate/100)) + (selectedPrice * (tax_excise/100));
+            sItems[item_id].price_withoute_tax= selectedPrice;
+            sItems[item_id].price_with_tax= priceWithTax;
+            sItems[item_id].item_tax= item_tax;
+            sItems[item_id].selected_unit_id = $(this).val();
+            sItems[item_id].unit_factor = factor;
+            row.find('.unitFactor').val(factor);
+            loadItems();
+        });
+
         $("#sTable").on('click', '.plus', function() {   
             rowindex = $(this).closest('tr').index(); 
             var qty = $('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ') .qty').val();
@@ -842,8 +903,20 @@ label.total {
             total += item.price_withoute_tax*item.qnt ;
             net += ((item.price_withoute_tax + item.item_tax)*item.qnt);
 
-            var newTr = $('<tr data-item-id="'+item.id+'">');
-            var tr_html ='<td><input type="hidden" name="product_id[]" value="'+item.id+'"> <span><strong>'+item.name + '</strong><br>' + (item.code)+'</span> </td>';
+            var newTr = $('<tr data-item-id="'+i+'">');
+            var tr_html ='<td><input type="hidden" name="product_id[]" value="'+(item.product_id ?? item.id)+'"> <span><strong>'+item.name + '</strong><br>' + (item.code)+'</span> </td>';
+                tr_html +='<td><span class="badge badge-light">'+Number(item.available_qty ?? 0)+'</span></td>';
+                tr_html +='<td><input type="text" readonly class="form-control" value="'+Number(item.cost ?? 0).toFixed(2)+'"></td>';
+                tr_html +='<td><input type="text" readonly class="form-control" value="'+Number(item.last_sale_price ?? 0).toFixed(2)+'"></td>';
+                var unitSelect = '<select class="form-control selectUnit" name="unit_id[]">';
+                if(item.units_options && item.units_options.length){
+                    item.units_options.forEach(function(u){
+                        var selected = u.unit_id == item.selected_unit_id ? 'selected' : '';
+                        unitSelect += '<option value="'+u.unit_id+'" data-price="'+u.price+'" data-factor="'+(u.conversion_factor ?? 1)+'" '+selected+'">'+u.unit_name+'</option>';
+                    });
+                }
+                unitSelect += '</select><input type="hidden" name="unit_factor[]" class="unitFactor" value="'+(item.unit_factor ?? 1)+'">';
+                tr_html +='<td>'+unitSelect+'</td>';
                 tr_html +='<td hidden><input type="text" class="form-control iPrice" name="price_unit[]" value="'+item.price_withoute_tax.toFixed(2)+'"></td>';
                 tr_html +='<td><input type="text" class="form-control text-center iPriceWTax" name="price_with_tax[]" value="'+(item.price_withoute_tax + item.item_tax).toFixed(2)+'"></td>';
                 //tr_html +='<td><input type="text" class="form-control iQuantity" name="qnt[]" value="'+item.qnt.toFixed(2)+'"></td>';
@@ -868,7 +941,7 @@ label.total {
                 tr_html +='<td hidden><input type="hidden" class="form-control TaxRate" name="tax_rate[]" value="'+item.tax_rate+'"></td>';
                 tr_html +='<td hidden><input type="hidden" class="form-control TaxExciseRate" name="tax_excise_rate[]" value="'+item.tax_excise+'"></td>';
                 tr_html +=`<td class="text-center"> 
-                                <button type="button" class="btn btn-danger deleteBtn btn-sm" value=" '+item.id+' ">
+                                <button type="button" class="btn btn-danger deleteBtn btn-sm" value=" '+i+' ">
                                     <i class="fa fa-close"></i>
                                 </button>
                             </td>`; 

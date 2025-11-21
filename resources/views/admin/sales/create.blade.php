@@ -36,9 +36,20 @@ span strong {font-size:12px;}
                             <div class="form-group">
                                 <label>{{ __('main.bill_date') }} <span class="text-danger">*</span> </label>
                                 <input type="datetime-local"  id="bill_date" name="bill_date"
-                                       class="form-control"/> 
+                                       class="form-control" readonly/> 
                             </div>
                         </div> 
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>{{ __('main.invoice_type') }}</label>
+                                <select class="form-control" name="invoice_type" id="invoice_type">
+                                    @php $defaultType = $settings->first()->default_invoice_type ?? 'tax_invoice'; @endphp
+                                    <option value="tax_invoice" @if($defaultType=='tax_invoice') selected @endif>{{ __('main.invoice_type_tax') }}</option>
+                                    <option value="simplified_tax_invoice" @if($defaultType=='simplified_tax_invoice') selected @endif>{{ __('main.invoice_type_simplified') }}</option>
+                                    <option value="non_tax_invoice" @if($defaultType=='non_tax_invoice') selected @endif>{{ __('main.invoice_type_nontax') }}</option>
+                                </select>
+                            </div>
+                        </div>
                         <div class="col-md-2">
                             <div class="form-group">
                                 <label class="d-block">{{ __('main.branche')}}<span class="text-danger">*</span> </label> 
@@ -71,7 +82,9 @@ span strong {font-size:12px;}
                                 <select class="js-example-basic-single w-100"
                                     name="customer_id" id="customer_id" required> 
                                     @foreach ($customers as $customer)
-                                        <option value="{{$customer -> id}}"> {{ $customer -> name}}</option>
+                                        <option value="{{$customer -> id}}" data-default-discount="{{$customer->default_discount ?? 0}}">
+                                            {{ $customer -> name}}
+                                        </option>
                                     @endforeach
                                 </select>
                             </div>
@@ -113,6 +126,9 @@ span strong {font-size:12px;}
                                                     <thead>
                                                         <tr>
                                                             <th class="col-md-3 text-center">{{__('main.item_name_code')}}</th>
+                                                            <th class="text-center">{{__('main.available_qty')}}</th>
+                                                            <th class="text-center">{{__('main.cost')}}</th>
+                                                            <th class="text-center">{{__('main.last_sale_price')}}</th>
                                                             <th class="text-center">{{__('main.quantity')}}</th>
                                                             <th class="text-center">{{__('main.price.unit')}}</th>
                                                             <th class="text-center">{{__('main.discount')}}</th> 
@@ -124,7 +140,7 @@ span strong {font-size:12px;}
                                                     </thead>
                                                     <tbody id="tbody"></tbody>
                                                     <tfoot>
-                                                        <th colspan="3">
+                                                        <th colspan="6">
                                                             {{__('main.sum')}}
                                                         </th>
                                                         <td class="text-center" colspan="1">
@@ -220,6 +236,12 @@ span strong {font-size:12px;}
                                         <input type="text" readonly  class="form-control" id="net_after_discount" name="net_after_discount" placeholder="0">
                                     </div>
                                 </div>
+                                <div class="col-12">
+                                    <div class="form-group">
+                                        <label style="text-align: right;float: right;"> {{__('main.notes')}} </label>
+                                        <textarea class="form-control" name="notes" rows="2" placeholder="{{__('main.notes')}}"></textarea>
+                                    </div>
+                                </div>
                                 <div class="col-md-12 text-center" style="display: block; margin: auto;">
                                     <button type="button" class="btn btn-primary" id="SaveSales">
                                         <i class="fa fa-save"></i>
@@ -277,7 +299,8 @@ span strong {font-size:12px;}
 
     var suggestionItems = {};
     var sItems = {};
-    var count = 1; 
+    var count = 1;
+    var itemKey = 1;
 
     $(document).ready(function() {  
 
@@ -337,6 +360,14 @@ span strong {font-size:12px;}
         $(document).on('click' , '.modal-close-btn' , function (event) {
             $('#paymentsModal').modal("hide");
             id = 0 ;
+        });
+
+        $('#customer_id').on('change', function(){
+            var defaultDiscount = $(this).find(':selected').data('default-discount') || 0;
+            if(defaultDiscount > 0){
+                $('#discount').val(defaultDiscount);
+                NetAfterDiscount();
+            }
         });
 
         $(document).on('click' , '.cancel-modal' , function(event) {
@@ -555,45 +586,68 @@ span strong {font-size:12px;}
             sItems = {};
         }
 
-        if(sItems[item.id]){
-            sItems[item.id].qnt = sItems[item.id].qnt +1;
+        var isDuplicate = Object.values(sItems).some(function(existing){
+            return existing.product_id === item.id;
+        });
+
+        var price = item.price;
+        var taxType = item.tax_method;
+        var taxRate = item.tax;
+        var itemTax = 0;
+        var priceWithoutTax = 0;
+        var priceWithTax = 0; 
+        var itemQnt = 1;
+
+        var defaultUnit = item.unit ?? (item.units_options && item.units_options[0] ? item.units_options[0].unit_id : null);
+        var defaultFactor = 1;
+        if(item.units_options && item.units_options.length){
+            var firstUnit = item.units_options.find(function(u){ return u.unit_id == defaultUnit; }) || item.units_options[0];
+            defaultFactor = firstUnit.conversion_factor ?? 1;
+            if(firstUnit.price){
+                price = firstUnit.price;
+            }
+        }
+
+        if(taxType == 1){
+            //included
+            priceWithTax = price;
+            priceWithoutTax = (price / (1+(taxRate/100))); 
+            itemTax = priceWithTax - priceWithoutTax;
         }else{
-            var price = item.price;
-            var taxType = item.tax_method;
-            var taxRate = item.tax;
-            var itemTax = 0;
-            var priceWithoutTax = 0;
-            var priceWithTax = 0; 
-            var itemQnt = 1;
+            //excluded
+            itemTax = price * (taxRate/100); 
+            priceWithoutTax = price;
+            priceWithTax = price + itemTax;
+        }
+        //update 19-04-2024
+        var Excise = item.tax_excise;
+        var taxExcise = 0;
+        if(Excise > 0){    
+            taxExcise = (priceWithoutTax * (Excise/100));
+            itemTax = itemTax + taxExcise;
+        }
+        
+        var key = item.id + '_' + itemKey;
+        itemKey++;
 
-            if(taxType == 1){
-                //included
-                priceWithTax = price;
-                priceWithoutTax = (price / (1+(taxRate/100))); 
-                itemTax = priceWithTax - priceWithoutTax;
-            }else{
-                //excluded
-                itemTax = price * (taxRate/100); 
-                priceWithoutTax = price;
-                priceWithTax = price + itemTax;
-            }
-            //update 19-04-2024
-            var Excise = item.tax_excise;
-            var taxExcise = 0;
-            if(Excise > 0){    
-                taxExcise = (priceWithoutTax * (Excise/100));
-                itemTax = itemTax + taxExcise;
-            }
-            
-            sItems[item.id] = item;
-            sItems[item.id].price_with_tax = priceWithTax;
-            sItems[item.id].price_withoute_tax = priceWithoutTax;
-            sItems[item.id].item_tax = itemTax;
-            sItems[item.id].tax_rate = taxRate;
-            sItems[item.id].tax_excise = Excise; 
-            sItems[item.id].qnt = 1;
-            sItems[item.id].discount = 0;
+        sItems[key] = item;
+        sItems[key].product_id = item.id;
+        sItems[key].price_with_tax = priceWithTax;
+        sItems[key].price_withoute_tax = priceWithoutTax;
+        sItems[key].item_tax = itemTax;
+        sItems[key].tax_rate = taxRate;
+        sItems[key].tax_excise = Excise; 
+        sItems[key].qnt = 1;
+        sItems[key].discount = 0;
+        sItems[key].available_qty = item.qty ? Number(item.qty) : 0;
+        sItems[key].cost = item.cost ? Number(item.cost) : 0;
+        sItems[key].last_sale_price = item.last_sale_price ? Number(item.last_sale_price) : 0;
+        sItems[key].selected_unit_id = defaultUnit;
+        sItems[key].unit_factor = defaultFactor;
+        sItems[key].units_options = item.units_options ?? [];
 
+        if(isDuplicate){
+            alert('{{ __('main.duplicate_item_warning') }}');
         }
 
         count++;
@@ -659,6 +713,28 @@ span strong {font-size:12px;}
 
         }); 
 
+        $(document).on('change','.selectUnit',function () {
+            var row = $(this).closest('tr');
+            var item_id = row.attr('data-item-id');
+            var selectedPrice = parseFloat($(this).find(':selected').data('price')) || sItems[item_id].price_withoute_tax;
+            var factor = parseFloat($(this).find(':selected').data('factor')) || 1;
+
+            var item_tax = 0;
+            var tax_rate = sItems[item_id].tax_rate;
+            var tax_excise = sItems[item_id].tax_excise;
+            var priceWithTax = selectedPrice;
+            priceWithTax = selectedPrice + (selectedPrice * (tax_rate/100));
+            item_tax = (selectedPrice * (tax_rate/100)) + (selectedPrice * (tax_excise/100));
+            sItems[item_id].price_withoute_tax= selectedPrice;
+            sItems[item_id].price_with_tax= priceWithTax;
+            sItems[item_id].item_tax= item_tax;
+            sItems[item_id].selected_unit_id = $(this).val();
+            sItems[item_id].unit_factor = factor;
+            row.find('.unitFactor').val(factor);
+            loadItems();
+            NetAfterDiscount();
+        }); 
+
         $(document).on('change','.iDiscount',function () {
             var row = $(this).closest('tr'); 
        
@@ -705,8 +781,21 @@ span strong {font-size:12px;}
         $.each(sItems,function (i,item) {
             console.log(item);
 
-            var newTr = $('<tr data-item-id="'+item.id+'">');
-            var tr_html ='<td><input type="hidden" name="product_id[]" value="'+item.id+'"> <span><strong>'+item.name + '</strong><br>' + (item.code)+'</span> </td>';
+            var newTr = $('<tr data-item-id="'+i+'">');
+            var tr_html ='<td><input type="hidden" name="product_id[]" value="'+(item.product_id ?? item.id)+'"> <span><strong>'+item.name + '</strong><br>' + (item.code)+'</span> </td>';
+                tr_html +='<td><span class="badge badge-light">'+Number(item.available_qty ?? 0)+'</span></td>';
+                tr_html +='<td><input type="text" readonly class="form-control" value="'+Number(item.cost ?? 0).toFixed(2)+'"></td>';
+                tr_html +='<td><input type="text" readonly class="form-control" value="'+Number(item.last_sale_price ?? 0).toFixed(2)+'"></td>';
+                var unitSelect = '<select class="form-control selectUnit" name="unit_id[]">';
+                if(item.units_options && item.units_options.length){
+                    item.units_options.forEach(function(u){
+                        var selected = u.unit_id == item.selected_unit_id ? 'selected' : '';
+                        unitSelect += '<option value="'+u.unit_id+'" data-price="'+u.price+'" data-factor="'+(u.conversion_factor ?? 1)+'" '+selected+'>'+u.unit_name+'</option>';
+                    });
+                }
+                unitSelect += '</select><input type="hidden" name="unit_factor[]" class="unitFactor" value="'+(item.unit_factor ?? 1)+'">';
+
+                tr_html +='<td>'+unitSelect+'</td>';
                 tr_html +='<td><input type="number" class="form-control iQuantity" name="qnt[]" value="'+item.qnt+'"></td>';
                 tr_html +='<td><input type="number" readonly="readonly" class="form-control iPrice" name="price_unit[]" value="'+(item.price_withoute_tax - item.discount).toFixed(2)+'"></td>';
                 tr_html +='<td><input type="number" class="form-control iDiscount" name="discount_unit[]" value="'+(item.discount).toFixed(2)+'"></td>';
@@ -717,7 +806,7 @@ span strong {font-size:12px;}
                 tr_html +='<td><input type="text" readonly="readonly" class="form-control" name="net[]" value="'+(((item.price_withoute_tax - item.discount) + item.item_tax)*item.qnt).toFixed(2)+'"></td>';
                 tr_html +='<td hidden><input type="hidden" class="form-control TaxRate" name="tax_rate[]" value="'+item.tax_rate+'"></td>';
                 tr_html +='<td hidden><input type="hidden" class="form-control TaxExciseRate" name="tax_excise_rate[]" value="'+item.tax_excise+'"></td>';
-                tr_html +=`<td> <button type="button" class="btn btn-labeled btn-danger deleteBtn " value=" '+item.id+' ">
+                tr_html +=`<td> <button type="button" class="btn btn-labeled btn-danger deleteBtn " value=" '+i+' ">
                                     <i class="fa fa-close"></i>
                                 </button>
                             </td>`;

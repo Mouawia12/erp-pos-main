@@ -31,7 +31,9 @@ class BranchController extends Controller
         $this->validate($request, [
             'branch_name' => 'required',
             'branch_phone' => 'required',
-            'branch_address' => 'required', 
+            'branch_address' => 'required',
+            'tax_number' => 'nullable',
+            'cr_number' => 'nullable',
         ]);
 
         $branchesCount = Branch::count();
@@ -67,7 +69,9 @@ class BranchController extends Controller
         $this->validate($request, [
             'branch_name' => 'required',
             'branch_phone' => 'required',
-            'branch_address' => 'required', 
+            'branch_address' => 'required',
+            'tax_number' => 'nullable',
+            'cr_number' => 'nullable',
         ]);
         $input = $request->all();
         if(!isset($input['status'])){

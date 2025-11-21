@@ -114,6 +114,8 @@ class SalesReturnController extends Controller
         $qntProducts = array();
         foreach ($request->product_id as $index=>$id){ 
             $productDetails = $siteController->getProductById($id);
+            $unitId = $request->unit_id[$index] ?? $productDetails->unit;
+            $unitFactor = $request->unit_factor[$index] ?? 1;
             $product = [
                 'sale_id' => 0,
                 'product_code' => $productDetails->code,
@@ -122,16 +124,16 @@ class SalesReturnController extends Controller
                 'price_unit' => $request->price_unit[$index],
                 'price_with_tax' => $request->price_with_tax[$index],
                 'warehouse_id' => $request->warehouse_id,
-                'unit_id' => $productDetails->unit,
+                'unit_id' => $unitId,
                 'tax' => $request->tax[$index],
                 'total' => $request->total[$index],
                 'lista' => 0,
-                'profit'=> ($request->price_unit[$index] - $productDetails->cost) * $request->qnt[$index]
+                'profit'=> ($request->price_unit[$index] - ($productDetails->cost * $unitFactor)) * $request->qnt[$index]
             ];
 
             $item = new Product();
             $item -> product_id = $id;
-            $item -> quantity = $request->qnt[$index] ;
+            $item -> quantity = $request->qnt[$index] * $unitFactor;
             $item -> warehouse_id = $request->warehouse_id ;
             $qntProducts[] = $item ;
 
@@ -147,6 +149,7 @@ class SalesReturnController extends Controller
         $sale = Sales::create([
             'date' => $request->bill_date,
             'invoice_no' => $request-> invoice_no,
+            'invoice_type' => $request->invoice_type ?? 'tax_invoice',
             'customer_id' => $request->customer_id,
             'biller_id' => Auth::user()->id,
             'warehouse_id' => $request->warehouse_id,
@@ -315,6 +318,8 @@ class SalesReturnController extends Controller
         $qntProducts = array();
         foreach ($request->product_id as $index=>$id1){
             $productDetails = $siteController->getProductById($id1);
+            $unitId = $request->unit_id[$index] ?? $productDetails->unit;
+            $unitFactor = $request->unit_factor[$index] ?? 1;
             $product = [
                 'sale_id' => 0,
                 'product_code' => $productDetails->code,
@@ -323,16 +328,16 @@ class SalesReturnController extends Controller
                 'price_unit' => $request->price_unit[$index] * -1,
                 'price_with_tax' => $request->price_with_tax[$index] * -1,
                 'warehouse_id' => $request->warehouse_id,
-                'unit_id' => $productDetails->unit,
+                'unit_id' => $unitId,
                 'tax' => $request->tax[$index] * -1,
                 'total' => $request->total[$index] * -1,
                 'lista' => 0,
-                'profit'=> (($request->price_unit[$index] - $productDetails->cost) * $request->qnt[$index]) * -1
+                'profit'=> (($request->price_unit[$index] - ($productDetails->cost * $unitFactor)) * $request->qnt[$index]) * -1
             ];
 
             $item = new Product();
             $item -> product_id = $id1;
-            $item -> quantity = $request->qnt[$index]  * -1;
+            $item -> quantity = $request->qnt[$index]  * -1 * $unitFactor;
             $item -> warehouse_id = $request->warehouse_id ;
             $qntProducts[] = $item ;
 
@@ -511,4 +516,3 @@ class SalesReturnController extends Controller
 
     }
 }
-

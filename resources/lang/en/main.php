@@ -148,6 +148,8 @@ return [
     'employee_points'=> 'Earned Points',
     'is_tobacco'=> 'Tobacco Tax?',
     'tobacco_tax'=> 'Tobacco Tax Value',
+    'single_device_login' => 'Single-device login only',
+    'single_device_locked' => 'You have been logged in from another device. Please sign in again.',
     'pos_settings' => 'POS Setting',
 
     'users_label' => 'Users' ,
@@ -181,10 +183,18 @@ return [
     'header_print' => 'Print Header',//
     'header_img' => 'Header Image',//
     'seller_buyer' =>'Seller , Buyer Option',
+    'db_backup_failed' => 'Database backup failed',
 
     'shortcut_setting' => 'Shortcut Settings',
     'header_print1' => 'Print Header Image',
     'user_groups' => 'User Group',
+    'choose' => 'Choose',
+    'supplier_invoice_no' => 'Supplier Invoice No.',
+    'supplier_invoice_copy' => 'Supplier Invoice Copy',
+    'invoice_type' => 'Invoice Type',
+    'invoice_type_tax' => 'Tax Invoice',
+    'invoice_type_simplified' => 'Simplified Tax Invoice',
+    'invoice_type_nontax' => 'Non-tax Invoice',
 
     'last_name' => 'Last Name',
     'gender' =>'Gender' ,
@@ -442,7 +452,11 @@ return [
     'representatives' => 'Representatives',
     'user_name' => 'User Name',
     'connect_with_client' => 'connect With Client ',
-    'done' => 'done successfully'
+    'done' => 'done successfully',
+    'available_qty' => 'Available Qty',
+    'cost' => 'Cost',
+    'last_sale_price' => 'Last Sale Price',
+    'duplicate_item_warning' => 'Item already exists in this invoice; quantity updated.'
 
 
 

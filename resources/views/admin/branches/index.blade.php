@@ -60,8 +60,12 @@
                             <tr> 
                                 <th class="border-bottom-0 text-center">#</th>
                                 <th class="border-bottom-0 text-center">اسم الفرع</th>
+                                <th class="border-bottom-0 text-center">السجل التجاري</th>
+                                <th class="border-bottom-0 text-center">الرقم الضريبي</th>
                                 <th class="border-bottom-0 text-center"> تلفون الفرع</th>
                                 <th class="border-bottom-0 text-center"> عنوان الفرع</th> 
+                                <th class="border-bottom-0 text-center">مدير الفرع</th>
+                                <th class="border-bottom-0 text-center">بريد التواصل</th> 
                                 <th class="border-bottom-0 text-center"> الحالة</th>
                                 <th class="border-bottom-0 text-center"></th>
                             </tr>
@@ -71,8 +75,12 @@
                             <tr> 
                                 <td>{{ $loop->index+1 }}</td>
                                 <td>{{ $branch->branch_name}}</td>
+                                <td>{{ $branch->cr_number }}</td>
+                                <td>{{ $branch->tax_number }}</td>
                                 <td>{{ $branch->branch_phone }}</td>
                                 <td>{{ $branch->branch_address }}</td> 
+                                <td>{{ $branch->manager_name }}</td>
+                                <td>{{ $branch->contact_email }}</td> 
                                 <td> 
                                     <input type="checkbox" name="status[]" 
                                         @if($branch->status==1)

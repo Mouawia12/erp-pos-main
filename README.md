@@ -29,3 +29,15 @@ The full Arabic requirements from "طلبات-تطوير-برنامج-المحا
 - Keep RTL layouts for Arabic and add English UI strings where required.
 - Offline/PWA behavior, subscribers dashboard, reporting filters، POS enhancements، والتسعير متعدد الوحدات هي مناطق حرجة للمراجعة.
 - When comparing with production, avoid deleting أو تعطيل المسارات العاملة إلا إذا طلبها المستند.
+
+## Recent Batch Updates (Sales/POS)
+- Sales and POS invoice lines now display available quantity per warehouse, current product cost, and last selling price to reduce stock/pricing mistakes.
+- Adding the same item again now shows a warning but keeps a separate line so different units/prices can be entered later (quantities no longer auto-merge).
+- Sales invoice date/time is locked to the current timestamp on save to prevent backdating edits (UI input is read-only; server enforces now()).
+- Purchase invoices now also warn on duplicate items and show available stock while editing.
+- POS thermal print redesigned to include branch contact, customer details, notes/terms, and bilingual “Simplified Tax Invoice” heading.
+- Multi-unit selection added to sales/POS/purchases lines (per-product units with conversion factors, defaulting to 1). Stock movement now respects the chosen unit factor; lines stay separate for mixed units.
+- Payments: sales/POS now accept mixed payments (cash + multiple card terminals) per invoice; entries are validated against invoice total.
+- Purchase payments: modal supports cash + multiple card entries, validation against invoice total, and posting each card as a separate payment entry.
+- Access policy: optional single-device login toggle added to system settings; when enabled, concurrent sessions for the same user are blocked.
+- New DB backup command and admin route: `php artisan db:backup` creates `storage/backups/db-backup-*.sql` (also accessible via `/admin/backup/database` for admin users).

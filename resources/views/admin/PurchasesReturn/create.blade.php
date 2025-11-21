@@ -113,6 +113,12 @@
                                        <i class="fa fa-save"></i> {{__('main.save_btn')}} 
                                     </button>  
                                 </div>
+                                <div class="col-md-12 mt-2">
+                                    <div class="form-group">
+                                        <label>{{__('main.notes')}}</label>
+                                        <textarea class="form-control" name="notes" rows="2" placeholder="{{__('main.notes')}}"></textarea>
+                                    </div>
+                                </div>
                             </div> 
                         </form> 
                     </div>
@@ -133,9 +139,8 @@
 
         document.title = "{{ __('main.return_purchase') }}";
 
-        var string = "{{$purchaseItems}}"; 
-        var allsItems = JSON.parse(string.replace(/&quot;/g,'"'));
-        $.each(allsItems,function (i,item) {
+        var allsItems = @json($purchaseItems);
+        allsItems.forEach(function(item){
             sItems[item.product_id] = item;
         });
 
@@ -230,15 +235,42 @@
                 if (!item.returned_qnt) {
                     item.returned_qnt = 0;
                 } 
+
+                if(!item.selected_unit_id){
+                    item.selected_unit_id = item.unit_id;
+                }
+                if(!item.unit_factor){
+                    item.unit_factor = item.unit_factor ? item.unit_factor : 1;
+                }
+
+                var unitSelect = '<select class="form-control selectUnit" name="unit_id[]">';
+                if(item.units_options){
+                    item.units_options.forEach(function(u){
+                        var selected = u.unit_id == item.selected_unit_id ? 'selected' : '';
+                        unitSelect += '<option value="'+u.unit_id+'" data-price="'+u.price+'" data-factor="'+(u.conversion_factor ?? 1)+'" '+selected+'">'+u.unit_name+'</option>';
+                    });
+                }else{
+                    unitSelect += '<option value="'+item.unit_id+'">{{__("main.unit")}}</option>';
+                }
+                unitSelect += '</select><input type="hidden" name="unit_factor[]" class="unitFactor" value="'+(item.unit_factor ?? 1)+'">';
+
+                var priceWithoutTax = parseFloat(item.price_withoute_tax ?? item.cost_without_tax ?? 0);
+                var taxPerUnit = 0;
+                if(item.tax && item.quantity){
+                    taxPerUnit = parseFloat(item.tax) / parseFloat(item.quantity);
+                }
+                var priceWithTax = priceWithoutTax + taxPerUnit;
+
                 var newTr = $('<tr data-item-id="' + item.product_id + '">');
                 var tr_html = '<td><input type="hidden" name="product_id[]" value="' + item.product_id + '"> <span>' + item.product_name + '---' + (item.product_code) + '</span> </td>';
-                    tr_html +='<td><input type="text" class="form-control" readonly name="price_without_tax[]" value="' + parseFloat(item.cost_without_tax).toFixed(2) + '"></td>';
-                    tr_html +='<td hidden><input type="hidden" class="form-control" readonly name="price_with_tax[]" value="' + parseFloat(item.cost_with_tax).toFixed(2) + '"></td>';
+                    tr_html +='<td>'+unitSelect+'</td>';
+                    tr_html +='<td><input type="text" class="form-control" readonly name="price_without_tax[]" value="' + priceWithoutTax.toFixed(2) + '"></td>';
+                    tr_html +='<td hidden><input type="hidden" class="form-control" readonly name="price_with_tax[]" value="' + priceWithTax.toFixed(2) + '"></td>';
                     tr_html +='<td><input readonly type="text" class="form-control" name="all_qnt[]" value="' + parseFloat(item.quantity) + '"></td>';
                     tr_html +='<td><input type="number" class="form-control iQuantity" name="qnt[]" value="' + item.returned_qnt + '"></td>';
-                    tr_html +='<td><input type="text" readonly="readonly" class="form-control" name="total[]" value="' + (parseFloat(item.cost_without_tax) * parseFloat(item.returned_qnt)).toFixed(2) + '"></td>';
-                    tr_html +='<td><input type="text" readonly="readonly" class="form-control" name="tax[]" value="' + (parseFloat(item.tax / item.quantity) * parseFloat(item.returned_qnt)).toFixed(2) + '"></td>';
-                    tr_html +='<td><input type="text" readonly="readonly" class="form-control" name="net[]" value="' + (parseFloat(item.cost_with_tax) * parseFloat(item.returned_qnt)).toFixed(2) + '"></td>';
+                    tr_html +='<td><input type="text" readonly="readonly" class="form-control" name="total[]" value="' + (priceWithoutTax * parseFloat(item.returned_qnt)).toFixed(2) + '"></td>';
+                    tr_html +='<td><input type="text" readonly="readonly" class="form-control" name="tax[]" value="' + (taxPerUnit * parseFloat(item.returned_qnt)).toFixed(2) + '"></td>';
+                    tr_html +='<td><input type="text" readonly="readonly" class="form-control" name="net[]" value="' + (priceWithTax * parseFloat(item.returned_qnt)).toFixed(2) + '"></td>';
                 
                 newTr.html(tr_html);
                 newTr.appendTo('#sTable');
@@ -246,5 +278,19 @@
         }); 
         $('#add_item').focus();
     }
+
+    $(document).on('change','.selectUnit',function () {
+        var row = $(this).closest('tr');
+        var item_id = row.attr('data-item-id');
+        var selectedPrice = parseFloat($(this).find(':selected').data('price')) || parseFloat(sItems[item_id].cost_without_tax) || 0;
+        var factor = parseFloat($(this).find(':selected').data('factor')) || 1;
+
+        sItems[item_id].price_withoute_tax = selectedPrice;
+        sItems[item_id].price_with_tax = selectedPrice * 1.15;
+        sItems[item_id].selected_unit_id = $(this).val();
+        sItems[item_id].unit_factor = factor;
+        row.find('.unitFactor').val(factor);
+        loadItems();
+    });
 </script>
 @endsection 

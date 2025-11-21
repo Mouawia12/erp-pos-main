@@ -8,6 +8,7 @@ use Illuminate\Http\Response;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Models\SystemSettings;
 
 class LoginController extends Controller
 {
@@ -84,5 +85,33 @@ class LoginController extends Controller
         return back()->withErrors([
             'email' => 'The provided credentials do not match our records.',
         ])->onlyInput('email');
+    }
+
+    protected function authenticated(Request $request, $user)
+    {
+        if($this->singleDeviceEnabled()){
+            $user->session_id = $request->session()->getId();
+            $user->save();
+        }
+    }
+
+    public function logout(Request $request)
+    {
+        $user = Auth::guard('admin-web')->user();
+        Auth::guard('admin-web')->logout();
+
+        if($this->singleDeviceEnabled() && $user){
+            $user->update(['session_id' => null]);
+        }
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect('/');
+    }
+
+    private function singleDeviceEnabled(){
+        $settings = SystemSettings::first();
+        return $settings && $settings->single_device_login;
     }
 }

@@ -56,6 +56,7 @@ class SystemSettings extends Model
         'weight_start',//
         'weight_length',//
         'weight_divider',//
+        'default_invoice_type',
         'email_protocol',//
         'email_host',//
         'email_user',//
@@ -69,6 +70,8 @@ class SystemSettings extends Model
         'employee_points',
         'is_tobacco',
         'tobacco_tax',
+        'tax_number',
+        'single_device_login',
         'created_at', 
         'updated_at', 
         'enable_inventory',

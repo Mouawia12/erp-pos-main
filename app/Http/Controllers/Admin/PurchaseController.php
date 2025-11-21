@@ -11,6 +11,8 @@ use App\Http\Requests\StorePurchaseRequest;
 use App\Http\Requests\UpdatePurchaseRequest;
 use App\Models\PurchaseDetails;
 use App\Models\SystemSettings;
+use App\Models\ProductUnit;
+use App\Models\Unit;
 use App\Models\Warehouse; 
 use App\Models\Branch;
 use Carbon\Carbon;
@@ -153,6 +155,8 @@ class PurchaseController extends Controller
         $qntProducts = array();
         foreach ($request->product_id as $index=>$id){
             $productDetails = $siteController->getProductById($id);
+            $unitId = $request->unit_id[$index] ?? $productDetails->unit;
+            $unitFactor = $request->unit_factor[$index] ?? 1;
             $product = [
                 'purchase_id' => 0,
                 'product_code' => $productDetails->code,
@@ -161,7 +165,7 @@ class PurchaseController extends Controller
                 'cost_without_tax' => $request->price_without_tax[$index],
                 'cost_with_tax' => $request->price_with_tax[$index],
                 'warehouse_id' => $request->warehouse_id,
-                'unit_id' => $productDetails->unit,
+                'unit_id' => $unitId,
                 'tax' => $request->tax[$index],
                 'total' => $request->total[$index],
                 'net' => $request->net[$index]
@@ -169,7 +173,7 @@ class PurchaseController extends Controller
 
             $item = new Product();
             $item -> product_id = $id;
-            $item -> quantity = $request->qnt[$index] ;
+            $item -> quantity = $request->qnt[$index] * $unitFactor;
             $item -> warehouse_id = $request->warehouse_id; 
             $qntProducts[] = $item ;
 
@@ -182,6 +186,7 @@ class PurchaseController extends Controller
         $purchase = Purchase::create([
             'date' => $request->bill_date,
             'invoice_no' => $request-> invoice_no,
+            'supplier_invoice_no' => $request->supplier_invoice_no,
             'customer_id' => $request->customer_id,
             'biller_id' => Auth::id(),
             'warehouse_id' => $request->warehouse_id,
@@ -201,6 +206,11 @@ class PurchaseController extends Controller
         foreach ($products as $product){
             $product['purchase_id'] = $purchase->id;
             PurchaseDetails::create($product);
+        }
+
+        if($request->hasFile('supplier_invoice_copy')){
+            $path = $request->file('supplier_invoice_copy')->store('uploads/purchase_invoices','public');
+            $purchase->update(['supplier_invoice_copy' => $path]);
         }
 
         $siteController->syncQnt($qntProducts,null , false);
@@ -270,6 +280,37 @@ class PurchaseController extends Controller
             ->select('purchase_details.*','products.name as product_name')
             ->where('purchase_id',$id)
             ->get();
+
+        foreach ($purchaseItems as $purchaseItem){
+            $unitsOptions = ProductUnit::join('units','units.id','=','product_units.unit_id')
+                ->where('product_units.product_id',$purchaseItem->product_id)
+                ->select('product_units.*','units.name as unit_name')
+                ->get();
+
+            if($unitsOptions->isEmpty()){
+                $unitsOptions = collect([[
+                    'unit_id' => $purchaseItem->unit_id,
+                    'unit_name' => Unit::find($purchaseItem->unit_id)->name ?? '',
+                    'price' => $purchaseItem->cost_without_tax,
+                    'conversion_factor' => 1,
+                    'barcode' => null
+                ]]);
+            }
+
+            $purchaseItem->units_options = $unitsOptions->map(function($u){
+                return [
+                    'unit_id' => $u->unit_id,
+                    'unit_name' => $u->unit_name,
+                    'price' => $u->price,
+                    'conversion_factor' => $u->conversion_factor ?? 1,
+                    'barcode' => $u->barcode
+                ];
+            });
+
+            $purchaseItem->selected_unit_id = $purchaseItem->unit_id;
+            $selected = $purchaseItem->units_options->firstWhere('unit_id',$purchaseItem->unit_id);
+            $purchaseItem->unit_factor = $selected['conversion_factor'] ?? 1;
+        }
 
 
         $zeroItems = 0;
@@ -348,6 +389,8 @@ class PurchaseController extends Controller
         $qntProducts = array();
         foreach ($request->product_id as $index=>$id){
             $productDetails = $siteController->getProductById($id);
+            $unitId = $request->unit_id[$index] ?? $productDetails->unit;
+            $unitFactor = $request->unit_factor[$index] ?? 1;
             $product = [
                 'purchase_id' => 0,
                 'product_code' => $productDetails->code,
@@ -356,7 +399,7 @@ class PurchaseController extends Controller
                 'cost_without_tax' => $request->price_without_tax[$index] * -1,
                 'cost_with_tax' => $request->price_with_tax[$index] * -1,
                 'warehouse_id' => $request->warehouse_id,
-                'unit_id' => $productDetails->unit,
+                'unit_id' => $unitId,
                 'tax' => $request->tax[$index] * -1,
                 'total' => $request->total[$index] * -1,
                 'net' => $request->net[$index] * -1,
@@ -364,7 +407,7 @@ class PurchaseController extends Controller
 
             $item = new Product();
             $item -> product_id = $id;
-            $item -> quantity = $request->qnt[$index]  * -1;
+            $item -> quantity = $request->qnt[$index]  * -1 * $unitFactor;
             $item -> warehouse_id = $request->warehouse_id ;
             $qntProducts[] = $item ;
 

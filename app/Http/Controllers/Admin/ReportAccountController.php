@@ -1759,12 +1759,31 @@ class ReportAccountController extends Controller
     } 
 
     public function tax_declaration(){
-        return view('admin.ReportAccount.tax_declaration_report');
+        $branches = Branch::where('status',1)->get();
+        $taxNumbers = $branches->whereNotNull('tax_number')->pluck('tax_number')->unique()->values();
+        return view('admin.ReportAccount.tax_declaration_report', compact('branches','taxNumbers'));
     }
 
     public function tax_declaration_report_search(Request $request){
         $startDate = Carbon::now()->addYears(-5);
         $endDate = Carbon::now() -> addDays(1);
+
+        $branches = Branch::where('status',1)->get();
+        $taxNumbers = $branches->whereNotNull('tax_number')->pluck('tax_number')->unique()->values();
+
+        $request->validate([
+            'branch_id' => 'nullable',
+            'tax_number' => 'nullable'
+        ]);
+
+        $branchIds = [];
+        if($request->branch_id && $request->branch_id > 0){
+            $branchIds = [$request->branch_id];
+        } elseif($taxNumbers->count() > 1 && empty($request->tax_number)){
+            return redirect()->back()->withErrors(['tax_number' => __('main.tax_number').' '.__('validation.required')]);
+        } elseif(!empty($request->tax_number)){
+            $branchIds = Branch::where('tax_number',$request->tax_number)->pluck('id')->toArray();
+        }
 
         $period = 'Period : ';
         $period_ar = 'الفترة  : ';
@@ -1793,40 +1812,55 @@ class ReportAccountController extends Controller
                     ->where('sales.date','>=', Carbon::parse($request -> StartDate) )
                     ->where('sales.date','<=', Carbon::parse($request -> EndDate) -> addDay()) 
                     ->where('sales.net','>', 0)
-                    ->where('sale_details.tax','>', 0)  
-                    ->first();
+                    ->where('sale_details.tax','>', 0);
+        if(!empty($branchIds)){
+            $sales = $sales->whereIn('sales.branch_id',$branchIds);
+        }
+        $sales = $sales->first();
 
         $salesReturn = SaleDetails::join('sales', 'sale_details.sale_id', '=', 'sales.id')
                         ->select(SaleDetails::raw('sum(sale_details.total * -1) as total,sum(sale_details.tax * -1) as tax'))
                         ->where('sales.date','>=', Carbon::parse($request -> StartDate) )
                         ->where('sales.date','<=', Carbon::parse($request -> EndDate) -> addDay()) 
                         ->where('sales.net','<', 0)
-                        ->where('sale_details.tax','<', 0)   
-                        ->first();   
+                        ->where('sale_details.tax','<', 0);   
+        if(!empty($branchIds)){
+            $salesReturn = $salesReturn->whereIn('sales.branch_id',$branchIds);
+        }
+        $salesReturn = $salesReturn->first();   
 
         $salesTaxZero = SaleDetails::join('sales', 'sale_details.sale_id', '=', 'sales.id')
                             ->select(SaleDetails::raw('sum(sale_details.total) as total,sum(sale_details.tax) as tax'))
                             ->where('sales.date', '>=', Carbon::parse($request -> StartDate) )
                             ->where('sales.date', '<=', Carbon::parse($request -> EndDate) -> addDay()) 
                             ->where('sales.net', '>', 0)   
-                            ->where('sale_details.tax','=', 0)  
-                            ->first();
+                            ->where('sale_details.tax','=', 0);
+        if(!empty($branchIds)){
+            $salesTaxZero = $salesTaxZero->whereIn('sales.branch_id',$branchIds);
+        }
+        $salesTaxZero = $salesTaxZero->first();
 
         $salesReturnTaxZero = SaleDetails::join('sales', 'sale_details.sale_id', '=', 'sales.id')
                                 ->select(SaleDetails::raw('sum(sale_details.total * -1) as total,sum(sale_details.tax * -1) as tax'))
                                 ->where('sales.date','>=', Carbon::parse($request -> StartDate) )
                                 ->where('sales.date','<=', Carbon::parse($request -> EndDate) -> addDay()) 
                                 ->where('sales.net', '<', 0)  
-                                ->where('sale_details.tax', '=', 0)   
-                                ->first();  
+                                ->where('sale_details.tax', '=', 0);
+        if(!empty($branchIds)){
+            $salesReturnTaxZero = $salesReturnTaxZero->whereIn('sales.branch_id',$branchIds);
+        }
+        $salesReturnTaxZero = $salesReturnTaxZero->first();  
                 
         $purchase = DB::table('purchase_details')
                         ->join('purchases', 'purchase_details.purchase_id', '=', 'purchases.id') 
                         ->select(PurchaseDetails::raw('sum(purchase_details.total) total,sum(purchase_details.tax) tax'))
                         ->where('purchases.date', '>=', Carbon::parse($request -> StartDate) )
                         ->where('purchases.date', '<=', Carbon::parse($request -> EndDate) -> addDay())  
-                        ->where('purchase_details.tax', '>', 0) 
-                        ->first(); 
+                        ->where('purchase_details.tax', '>', 0);
+        if(!empty($branchIds)){
+            $purchase = $purchase->whereIn('purchases.branch_id',$branchIds);
+        }
+        $purchase = $purchase->first(); 
 
         $purchaseReturn = DB::table('purchase_details')
                         ->join('purchases', 'purchase_details.purchase_id', '=', 'purchases.id') 
@@ -1834,16 +1868,22 @@ class ReportAccountController extends Controller
                         ->where('purchases.date', '>=', Carbon::parse($request -> StartDate) )
                         ->where('purchases.date', '<=', Carbon::parse($request -> EndDate) -> addDay())  
                         ->where('purchase_details.tax', '<', 0)  
-                        ->where('purchases.net', '<', 0)  
-                        ->first(); 
+                        ->where('purchases.net', '<', 0);
+        if(!empty($branchIds)){
+            $purchaseReturn = $purchaseReturn->whereIn('purchases.branch_id',$branchIds);
+        }
+        $purchaseReturn = $purchaseReturn->first(); 
  
         $purchaseTaxZero =  DB::table('purchase_details')
                             ->join('purchases', 'purchase_details.purchase_id', '=', 'purchases.id') 
                             ->select(PurchaseDetails::raw('sum(purchase_details.total) total')) 
                             ->where('purchases.date', '>=', Carbon::parse($request -> StartDate) )
                             ->where('purchases.date', '<=', Carbon::parse($request -> EndDate) -> addDay()) 
-                            ->where('purchase_details.tax',0) 
-                            ->first();  
+                            ->where('purchase_details.tax',0);
+        if(!empty($branchIds)){
+            $purchaseTaxZero = $purchaseTaxZero->whereIn('purchases.branch_id',$branchIds);
+        }
+        $purchaseTaxZero = $purchaseTaxZero->first();  
 
         $purchaseReturnTaxZero =  DB::table('purchase_details')
                             ->join('purchases', 'purchase_details.purchase_id', '=', 'purchases.id') 
@@ -1851,8 +1891,11 @@ class ReportAccountController extends Controller
                             ->where('purchases.date', '>=', Carbon::parse($request -> StartDate) )
                             ->where('purchases.date', '<=', Carbon::parse($request -> EndDate) -> addDay()) 
                             ->where('purchases.net', '<', 0)  
-                            ->where('purchase_details.tax',0) 
-                            ->first();  
+                            ->where('purchase_details.tax',0);
+        if(!empty($branchIds)){
+            $purchaseReturnTaxZero = $purchaseReturnTaxZero->whereIn('purchases.branch_id',$branchIds);
+        }
+        $purchaseReturnTaxZero = $purchaseReturnTaxZero->first();  
       
         return view('admin.ReportAccount.tax_declaration_report_result', compact('company', 'period', 'period_ar'  
                     ,'sales', 'salesReturn', 'salesTaxZero', 'salesReturnTaxZero', 'purchase'

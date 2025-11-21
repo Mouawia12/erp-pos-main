@@ -36,6 +36,20 @@
                                                class="form-control"/>   
                                     </div>
                                 </div> 
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label>{{ __('main.supplier_invoice_no') }}</label>
+                                        <input type="text" id="supplier_invoice_no" name="supplier_invoice_no"
+                                               class="form-control" placeholder="{{ __('main.supplier_invoice_no') }}"/>   
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label>{{ __('main.supplier_invoice_copy') }}</label>
+                                        <input type="file" id="supplier_invoice_copy" name="supplier_invoice_copy"
+                                               class="form-control" accept=".pdf,.jpg,.jpeg,.png"/>   
+                                    </div>
+                                </div> 
                                 <div class="col-2">
                                     <div class="form-group">
                                         <label class="d-block">{{ __('main.branche')}}<span class="text-danger">*</span> </label> 
@@ -117,6 +131,7 @@
                                                         <tr>
                                                             <th>#</th>
                                                             <th class="col-md-3 text-center">{{__('main.item_name_code')}}</th>
+                                                            <th class="text-center">{{__('main.available_qty')}}</th>
                                                             <th class="col-md-2 text-center">{{__('main.price.unit')}}</th>
                                                             <th class="col-md-1 text-center" hidden>{{__('main.price.unit').'+'.__('main.tax')}}</th>
                                                             <th class="col-md-1 text-center">{{__('main.quantity')}} </th>
@@ -128,7 +143,7 @@
                                                     </thead>
                                                     <tbody id="tbody"></tbody>  
                                                     <tfoot>
-                                                        <th colspan="4">
+                                                        <th colspan="5">
                                                             {{__('main.sum')}}
                                                         </th> 
                                                         <td class="text-center" colspan="1">
@@ -140,6 +155,7 @@
                                                         <td class="text-center" colspan="1">
                                                             <strong id="net-text">0</strong>   
                                                         </td>  
+                                                        <td></td>
                                                     </tfoot>
                                                 </table> 
                                             </div>
@@ -152,6 +168,12 @@
                                     <button type="button" class="btn btn-primary btn-lg" id="primary" tabindex="-1"> 
                                        <i class="fa fa-save"></i> {{__('main.save_btn')}} 
                                     </button>  
+                                </div>
+                                <div class="col-md-12 mt-2">
+                                    <div class="form-group">
+                                        <label>{{__('main.notes')}}</label>
+                                        <textarea class="form-control" name="notes" rows="2" placeholder="{{__('main.notes')}}"></textarea>
+                                    </div>
                                 </div>
                             </div> 
                         </form> 
@@ -202,7 +224,8 @@
 
     var suggestionItems = {};
     var sItems = {};
-    var count = 1; 
+    var count = 1;
+    var itemKey = 1;
 
     $(document).ready(function() { 
         
@@ -393,40 +416,61 @@ function openDialog(){
       })
 }
 
-function addItemToTable(item){
-    if(count == 1){
-        sItems = {};
-    } 
+    function addItemToTable(item){
+        if(count == 1){
+            sItems = {};
+        } 
 
-    if(sItems[item.id]){
-        sItems[item.id].qnt = sItems[item.id].qnt +1;
-    }else{
-        var price = item.cost;
-        var taxType = item.tax_method;
-        var taxRate = item.tax_rate == 1 ? 0 : 15;
-        var itemTax = 0;
-        var priceWithoutTax = 0;
-        var priceWithTax = 0;
-        var itemQnt = 1;
+        var isDuplicate = Object.values(sItems).some(function(existing){
+            return existing.product_id === item.id;
+        });
 
-        if(taxType == 1){
-            //included
-            priceWithTax = price;
-            priceWithoutTax = (price / (1+(taxRate/100)));
-            itemTax = priceWithTax - priceWithoutTax;
-        }else{
-            //excluded
-            itemTax = price * (taxRate/100);
-            priceWithoutTax = price;
-            priceWithTax = price + itemTax;
+    var price = item.cost;
+    var taxType = item.tax_method;
+    var taxRate = item.tax_rate == 1 ? 0 : 15;
+    var itemTax = 0;
+    var priceWithoutTax = 0;
+    var priceWithTax = 0;
+    var itemQnt = 1;
+
+    var defaultUnit = item.unit ?? (item.units_options && item.units_options[0] ? item.units_options[0].unit_id : null);
+    var defaultFactor = 1;
+    if(item.units_options && item.units_options.length){
+        var firstUnit = item.units_options.find(function(u){ return u.unit_id == defaultUnit; }) || item.units_options[0];
+        defaultFactor = firstUnit.conversion_factor ?? 1;
+        if(firstUnit.price){
+            price = firstUnit.price;
         }
+    }
 
-        sItems[item.id] = item;
-        sItems[item.id].price_with_tax = priceWithTax;
-        sItems[item.id].price_withoute_tax = priceWithoutTax;
-        sItems[item.id].item_tax = itemTax;
-        sItems[item.id].qnt = 1;
+    if(taxType == 1){
+        //included
+        priceWithTax = price;
+        priceWithoutTax = (price / (1+(taxRate/100)));
+        itemTax = priceWithTax - priceWithoutTax;
+    }else{
+        //excluded
+        itemTax = price * (taxRate/100);
+        priceWithoutTax = price;
+        priceWithTax = price + itemTax;
+    }
 
+    var key = item.id + '_' + itemKey;
+    itemKey++;
+
+    sItems[key] = item;
+    sItems[key].product_id = item.id;
+    sItems[key].price_with_tax = priceWithTax;
+    sItems[key].price_withoute_tax = priceWithoutTax;
+    sItems[key].item_tax = itemTax;
+    sItems[key].qnt = 1;
+    sItems[key].available_qty = item.qty ? Number(item.qty) : 0;
+    sItems[key].selected_unit_id = defaultUnit;
+    sItems[key].unit_factor = defaultFactor;
+    sItems[key].units_options = item.units_options ?? [];
+
+    if(isDuplicate){
+        alert('{{ __('main.duplicate_item_warning') }}');
     }
     count++;
     loadItems();
@@ -514,8 +558,25 @@ function addItemToTable(item){
             sItems[item_id].price_with_tax= newQty;
             sItems[item_id].item_tax= item_tax;
             loadItems();
-
         });
+
+    $(document).on('change','.selectUnit',function () {
+        var row = $(this).closest('tr');
+        var item_id = row.attr('data-item-id');
+        var selectedPrice = parseFloat($(this).find(':selected').data('price')) || sItems[item_id].price_withoute_tax;
+        var factor = parseFloat($(this).find(':selected').data('factor')) || 1;
+
+        var item_tax = 0;
+        var priceWithTax = selectedPrice * 1.15;
+        item_tax = selectedPrice * 0.15;
+        sItems[item_id].price_withoute_tax= selectedPrice;
+        sItems[item_id].price_with_tax= priceWithTax;
+        sItems[item_id].item_tax= item_tax;
+        sItems[item_id].selected_unit_id = $(this).val();
+        sItems[item_id].unit_factor = factor;
+          row.find('.unitFactor').val(factor);
+        loadItems();
+    });
 
     function is_numeric(mixed_var) {
         var whitespace = ' \n\r\t\f\x0b\xa0\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u3000';
@@ -538,16 +599,26 @@ function addItemToTable(item){
         $('#sTable tbody').empty();
         $.each(sItems,function (i,item) {
             console.log(item); 
-            var newTr = $('<tr data-item-id="'+item.id+'">');
+            var newTr = $('<tr data-item-id="'+i+'">');
             var tr_html ='<td>'+(items_count_val+1)+'</td>';
-                tr_html +='<td><input type="hidden" name="product_id[]" value="'+item.id+'"> <span>'+item.name + '---' + (item.code)+'</span> </td>';
+                tr_html +='<td><input type="hidden" name="product_id[]" value="'+(item.product_id ?? item.id)+'"> <span>'+item.name + '---' + (item.code)+'</span> </td>';
+                tr_html +='<td><span class="badge badge-light">'+Number(item.available_qty ?? 0)+'</span></td>';
+                var unitSelect = '<select class="form-control selectUnit" name="unit_id[]">';
+                if(item.units_options && item.units_options.length){
+                    item.units_options.forEach(function(u){
+                        var selected = u.unit_id == item.selected_unit_id ? 'selected' : '';
+                        unitSelect += '<option value="'+u.unit_id+'" data-price="'+u.price+'" data-factor="'+(u.conversion_factor ?? 1)+'" '+selected+'">'+u.unit_name+'</option>';
+                    });
+                }
+                unitSelect += '</select><input type="hidden" name="unit_factor[]" class="unitFactor" value="'+(item.unit_factor ?? 1)+'">';
+                tr_html +='<td>'+unitSelect+'</td>';
                 tr_html +='<td><input type="number" class="form-control iPrice" name="price_without_tax[]" value="'+item.price_withoute_tax.toFixed(2)+'"></td>';
                 tr_html +='<td hidden><input type="hidden" class="form-control iPriceWTax" name="price_with_tax[]" value="'+item.price_with_tax.toFixed(2)+'"></td>';
                 tr_html +='<td><input type="number" class="form-control iQuantity" name="qnt[]" value="'+item.qnt+'"></td>';
                 tr_html +='<td><input type="text" readonly="readonly" class="form-control" name="total[]" value="'+(item.price_withoute_tax*item.qnt).toFixed(2)+'"></td>';
                 tr_html +='<td><input type="text" readonly="readonly" class="form-control" name="tax[]" value="'+(item.item_tax*item.qnt).toFixed(2)+'"></td>';
                 tr_html +='<td><input type="text" readonly="readonly" class="form-control" name="net[]" value="'+(item.price_with_tax*item.qnt).toFixed(2)+'"></td>';
-                tr_html +=`<td><button type="button" class="btn btn-labeled btn-danger deleteBtn " value=" '+item.id+' ">
+                tr_html +=`<td><button type="button" class="btn btn-labeled btn-danger deleteBtn " value=" '+i+' ">
                                     <i class="fa fa-close"></i>
                                 </button>
                             </td>`;
@@ -567,4 +638,3 @@ function addItemToTable(item){
   }
 </script>
 @endsection 
-

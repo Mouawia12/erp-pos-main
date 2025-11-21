@@ -209,6 +209,8 @@ class CompanyController extends Controller
                     'customer_group_name' => '',
                     'name' => $request->company,
                     'company' => $request->company,
+                    'cr_number' => $request->cr_number ?? $company->cr_number,
+                    'tax_number' => $request->tax_number ?? $company->tax_number,
                     'vat_no' => $request->vat_no ?? 0,
                     'address' => $request-> address ?? '',
                     'city' => '' ,
@@ -224,7 +226,10 @@ class CompanyController extends Controller
                     'opening_balance' =>$request -> opening_balance? $request -> opening_balance: $company ->  opening_balance,
                     'credit_amount' =>$request -> has('credit_amount')? $request -> credit_amount: $company -> credit_amount ,
                     'stop_sale' =>$request -> has('stop_sale')? 1: $company -> stop_sale ,
-                    'account_id' => $request->account_id
+                    'account_id' => $request->account_id,
+                    'parent_company_id' => $request->parent_company_id ?? $company->parent_company_id,
+                    'price_level_id' => $request->price_level_id ?? $company->price_level_id,
+                    'default_discount' => $request->default_discount ?? $company->default_discount,
 
                 ]);
 

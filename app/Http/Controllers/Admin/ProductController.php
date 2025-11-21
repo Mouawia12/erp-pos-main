@@ -154,14 +154,17 @@ class ProductController extends Controller
                         ProductUnit::create([
                             'product_id' => $product->id,
                             'unit_id' => $row['unit'],
-                            'price' => $row['price']
+                            'price' => $row['price'],
+                            'conversion_factor' => $row['conversion_factor'] ?? 1,
+                            'barcode' => $row['barcode'] ?? null,
                         ]);
                     }
                 }else{
                     ProductUnit::create([
                         'product_id' => $product->id,
                         'unit_id' => $product->unit,
-                        'price' => $product->price
+                        'price' => $product->price,
+                        'conversion_factor' => 1,
                     ]);
                 }
 
@@ -296,14 +299,17 @@ class ProductController extends Controller
                         ProductUnit::create([
                             'product_id' => $product->id,
                             'unit_id' => $row['unit'],
-                            'price' => $row['price']
+                            'price' => $row['price'],
+                            'conversion_factor' => $row['conversion_factor'] ?? 1,
+                            'barcode' => $row['barcode'] ?? null,
                         ]);
                     }
                 }else{
                     ProductUnit::create([
                         'product_id' => $product->id,
                         'unit_id' => $product->unit,
-                        'price' => $product->price
+                        'price' => $product->price,
+                        'conversion_factor' => 1,
                     ]);
                 }
 
@@ -369,24 +375,73 @@ class ProductController extends Controller
             $product = Product::where('code' , 'like' , '%'.$code.'%')
                 ->orWhere('name','like' , '%'.$code.'%')
                 ->limit(5)
-                ->get();
+                ->get()
+                ->map(function($p){ return $this->appendProductMeta($p); });
             echo json_encode ($product);
             exit;
         } 
     }
 
     private function getSingleProduct($code){ 
-        return Product::where('code' , '=' , $code)
+        $product = Product::where('code' , '=' , $code)
             ->orWhere('name','=' , $code)
             ->first(); 
+
+        return $this->appendProductMeta($product);
     }
     
+    private function appendProductMeta($product){
+        if(!$product){
+            return null;
+        }
+
+        $product->last_sale_price = $this->getLastSalePrice($product->id);
+        $product->units_options = $this->getUnitsForProduct($product->id,$product);
+
+        return $product;
+    }
+
+    private function getLastSalePrice($productId){
+        return SaleDetails::where('product_id',$productId)
+            ->where('quantity','>',0)
+            ->orderByDesc('id')
+            ->value('price_unit') ?? 0;
+    }
+
+    private function getUnitsForProduct($productId,$product = null){
+        $units = ProductUnit::query()
+            ->join('units','units.id','=','product_units.unit_id')
+            ->where('product_id',$productId)
+            ->select('product_units.*','units.name as unit_name')
+            ->get();
+
+        if($units->isEmpty() && $product){
+            return [[
+                'unit_id' => $product->unit,
+                'unit_name' => optional($product->units)->name,
+                'price' => $product->price,
+                'conversion_factor' => 1,
+                'barcode' => null
+            ]];
+        }
+
+        return $units->map(function($u){
+            return [
+                'unit_id' => $u->unit_id,
+                'unit_name' => $u->unit_name,
+                'price' => $u->price,
+                'conversion_factor' => $u->conversion_factor ?? 1,
+                'barcode' => $u->barcode
+            ];
+        });
+    }
+
     public function get_product_warehouse($warehouse_id,$code)
     {
         $single = $this->getSingleProductWarehouse($warehouse_id,$code);
 
         if($single){ 
-            echo json_encode([$single]);
+            echo json_encode([ $this->appendProductMeta($single) ]);
             exit;
         }else{ 
             $product = Product::with('units')
@@ -400,7 +455,10 @@ class ProductController extends Controller
                           ->where('warehouse_products.warehouse_id', $warehouse_id);
                 }) 
                 ->limit(5)
-                ->get();
+                ->get()
+                ->map(function($product){
+                    return $this->appendProductMeta($product);
+                });
 
             echo json_encode ($product);
             exit;
@@ -422,7 +480,7 @@ class ProductController extends Controller
             }) 
             ->first();
 
-        return $product;
+        return $this->appendProductMeta($product);
     }
 
     public function print_barcode(){

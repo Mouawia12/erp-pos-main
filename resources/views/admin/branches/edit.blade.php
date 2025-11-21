@@ -99,12 +99,32 @@
                             <input value="{{$branch->branch_name}}" class="form-control mg-b-20" name="branch_name" required="" type="text">
                         </div>
                         <div class="col-md-4">
+                            <label> السجل التجاري </label>
+                            <input value="{{$branch->cr_number}}" class="form-control mg-b-20" name="cr_number" type="text">
+                        </div>
+                        <div class="col-md-4">
+                            <label> الرقم الضريبي </label>
+                            <input value="{{$branch->tax_number}}" class="form-control mg-b-20" name="tax_number" type="text">
+                        </div>
+                    </div>
+                    <div class="row m-t-3 mb-3">
+                        <div class="col-md-4">
                             <label> التلفون <span class="text-danger"> </span></label>
                             <input value="{{$branch->branch_phone}}" class="form-control mg-b-20" dir="ltr" min="1" name="branch_phone" required="" type="number">
                         </div>
                         <div class="col-md-4">
                             <label> العنوان <span class="text-danger"> </span></label>
                             <input value="{{$branch->branch_address}}" class="form-control mg-b-20" dir="rtl" name="branch_address" required="" type="text">
+                        </div>
+                        <div class="col-md-4">
+                            <label> مدير الفرع </label>
+                            <input value="{{$branch->manager_name}}" class="form-control mg-b-20" name="manager_name" type="text">
+                        </div>
+                    </div>
+                    <div class="row m-t-3 mb-3">
+                        <div class="col-md-4">
+                            <label> البريد الإلكتروني </label>
+                            <input value="{{$branch->contact_email}}" class="form-control mg-b-20" name="contact_email" type="email">
                         </div>
                     </div>
            

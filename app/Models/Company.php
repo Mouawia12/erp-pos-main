@@ -33,7 +33,12 @@ class Company extends Model
         'stop_sale',
         'representative_id_',
         'user_id',
-        'status' 
+        'status',
+        'cr_number',
+        'tax_number',
+        'parent_company_id',
+        'price_level_id',
+        'default_discount'
     ];
 
     public function group()

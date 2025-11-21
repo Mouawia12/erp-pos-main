@@ -355,7 +355,32 @@
                                                             <option @if($setting?  $setting-> payment_method == 3 : false) selected @endif value="3">{{__('main.payment_method2')}}</option>
                                                         </select>
                                                     </div>
-                                                </div> 
+                                                </div>
+                                                <div class="col-4">
+                                                    <div class="form-group">
+                                                        <label>{{ __('main.single_device_login') }} </label>
+                                                        <select class="form-control" name="single_device_login" id="single_device_login">
+                                                            <option value="0" @if(!$setting ? true : $setting->single_device_login == 0) selected @endif>{{__('main.disable')}}</option>
+                                                            <option value="1" @if($setting? $setting->single_device_login == 1 : false) selected @endif>{{__('main.enable')}}</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="col-4">
+                                                    <div class="form-group">
+                                                        <label>{{ __('main.invoice_type') }}</label>
+                                                        <select class="form-control" name="default_invoice_type" id="default_invoice_type">
+                                                            <option value="tax_invoice" @if($setting? $setting->default_invoice_type == 'tax_invoice' : true) selected @endif>{{ __('main.invoice_type_tax') }}</option>
+                                                            <option value="simplified_tax_invoice" @if($setting? $setting->default_invoice_type == 'simplified_tax_invoice' : false) selected @endif>{{ __('main.invoice_type_simplified') }}</option>
+                                                            <option value="non_tax_invoice" @if($setting? $setting->default_invoice_type == 'non_tax_invoice' : false) selected @endif>{{ __('main.invoice_type_nontax') }}</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="col-4">
+                                                    <div class="form-group">
+                                                        <label>{{ __('main.tax_number') }}</label>
+                                                        <input type="text" class="form-control" name="tax_number" id="tax_number" value="{{ $setting->tax_number ?? ''}}">
+                                                    </div>
+                                                </div>
                                             </div> 
                                         </div> 
                                     </div>

@@ -44,6 +44,7 @@ use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\BranchController; 
 use App\Http\Controllers\Admin\CatchReciptController;
 use App\Http\Controllers\Admin\PosController;
+use App\Http\Controllers\Admin\BackupController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -85,7 +86,7 @@ Route::group(
 });
 
 Route::group(
-    ['middleware' => ['auth:admin-web'],
+    ['middleware' => ['auth:admin-web','single.device'],
         'prefix' => 'admin',
         'namespace' => 'Admin'
     ], function () {
@@ -138,6 +139,9 @@ Route::group(
     Route::post('/remove-selected-branches', [BranchController::class, 'remove_selected' ] )->name('remove.selected.branches');
     Route::get('/print-selected-branches', [BranchController::class, 'print_selected' ] )->name('print.selected.branches');
     Route::post('/export-branches-excel',[BranchController::class, 'export_branches_excel' ])->name('export.branches.excel');
+
+    // Backup
+    Route::get('/backup/database', [BackupController::class, 'download'])->name('admin.backup.db');
     
     // Inventory Routes
        Route::resource('inventory', InventoryController::class)->names([
@@ -448,5 +452,3 @@ Route::group(
   
 });
 });
-
-

@@ -94,14 +94,21 @@ class PaymentController extends Controller
 
    
     public function MakeSalePayment(Request $request, $id){
-    //public function MakeSalePayment(StorePaymentRequest $request, $id){   
-
+        // supports cash + multiple card terminals
         if($request -> cash > 0){
             $this -> MakePayment($request -> cash,'cash', $id);
         }
 
-        if($request -> visa > 0){
-            $this -> MakePayment($request -> visa, 'visa', $id);
+        $cardAmounts = $request->card_amount ?? [];
+        $cardBanks = $request->card_bank ?? [];
+
+        foreach ($cardAmounts as $index=>$amount){
+            $money = floatval($amount);
+            if($money > 0){
+                $bank = $cardBanks[$index] ?? 'card';
+                $label = 'card:'.$bank;
+                $this -> MakePayment($money, $label, $id);
+            }
         }
 
         if($request -> pos == 0 ){
@@ -109,7 +116,6 @@ class PaymentController extends Controller
         } else {
             return redirect()->route('pos');
         }
-       
     }
 
     public function MakePayment($money, $paid_by, $id){
@@ -123,6 +129,7 @@ class PaymentController extends Controller
         }
 
         $bill_number = $this -> getpaymentNo($sale-> branch_id);
+        $remain = $net - ($sale->paid + $money);
         $payment = Payment::create([
             'date' => date("Y-m-d"),
             'doc_number' => $bill_number,
@@ -132,7 +139,7 @@ class PaymentController extends Controller
             'company_id' => $sale->customer_id,
             'amount' => $amount,
             'paid_by' => $paid_by,
-            'remain' => $net - $money,
+            'remain' => $remain,
             'based_on_bill_number'=>$sale-> invoice_no,
             'user_id' => Auth::user() -> id
         ]);
@@ -200,42 +207,64 @@ class PaymentController extends Controller
     public function storePurchasesPayment(StorePaymentRequest $request, $id){
 
         $purchase = Purchase::find($id);
-        $amount = $request->amount;
-        $net = $purchase->net;
+        $cash = floatval($request->cash ?? 0);
+        $cardAmounts = $request->card_amount ?? [];
+        $cardBanks = $request->card_bank ?? [];
 
-        if($purchase->net < 0){
-            $amount = $amount*-1;
-            $net = $net*-1;
+        $paymentsToCreate = [];
+        if($cash > 0){
+            $paymentsToCreate[] = ['amount' => $cash, 'paid_by' => 'cash'];
         }
-        
-        $bill_number = $this -> getpaymentNo($purchase-> branch_id);
-        $payment = Payment::create([
-            'date' => date("Y-m-d"),
-            'doc_number' => $bill_number,
-            'branch_id' => $purchase-> branch_id,
-            'purchase_id' => $id,
-            'sale_id' => null,
-            'company_id' => $purchase->customer_id,
-            'amount' => $amount,
-            'paid_by' => $request->paid_by,
-            'remain' => $net - $request->amount,
-            'based_on_bill_number'=>$purchase-> invoice_no,
-            'user_id' => Auth::user() -> id
-        ]);
+        foreach ($cardAmounts as $index=>$amount){
+            $money = floatval($amount);
+            if($money > 0){
+                $bank = $cardBanks[$index] ?? 'card';
+                $paymentsToCreate[] = ['amount' => $money, 'paid_by' => 'card:'.$bank];
+            }
+        }
 
-        $paid = $purchase->paid + $amount;
+        $totalAmount = array_sum(array_column($paymentsToCreate,'amount'));
+        $net = $purchase->net;
+        if($purchase->net < 0){
+            $totalAmount = $totalAmount * -1;
+            $net = $net * -1;
+        }
+
+        $bill_number = $this -> getpaymentNo($purchase-> branch_id);
+        $runningPaid = $purchase->paid;
+
+        foreach ($paymentsToCreate as $pay){
+            $amountSigned = $purchase->net < 0 ? $pay['amount'] * -1 : $pay['amount'];
+            $runningPaid += $amountSigned;
+            $remain = $net - $runningPaid;
+            $payment = Payment::create([
+                'date' => date("Y-m-d"),
+                'doc_number' => $bill_number,
+                'branch_id' => $purchase-> branch_id,
+                'purchase_id' => $id,
+                'sale_id' => null,
+                'company_id' => $purchase->customer_id,
+                'amount' => $amountSigned,
+                'paid_by' => $pay['paid_by'],
+                'remain' => $remain,
+                'based_on_bill_number'=>$purchase-> invoice_no,
+                'user_id' => Auth::user() -> id
+            ]);
+
+            $vendorMovementController = new VendorMovementController();
+            $vendorMovementController->addPurchasePaymentMovement($payment->id); 
+
+            $systemController = new SystemController();
+            $systemController -> ExitMoneyAccounting($payment->id);
+        }
+
+        $paid = $purchase->paid + $totalAmount;
         $purchase->update([
             'paid' => $paid
         ]);
 
         $clientController = new ClientMoneyController();
-        $clientController->syncMoney($purchase->customer_id,0, $request->amount * -1);
-
-        $vendorMovementController = new VendorMovementController();
-        $vendorMovementController->addPurchasePaymentMovement($payment->id); 
-
-        $systemController = new SystemController();
-        $systemController -> ExitMoneyAccounting($payment->id);
+        $clientController->syncMoney($purchase->customer_id,0, $totalAmount * -1);
 
         return redirect()->route('purchases');
     }

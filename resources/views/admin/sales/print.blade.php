@@ -2,11 +2,12 @@
 <html>
 <head>
     <title>
-    @if(empty($vendor->vat_no))
-        فاتورة ضريبية مبسطة {{$data->id}}
-    @else
-        فاتورة ضريبية  {{$data->id}}
-    @endif  
+    @php
+        $typeLabel = __('main.invoice_type_tax');
+        if($data->invoice_type == 'simplified_tax_invoice') $typeLabel = __('main.invoice_type_simplified');
+        if($data->invoice_type == 'non_tax_invoice') $typeLabel = __('main.invoice_type_nontax');
+    @endphp
+    {{$typeLabel}} {{$data->id}}
     </title>
     <meta charset="utf-8"/>
     <link href="{{asset('/assets/css/bootstrap.min.css')}}" rel="stylesheet"/>
@@ -119,11 +120,7 @@
                 <div class="col-4 text-center">
                     <h4 class="text-center mt-1" style="font-weight: bold;">
                         <strong>
-                        @if(empty($vendor->vat_no))
-                            فاتورة ضريبية مبسطة
-                        @else
-                            فاتورة ضريبية  
-                        @endif 
+                        {{$typeLabel}}
                         </strong> 
                     </h4>
                 </div>

@@ -25,7 +25,9 @@ class Purchase extends Model
         'returned_bill_id',
         'branch_id',
         'user_id',
-        'status'
+        'status',
+        'supplier_invoice_no',
+        'supplier_invoice_copy'
     ];
 
     public function branch(){

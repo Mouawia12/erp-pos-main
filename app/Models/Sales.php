@@ -13,7 +13,7 @@ class Sales extends Model
         'date','invoice_no','customer_id', 'customer_name', 'customer_phone','biller_id',
         'warehouse_id','note','total','discount','tax','tax_excise','net','paid',
         'sale_status','payment_status','pos','lista','profit','sale_id',
-        'additional_service', 'branch_id','user_id', 'status'
+        'additional_service', 'branch_id','user_id', 'status', 'invoice_type'
     ];
 
     public function branch(){

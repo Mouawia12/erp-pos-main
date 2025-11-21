@@ -28,6 +28,36 @@
                                 <div class="row">
                                     <div class="col-6">
                                         <div class="form-group">
+                                            <label>{{ __('main.branche') }}</label>
+                                            <select name="branch_id" id="branch_id" class="form-control">
+                                                <option value="0">{{__('main.all')}}</option>
+                                                @foreach($branches as $branch)
+                                                    <option value="{{$branch->id}}">{{$branch->branch_name}} ({{$branch->tax_number ?? __('main.tax_number')}})</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </div>
+                                    @if(isset($taxNumbers) && $taxNumbers->count() > 1)
+                                    <div class="col-6">
+                                        <div class="form-group">
+                                            <label>{{ __('main.tax_number') }}</label>
+                                            <select name="tax_number" id="tax_number" class="form-control">
+                                                <option value="">{{__('main.choose')}}</option>
+                                                @foreach($taxNumbers as $tax)
+                                                    <option value="{{$tax}}">{{$tax}}</option>
+                                                @endforeach
+                                            </select>
+                                            @error('tax_number')
+                                                <span class="text-danger">{{$message}}</span>
+                                            @enderror
+                                        </div>
+                                    </div>
+                                    @endif
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div class="form-group">
                                             <label> تاريخ البداية <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
                                             <input type="checkbox" id="isStartDate" name="isStartDate">
                                             <input type="date" id="StartDate" name="StartDate"  class="form-control">
@@ -103,6 +133,19 @@
                 $('#EndDate').prop('disabled', false);
             } else {
                 $('#EndDate').prop('disabled', true);
+            }
+        });
+
+        $('#branch_id').change(function (){
+            var branch = $(this).val();
+            var taxSelect = $('#tax_number');
+            if(taxSelect.length){
+                if(branch == 0){
+                    taxSelect.prop('required', true);
+                }else{
+                    taxSelect.prop('required', false);
+                    taxSelect.val('');
+                }
             }
         });
     });

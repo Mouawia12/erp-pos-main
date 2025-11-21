@@ -2,11 +2,12 @@
 <html>
 <head>
     <title>
-    @if(empty($vendor->vat_no))
-        فاتورة ضريبية مبسطة {{$data->id}}
-    @else
-        فاتورة ضريبية  {{$data->id}}
-    @endif  
+    @php
+        $typeLabel = __('main.invoice_type_simplified');
+        if($data->invoice_type == 'tax_invoice') $typeLabel = __('main.invoice_type_tax');
+        if($data->invoice_type == 'non_tax_invoice') $typeLabel = __('main.invoice_type_nontax');
+    @endphp
+    {{$typeLabel}} {{$data->id}}
     </title>
     <meta charset="utf-8"/>
     <link href="{{asset('/assets/css/bootstrap.min.css')}}" rel="stylesheet"/>
@@ -102,7 +103,17 @@
     <div class="pos_details  justify-content-center text-center"> 
         <div class="text-center"> 
             <h2 class="text-center mt-1" style="font-weight: bold;">
-                فاتورة ضريبية مبسطة
+                {{$typeLabel}}
+                <br>
+                <small style="font-size:12px;">
+                    @if($data->invoice_type == 'tax_invoice')
+                        {{__('main.invoice_type_tax')}}
+                    @elseif($data->invoice_type == 'non_tax_invoice')
+                        {{__('main.invoice_type_nontax')}}
+                    @else
+                        {{__('main.invoice_type_simplified')}}
+                    @endif
+                </small>
             </h2>
             <h6 class="text-center mt-1" style="font-weight: bold;">
                 رقم الفاتورة :
@@ -118,18 +129,36 @@
             </h6>
             <h6 class="text-center mt-1" style="font-weight: bold;">
                 {{$data->branch_address}}
-            </h6>  
+            </h6> 
+            @if(!empty($data->branch_phone))
+            <h6 class="text-center mt-1" style="font-weight: bold;">
+                هاتف الفرع / Branch Phone : {{$data->branch_phone}}
+            </h6> 
+            @endif
             <div class="clearfix"></div> 
             <h6 class="text-center mt-1" style="font-weight: bold;">
-                التاريخ :
+                التاريخ / Date :
                 <span dir="ltr"> 
-                    {{\Carbon\Carbon::parse($data->created_at) }} 
+                    {{\Carbon\Carbon::parse($data->created_at)->format('Y-m-d H:i') }} 
                 </span>
             </h6> 
             <h6 class="text-center mt-1" style="font-weight: bold;">
-                الرقم الضريبى :
-                 {{$company->taxNumber}}
+                الرقم الضريبى / VAT : {{$company->taxNumber}}
             </h6> 
+            @if(!empty($company->registrationNumber))
+            <h6 class="text-center mt-1" style="font-weight: bold;">
+                السجل التجاري / CR : {{$company->registrationNumber}}
+            </h6>
+            @endif
+        </div>
+        <div class="mt-2" style="text-align:right; direction:rtl; border:1px dashed #aaa; padding:6px;">
+            <strong>العميل / Customer:</strong> {{ optional($vendor)->name }}<br>
+            @if(!empty(optional($vendor)->phone))
+            <strong>جوال / Phone:</strong> {{ optional($vendor)->phone }}<br>
+            @endif
+            @if(!empty(optional($vendor)->address))
+            <strong>العنوان / Address:</strong> {{ optional($vendor)->address }}
+            @endif
         </div>
         <div class="above-table w-25 text-center mt-3  justify-content-center" style="margin: 10px auto!important;">
             <table class="table-bordered text-center" style="width: 100% ; direction: rtl">
@@ -203,6 +232,18 @@
 
                 </tfoot>
             </table>   
+            @if(!empty($data->note))
+                <div class="mt-2 text-right" style="direction:rtl;">
+                    <strong>ملاحظات / Notes:</strong>
+                    <div>{{$data->note}}</div>
+                </div>
+            @endif
+            @if(!empty(optional($vendor)->invoice_footer) || !empty($company->faild_ar))
+                <div class="mt-2 text-right" style="direction:rtl;">
+                    <strong>الشروط / Terms:</strong>
+                    <div>{{optional($vendor)->invoice_footer ?? $company->faild_ar}}</div>
+                </div>
+            @endif
             <div class="visible-print text-center mt-1">
                 <?php
                 use Salla\ZATCA\GenerateQrCode;
