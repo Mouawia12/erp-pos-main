@@ -106,7 +106,10 @@ class HomeController extends Controller
                 ->when($subscriberId,function($q) use ($subscriberId){ return $q->where('subscriber_id',$subscriberId); })
                 ->whereDate('date',$date)->sum('net');
         }
-        $chartLabels = $dates->map(fn($d)=>$d->format('m-d'));
+        // اجعل البيانات مصفوفات عادية لضمان توافق JSON مع Chart.js
+        $chartLabels = $dates->map(fn($d)=>$d->format('m-d'))->values()->all();
+        $salesChart = array_values($salesChart);
+        $purchaseChart = array_values($purchaseChart);
 
         $remaining_days = null;
         if($settings && !empty($settings->valid_to)){
@@ -118,9 +121,23 @@ class HomeController extends Controller
             $remaining_days = round($datediff / (60 * 60 * 24));
         }
  
-         return view('admin.home' , compact('user','roles', 'Admins','branches'
-                , 'sales', 'purchases','sales_return','purchases_return'
-                ,'remaining_days','settings','clients','suppliers'));
+         return view('admin.home' , compact(
+             'user',
+             'roles',
+             'Admins',
+             'branches',
+             'sales',
+             'purchases',
+             'sales_return',
+             'purchases_return',
+             'remaining_days',
+             'settings',
+             'clients',
+             'suppliers',
+             'salesChart',
+             'purchaseChart',
+             'chartLabels'
+         ));
  
 	}
 
