@@ -7,6 +7,7 @@ use App\Models\Branch;
 use App\Models\User; 
 use App\Models\AccountsTree; 
 use App\Models\AccountSetting;
+use App\Models\SystemSettings;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -22,7 +23,8 @@ class BranchController extends Controller
 
     public function create()
     {
-        return view('admin.branches.create');
+        $defaultInvoiceType = optional(SystemSettings::first())->default_invoice_type ?? 'simplified_tax_invoice';
+        return view('admin.branches.create', compact('defaultInvoiceType'));
 
     }
 
@@ -34,6 +36,7 @@ class BranchController extends Controller
             'branch_address' => 'required',
             'tax_number' => 'nullable',
             'cr_number' => 'nullable',
+            'default_invoice_type' => ['nullable', Rule::in(['tax_invoice','simplified_tax_invoice','non_tax_invoice'])],
         ]);
 
         $branchesCount = Branch::count();
@@ -62,7 +65,8 @@ class BranchController extends Controller
     public function edit($id)
     {
         $branch = Branch::findOrFail($id);
-        return view('admin.branches.edit', compact('branch'));
+        $defaultInvoiceType = optional(SystemSettings::first())->default_invoice_type ?? 'simplified_tax_invoice';
+        return view('admin.branches.edit', compact('branch','defaultInvoiceType'));
     }
 
     public function update(Request $request, $id)
@@ -73,6 +77,7 @@ class BranchController extends Controller
             'branch_address' => 'required',
             'tax_number' => 'nullable',
             'cr_number' => 'nullable',
+            'default_invoice_type' => ['nullable', Rule::in(['tax_invoice','simplified_tax_invoice','non_tax_invoice'])],
         ]);
         $input = $request->all();
         if(!isset($input['status'])){

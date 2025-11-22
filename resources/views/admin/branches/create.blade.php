@@ -65,6 +65,14 @@
                                 <label> البريد الإلكتروني </label>
                                 <input class="form-control mg-b-20" name="contact_email" type="email">
                             </div>
+                            <div class="col-md-4">
+                                <label>{{ __('main.invoice_type') }} الافتراضي للفرع</label>
+                                <select class="form-control" name="default_invoice_type">
+                                    <option value="tax_invoice" @if(($defaultInvoiceType ?? '')==='tax_invoice') selected @endif>{{ __('main.invoice_type_tax') }}</option>
+                                    <option value="simplified_tax_invoice" @if(($defaultInvoiceType ?? 'simplified_tax_invoice')==='simplified_tax_invoice') selected @endif>{{ __('main.invoice_type_simplified') }}</option>
+                                    <option value="non_tax_invoice" @if(($defaultInvoiceType ?? '')==='non_tax_invoice') selected @endif>{{ __('main.invoice_type_nontax') }}</option>
+                                </select>
+                            </div>
                         </div>  
                         <div class="row">
                             <div class="col-xs-12 col-sm-12 col-md-12 text-center">

@@ -17,7 +17,7 @@ class Branch extends Model
     protected $table = "branches";
 
     protected $fillable = [
-        'branch_name','cr_number','tax_number','branch_phone','branch_address','manager_name','contact_email','status','subscriber_id'
+        'branch_name','cr_number','tax_number','branch_phone','branch_address','manager_name','contact_email','default_invoice_type','status','subscriber_id'
     ];
 
     public function admin(){

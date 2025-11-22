@@ -36,11 +36,11 @@ The full Arabic requirements from "طلبات-تطوير-برنامج-المحا
 - Sales invoice date/time is locked to the current timestamp on save to prevent backdating edits (UI input is read-only; server enforces now()).
 - Purchase invoices now also warn on duplicate items and show available stock while editing.
 - POS thermal print redesigned to include branch contact, customer details, notes/terms, and bilingual “Simplified Tax Invoice” heading.
-- Multi-unit selection added to sales/POS/purchases lines (per-product units with conversion factors, defaulting to 1). Stock movement now respects the chosen unit factor; lines stay separate for mixed units.
+- Multi-unit selection added to sales/POS/purchases lines (per-product units with conversion factors, defaulting to 1). Chosen unit_factor is now stored on line items and applied to stock movement and profit for sales, purchases, and returns; lines stay separate for mixed units.
 - Payments: sales/POS now accept mixed payments (cash + multiple card terminals) per invoice; entries are validated against invoice total.
 - Purchase payments: modal supports cash + multiple card entries, validation against invoice total, and posting each card as a separate payment entry.
 - Access policy: optional single-device login toggle added to system settings; when enabled, concurrent sessions for the same user are blocked.
 - New DB backup command and admin route: `php artisan db:backup` creates `storage/backups/db-backup-*.sql` (also accessible via `/admin/backup/database` for admin users).
-- Default invoice type setting added to system settings and reflected on invoices/prints (tax, simplified, non-tax).
+- Default invoice type can now be set at system level and overridden per branch or per user; forms and prints honor the resolved default (tax, simplified, non-tax).
 - Supplier invoice reference + attachment stored with purchase invoices.
 - Branch details (CR/tax/manager/email) added to branch screens and to invoice prints.

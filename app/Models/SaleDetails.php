@@ -12,7 +12,7 @@ class SaleDetails extends Model
 
     protected $fillable = [
         'sale_id','product_code','product_id','quantity','price_unit',
-        'discount','price_with_tax','warehouse_id','unit_id','tax','tax_excise',
+        'discount','price_with_tax','warehouse_id','unit_id','unit_factor','tax','tax_excise',
         'total','profit','lista','subscriber_id'
     ];
 }

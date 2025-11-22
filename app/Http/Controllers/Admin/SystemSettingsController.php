@@ -183,7 +183,7 @@ class SystemSettingsController extends Controller
                     'item_serial' => $request -> item_serial,
                     'adding_item_method' => $request -> adding_item_method,
                     'payment_method' => $request -> payment_method,
-                    'default_invoice_type' => $request->default_invoice_type ?? $settings[0]->default_invoice_type ?? 'tax_invoice',
+                    'default_invoice_type' => $request->default_invoice_type ?? $setting->default_invoice_type ?? 'tax_invoice',
                     'invoice_terms' => $request->invoice_terms,
                     'single_device_login' => $request->single_device_login ?? 0,
                     'sales_prefix' => $request -> sales_prefix,

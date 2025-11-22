@@ -126,6 +126,15 @@
                             <label> البريد الإلكتروني </label>
                             <input value="{{$branch->contact_email}}" class="form-control mg-b-20" name="contact_email" type="email">
                         </div>
+                        <div class="col-md-4">
+                            <label>{{ __('main.invoice_type') }} الافتراضي للفرع</label>
+                            @php $branchDefault = $branch->default_invoice_type ?? $defaultInvoiceType ?? 'simplified_tax_invoice'; @endphp
+                            <select class="form-control" name="default_invoice_type">
+                                <option value="tax_invoice" @if($branchDefault==='tax_invoice') selected @endif>{{ __('main.invoice_type_tax') }}</option>
+                                <option value="simplified_tax_invoice" @if($branchDefault==='simplified_tax_invoice') selected @endif>{{ __('main.invoice_type_simplified') }}</option>
+                                <option value="non_tax_invoice" @if($branchDefault==='non_tax_invoice') selected @endif>{{ __('main.invoice_type_nontax') }}</option>
+                            </select>
+                        </div>
                     </div>
            
                     <div class="col-md-12">

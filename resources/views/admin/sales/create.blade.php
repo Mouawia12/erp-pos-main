@@ -43,7 +43,7 @@ span strong {font-size:12px;}
                             <div class="form-group">
                                 <label>{{ __('main.invoice_type') }}</label>
                                 <select class="form-control" name="invoice_type" id="invoice_type">
-                                    @php $defaultType = $settings->first()->default_invoice_type ?? 'tax_invoice'; @endphp
+                                    @php $defaultType = $defaultInvoiceType ?? ($settings->default_invoice_type ?? 'tax_invoice'); @endphp
                                     <option value="tax_invoice" @if($defaultType=='tax_invoice') selected @endif>{{ __('main.invoice_type_tax') }}</option>
                                     <option value="simplified_tax_invoice" @if($defaultType=='simplified_tax_invoice') selected @endif>{{ __('main.invoice_type_simplified') }}</option>
                                     <option value="non_tax_invoice" @if($defaultType=='non_tax_invoice') selected @endif>{{ __('main.invoice_type_nontax') }}</option>

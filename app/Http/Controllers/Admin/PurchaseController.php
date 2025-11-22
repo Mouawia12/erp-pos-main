@@ -169,6 +169,7 @@ class PurchaseController extends Controller
                 'cost_with_tax' => $request->price_with_tax[$index],
                 'warehouse_id' => $request->warehouse_id,
                 'unit_id' => $unitId,
+                'unit_factor' => $unitFactor,
                 'tax' => $request->tax[$index],
                 'total' => $request->total[$index],
                 'net' => $request->net[$index]
@@ -408,6 +409,7 @@ class PurchaseController extends Controller
                 'cost_with_tax' => $request->price_with_tax[$index] * -1,
                 'warehouse_id' => $request->warehouse_id,
                 'unit_id' => $unitId,
+                'unit_factor' => $unitFactor,
                 'tax' => $request->tax[$index] * -1,
                 'total' => $request->total[$index] * -1,
                 'net' => $request->net[$index] * -1,

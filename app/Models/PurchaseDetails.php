@@ -18,6 +18,7 @@ class PurchaseDetails extends Model
         'cost_with_tax',
         'warehouse_id',
         'unit_id',
+        'unit_factor',
         'tax',
         'total',
         'net',

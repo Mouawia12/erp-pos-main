@@ -215,7 +215,7 @@ label.total {
                                 </div>
                                 <div class="col-lg-4">
                                     <div class="form-group">
-                                        @php $defaultType = $settings->first()->default_invoice_type ?? 'simplified_tax_invoice'; @endphp
+                                        @php $defaultType = $defaultInvoiceType ?? ($settings->default_invoice_type ?? 'simplified_tax_invoice'); @endphp
                                         <select class="form-control" name="invoice_type" id="invoice_type">
                                             <option value="simplified_tax_invoice" @if($defaultType=='simplified_tax_invoice') selected @endif>{{ __('main.invoice_type_simplified') }}</option>
                                             <option value="tax_invoice" @if($defaultType=='tax_invoice') selected @endif>{{ __('main.invoice_type_tax') }}</option>

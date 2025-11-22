@@ -190,8 +190,9 @@ class SalesController extends Controller
         $customers = $siteContrller->getAllClients();
         $settings = SystemSettings::with('currency') -> first();
         $branches = Branch::where('status',1)->get();
+        $defaultInvoiceType = $this->resolveDefaultInvoiceType();
 
-        return view('admin.sales.create',compact('warehouses','customers','settings','branches'));
+        return view('admin.sales.create',compact('warehouses','customers','settings','branches','defaultInvoiceType'));
     }
 
     /**
@@ -239,6 +240,7 @@ class SalesController extends Controller
                 'price_with_tax' => $request->price_with_tax[$index],
                 'warehouse_id' => $request->warehouse_id,
                 'unit_id' => $unitId,
+                'unit_factor' => $unitFactor,
                 'tax' => $request->tax_excise[$index]> 0 ? $request->tax[$index] - $request->tax_excise[$index]:$request->tax[$index],
                 'tax_excise' => $request->tax_excise[$index], 
                 'total' => $request->total[$index],
@@ -257,7 +259,7 @@ class SalesController extends Controller
             $tax +=$request->tax[$index];
             $tax_excise +=$request->tax_excise[$index];
             $net +=$request->net[$index];
-            $profit +=($request->price_unit[$index] - $productDetails->cost) * $request->qnt[$index];
+            $profit +=($request->price_unit[$index] - ($productDetails->cost * $unitFactor)) * $request->qnt[$index];
         }
 
         $net += $request -> additional_service ?? 0 ;
@@ -510,7 +512,8 @@ class SalesController extends Controller
                 'price_unit' => $request->price_unit[$index] * -1,
                 'price_with_tax' => $request->price_with_tax[$index] * -1,
                 'warehouse_id' => $request->warehouse_id,
-                'unit_id' => $unitId, 
+                'unit_id' => $unitId,
+                'unit_factor' => $unitFactor,
                 'tax' => $request->tax[$index]*-1,
                 'tax_excise' => $request->tax_excise[$index]* -1, 
                 'total' => $request->total[$index] * -1,
@@ -529,7 +532,7 @@ class SalesController extends Controller
             $tax +=$request->tax[$index];
             $tax_excise +=$request->tax_excise[$index];
             $net +=$request->net[$index];
-            $profit +=($request->price_unit[$index] - $productDetails->cost) * $request->qnt[$index];
+            $profit +=($request->price_unit[$index] - ($productDetails->cost * $unitFactor)) * $request->qnt[$index];
         }
 
         $sale = Sales::create([
@@ -607,9 +610,27 @@ class SalesController extends Controller
         $siteContrller = new SystemController();
         $vendors = Company::where('group_id' , '=' , 3) -> get();
         $warehouses = $siteContrller->getAllWarehouses();
-        $settings = SystemSettings::with('currency') ->first();
+       $settings = SystemSettings::with('currency') ->first();
+        $defaultInvoiceType = $this->resolveDefaultInvoiceType();
      
-       return view('admin.sales.pos' , compact('vendors' , 'warehouses' , 'settings'));
+       return view('admin.sales.pos' , compact('vendors' , 'warehouses' , 'settings','defaultInvoiceType'));
+    }
+
+    private function resolveDefaultInvoiceType(): string
+    {
+        $user = Auth::user();
+
+        if ($user && !empty($user->default_invoice_type)) {
+            return $user->default_invoice_type;
+        }
+
+        if ($user && $user->branch && !empty($user->branch->default_invoice_type)) {
+            return $user->branch->default_invoice_type;
+        }
+
+        $systemDefault = optional(SystemSettings::first())->default_invoice_type;
+
+        return $systemDefault ?: 'simplified_tax_invoice';
     }
 
     public function getLastSalesBill(){
