@@ -10,6 +10,8 @@ use App\Models\CompanyInfo;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 
 class JournalController extends Controller
 {
@@ -53,6 +55,11 @@ class JournalController extends Controller
             ->where('accounts_trees.department','=',2) 
             ->where('account_movements.date','>=',$startDate)
             ->where('account_movements.date','<=',$endDate)
+            ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                if (Schema::hasColumn('accounts_trees','subscriber_id')) {
+                    $q->where('accounts_trees.subscriber_id',$sub);
+                }
+            })
             ->get();
 
         $accounts1 =  $accounts -> where('level' ,'=', 1) ; 
@@ -127,6 +134,11 @@ class JournalController extends Controller
                 DB::raw('sum(account_movements.debit) as debit'))
             ->groupBy('accounts_trees.id','accounts_trees.code','accounts_trees.name' , 'accounts_trees.parent_id' , 'accounts_trees.level' )
             ->where('accounts_trees.department',1)
+            ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                if (Schema::hasColumn('accounts_trees','subscriber_id')) {
+                    $q->where('accounts_trees.subscriber_id',$sub);
+                }
+            })
             ->get();
 
         $accounts1 =  $accounts -> where('level' , '=' ,1); 

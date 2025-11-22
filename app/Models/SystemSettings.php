@@ -57,6 +57,7 @@ class SystemSettings extends Model
         'weight_length',//
         'weight_divider',//
         'default_invoice_type',
+        'invoice_terms',
         'email_protocol',//
         'email_host',//
         'email_user',//

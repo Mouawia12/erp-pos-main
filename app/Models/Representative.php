@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToSubscriber;
 use App\Models\Company;
 class Representative extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToSubscriber;
     protected $fillable = [
       'code',
       'name',

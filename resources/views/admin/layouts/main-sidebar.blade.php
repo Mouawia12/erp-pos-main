@@ -49,6 +49,14 @@
                     <span class="side-menu__label"> الرئيسية </span>
                 </a>
             </li>  
+            @if(Auth::user() && Auth::user()->hasRole('system_owner'))
+                <li class="slide {{ Request::is('admin/owner/subscribers*') ? 'active' : '' }}">
+                    <a class="side-menu__item" href="{{ route('owner.subscribers.index') }}">
+                        <i class="fa fa-building-user side-menu__icon"></i>
+                        <span class="side-menu__label">لوحة المشتركين</span>
+                    </a>
+                </li>
+            @endif
             @can(['عرض صنف','اضافة صنف'])                
                 <li class="slide">
                     <a class="side-menu__item" data-toggle="slide" href="#">

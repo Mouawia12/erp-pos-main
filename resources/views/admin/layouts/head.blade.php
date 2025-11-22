@@ -25,7 +25,7 @@
 <link href="{{URL::asset('assets/css-rtl/skin-modes.css')}}" rel="stylesheet">
 <link href="{{asset('assets/css-rtl/bootstrap-select.css')}}" rel="stylesheet"/>
 <link href="{{asset('assets/plugins/select2-bootstrap4-theme/select2-bootstrap4.min.css')}}"  rel="stylesheet" >
-<link href="{{asset('css/all.min.css')}}" rel="stylesheet" />
+<link href="{{asset('assets/plugins/fontawesome-free/css/all.min.css')}}" rel="stylesheet" />
+<!-- حذف أي @font-face مخصص لتجنب أخطاء الخط -->
 
 <link rel="stylesheet" href="{{asset('assets/css-rtl/progress-chart.css')}}">
-

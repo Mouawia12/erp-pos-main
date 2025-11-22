@@ -31,10 +31,7 @@
         }
     </style>
     <style>
-        @font-face {
-            font-family: 'Almarai';
-            src: url("{{asset('fonts/SegoeUI.ttf')}}");
-        }
+        /* استخدام خط النظام الافتراضي لتجنب أخطاء الخط المفقود */
         label {
             font-size: 14px !important;
         }

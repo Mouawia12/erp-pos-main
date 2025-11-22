@@ -381,6 +381,14 @@
                                                         <input type="text" class="form-control" name="tax_number" id="tax_number" value="{{ $setting->tax_number ?? ''}}">
                                                     </div>
                                                 </div>
+                                            </div>
+                                            <div class="row mt-2">
+                                                <div class="col-12">
+                                                    <div class="form-group">
+                                                        <label>{{ __('main.invoice_terms') }}</label>
+                                                        <textarea name="invoice_terms" class="form-control" rows="3" placeholder="{{__('main.invoice_terms')}}">{{ $setting->invoice_terms ?? '' }}</textarea>
+                                                    </div>
+                                                </div>
                                             </div> 
                                         </div> 
                                     </div>

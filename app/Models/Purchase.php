@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToSubscriber;
 
 class Purchase extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToSubscriber;
     protected $fillable = [
         'date',
         'invoice_no',
@@ -27,7 +28,9 @@ class Purchase extends Model
         'user_id',
         'status',
         'supplier_invoice_no',
-        'supplier_invoice_copy'
+        'supplier_invoice_copy',
+        'cost_center',
+        'tax_mode','subscriber_id'
     ];
 
     public function branch(){

@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToSubscriber;
 
 /**
  * @method static create(array $array)
@@ -11,10 +13,11 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Branch extends Model
 {
+    use HasFactory, BelongsToSubscriber;
     protected $table = "branches";
 
     protected $fillable = [
-        'branch_name','cr_number','tax_number','branch_phone','branch_address','manager_name','contact_email','status'
+        'branch_name','cr_number','tax_number','branch_phone','branch_address','manager_name','contact_email','status','subscriber_id'
     ];
 
     public function admin(){

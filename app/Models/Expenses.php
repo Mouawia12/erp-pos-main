@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToSubscriber;
 
 class Expenses extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToSubscriber;
     protected $fillable = [
       'id',
       'branch_id',
@@ -19,7 +20,8 @@ class Expenses extends Model
       'date',
       'docNumber',
       'payment_type', // 0 cash 1 network
-      'user_id'
+      'user_id',
+      'subscriber_id'
     ];
 
     public function branch(){

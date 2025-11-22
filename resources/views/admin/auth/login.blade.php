@@ -1,14 +1,7 @@
 @extends('admin.layouts.app')
 @section('content')
     <style>
-        @font-face {
-            font-family: 'Almarai';
-            src: url("{{asset('fonts/SegoeUI.ttf')}}");
-        }
-        h1, h2, h3, h4, h5, h6 {
-            font-family: 'Almarai' !important;
-           
-        } 
+        /* إزالة تحميل خط مفقود واستخدام خطوط النظام الافتراضية */ 
         .btn, .sp-container button{
             font-size:unset;
         }

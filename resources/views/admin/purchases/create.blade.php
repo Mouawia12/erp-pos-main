@@ -83,7 +83,7 @@
                                             -->
                                         </select>
                                     </div>
-                                </div> 
+                                </div>
                                 <div class="col-md-4" >
                                     <div class="form-group">
                                         <label>{{ __('main.supplier') }} <span class="text-danger">*</span> </label>
@@ -96,6 +96,21 @@
                                         </select>
                                     </div>
                                 </div>  
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label>{{ __('main.cost_center') }}</label>
+                                        <input type="text" class="form-control" name="cost_center" id="cost_center" placeholder="{{__('main.cost_center')}}">
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label>{{ __('main.tax_mode') }}</label>
+                                        <select class="form-control" name="tax_mode" id="tax_mode">
+                                            <option value="inclusive">{{__('main.tax_mode_inclusive')}}</option>
+                                            <option value="exclusive">{{__('main.tax_mode_exclusive')}}</option>
+                                        </select>
+                                    </div>
+                                </div>
                             </div> 
                             <div class="row"> 
                                 <div class="col-md-12" id="sticker"> 

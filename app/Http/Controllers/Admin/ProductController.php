@@ -38,6 +38,9 @@ class ProductController extends Controller
             ->leftJoin('brands','products.brand','=','brands.id')  
             ->select('products.*','units.name as unitName','brands.name as brandName',
                     'categories.name as category_name_ar') 
+            ->when(Auth::user()->subscriber_id ?? null, function($q,$sub){
+                $q->where('products.subscriber_id',$sub);
+            })
             ->get(); 
             
         if ($request->ajax()) { 

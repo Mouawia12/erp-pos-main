@@ -36,7 +36,7 @@
         </div>
     @endif 
     <!-- row closed -->
- 
+
     <div class="row mt-3 mb-3"> 
         <div class="col-xl-3 col-lg-6 col-md-6 col-xm-12">
             <a href="@can('عرض مبيعات'){{route('sales')}}@endcan">
@@ -353,6 +353,77 @@
                 </div>
             </div>
         </div>
-    </div> 
+    </div>
+
+<div class="row mb-4">
+        <div class="col-xl-8 col-lg-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">مخطط المبيعات والمشتريات (آخر 7 أيام)</h5>
+                    <div style="height:300px;">
+                        <canvas id="salesPurchaseChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-lg-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">توزيع العملاء/الموردين</h5>
+                    <div style="height:260px;">
+                        <canvas id="clientSupplierChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+@endsection
+@section('js')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const labels = {!! json_encode($chartLabels ?? ['اليوم','اليوم-1','اليوم-2','اليوم-3','اليوم-4','اليوم-5','اليوم-6']) !!};
+    const salesData = {!! json_encode($salesChart ?? [0,0,0,0,0,0,0]) !!};
+    const purchaseData = {!! json_encode($purchaseChart ?? [0,0,0,0,0,0,0]) !!};
+    const clientsCount = {{ $clients->count() ?? 0 }};
+    const suppliersCount = {{ $suppliers->count() ?? 0 }};
+
+    const salesCanvas = document.getElementById('salesPurchaseChart');
+    if(salesCanvas){
+        const ctx = salesCanvas.getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {label: 'المبيعات', data: salesData, backgroundColor: 'rgba(40,167,69,0.5)', borderColor: '#28a745'},
+                    {label: 'المشتريات', data: purchaseData, backgroundColor: 'rgba(0,123,255,0.4)', borderColor: '#007bff'},
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {beginAtZero: true}
+                }
+            }
+        });
+    }
+
+    const doughnutCanvas = document.getElementById('clientSupplierChart');
+    if(doughnutCanvas){
+        const ctx2 = doughnutCanvas.getContext('2d');
+        new Chart(ctx2, {
+            type: 'doughnut',
+            data: {
+                labels: ['عملاء','موردين'],
+                datasets: [{
+                    data: [clientsCount, suppliersCount],
+                    backgroundColor: ['#17a2b8','#ffc107']
+                }]
+            },
+            options: {responsive: true, maintainAspectRatio: false}
+        });
+    }
+</script>
 @endsection
  

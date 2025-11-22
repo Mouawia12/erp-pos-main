@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToSubscriber;
 
 class Warehouse extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToSubscriber;
     protected $fillable = [
         'code',
         'name',
@@ -19,7 +20,8 @@ class Warehouse extends Model
         'serial_prefix',
         'branch_id',
         'user_id',
-        'status'
+        'status',
+        'subscriber_id'
     ];
 
     public function branch(){

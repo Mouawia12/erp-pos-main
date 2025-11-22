@@ -50,7 +50,11 @@ class AdminController extends Controller
 
     public function index(Request $request)
     {
-        $data = User::all();
+        $data = User::query()
+            ->when(auth()->user()->subscriber_id ?? null, function($q,$sub){
+                $q->where('subscriber_id',$sub);
+            })
+            ->get();
         $roles = Role::get()->pluck('name', 'name');
         return view('admin.admins.index', compact('data', 'roles'));
     }
@@ -75,7 +79,11 @@ class AdminController extends Controller
             'role_name' => 'required'
         ]);
 
-        $usersCount = DB::table('users')->count();
+        $usersCount = DB::table('users')
+            ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                $q->where('subscriber_id',$sub);
+            })
+            ->count();
         $maxUsers = DB::table('system_settings')->select('max_users')->first()->max_users;
 
         if($usersCount >= $maxUsers){
@@ -83,6 +91,7 @@ class AdminController extends Controller
         }
 
         $input = $request->all();
+        $input['subscriber_id'] = Auth::user()->subscriber_id ?? null;
         $input['password'] = Hash::make($input['password']);
         $Admin = User::create($input);
         $Admin->assignRole($request->input('role_name')); 

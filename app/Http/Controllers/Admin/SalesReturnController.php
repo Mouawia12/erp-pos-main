@@ -33,6 +33,9 @@ class SalesReturnController extends Controller
                     ->join('companies','sales.customer_id','=','companies.id')
                     ->select('sales.*','warehouses.name as warehouse_name','companies.name as customer_name')
                     ->orderBy('id', 'desc')
+                    ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                        $q->where('sales.subscriber_id',$sub);
+                    })
                     ->get(); 
 
         if ($request->ajax()) { 
@@ -218,6 +221,9 @@ class SalesReturnController extends Controller
             ->join('products','products.id','=','sale_details.product_id')
             ->select('sale_details.*','products.name as product_name')
             ->where('sale_id',$id)
+            ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                $q->where('sale_details.subscriber_id',$sub);
+            })
             ->get();
 
         $zeroItems = 0;
@@ -247,7 +253,11 @@ class SalesReturnController extends Controller
             ->join('sales','sales.id','=','sale_details.sale_id')
             ->select('sale_details.*')
             ->where('sales.sale_id',$invoiceId)
-            ->where('sale_details.product_id',$productId)->get();
+            ->where('sale_details.product_id',$productId)
+            ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                $q->where('sale_details.subscriber_id',$sub);
+            })
+            ->get();
 
         foreach ($allOtherSaleItems as $item){
 
@@ -266,6 +276,9 @@ class SalesReturnController extends Controller
                     ->select('sales.*','warehouses.name as warehouse_name','companies.name as customer_name'
                              ,'branches.branch_name','branches.branch_phone','branches.branch_address' )
                     ->where('sales.id' , '=' , $id)
+                    ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                        $q->where('sales.subscriber_id',$sub);
+                    })
                     ->get();
 
         if(count($datas)){
@@ -275,6 +288,9 @@ class SalesReturnController extends Controller
                         ->join('products' , 'sale_details.product_id' , '=' , 'products.id')
                         ->select('sale_details.*' , 'products.code' , 'products.name')
                         ->where('sale_details.sale_id' , '=' , $id)
+                        ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                            $q->where('sale_details.subscriber_id',$sub);
+                        })
                         ->get();
 
             $payments = Payment::with('user') -> where('sale_id',$id)

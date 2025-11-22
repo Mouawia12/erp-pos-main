@@ -52,6 +52,15 @@ span strong {font-size:12px;}
                         </div>
                         <div class="col-md-2">
                             <div class="form-group">
+                                <label>{{ __('main.tax_mode') }}</label>
+                                <select class="form-control" name="tax_mode" id="tax_mode">
+                                    <option value="inclusive">{{__('main.tax_mode_inclusive')}}</option>
+                                    <option value="exclusive">{{__('main.tax_mode_exclusive')}}</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
                                 <label class="d-block">{{ __('main.branche')}}<span class="text-danger">*</span> </label> 
                                 @if(empty(Auth::user()->branch_id))
                                     <select name="branch_id" id="branch_id" class="js-example-basic-single w-100" required>  
@@ -87,6 +96,12 @@ span strong {font-size:12px;}
                                         </option>
                                     @endforeach
                                 </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>{{ __('main.cost_center') }}</label>
+                                <input type="text" class="form-control" name="cost_center" id="cost_center" placeholder="{{__('main.cost_center')}}">
                             </div>
                         </div>
                     </div> 

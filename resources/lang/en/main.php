@@ -195,6 +195,11 @@ return [
     'invoice_type_tax' => 'Tax Invoice',
     'invoice_type_simplified' => 'Simplified Tax Invoice',
     'invoice_type_nontax' => 'Non-tax Invoice',
+    'invoice_terms' => 'Terms & Warranty',
+    'cost_center' => 'Cost Center',
+    'tax_mode' => 'Tax Mode',
+    'tax_mode_inclusive' => 'Inclusive',
+    'tax_mode_exclusive' => 'Exclusive',
 
     'last_name' => 'Last Name',
     'gender' =>'Gender' ,

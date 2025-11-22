@@ -34,6 +34,9 @@ class PurchaseController extends Controller
             ->select('purchases.*','warehouses.name as warehouse_name','companies.name as customer_name')
             ->where('returned_bill_id' , 0 )
             ->orderBy('id', 'desc')
+            ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                $q->where('purchases.subscriber_id',$sub);
+            })
             ->get();
 
         if(!empty(Auth::user()->branch_id)) {
@@ -187,6 +190,8 @@ class PurchaseController extends Controller
             'date' => $request->bill_date,
             'invoice_no' => $request-> invoice_no,
             'supplier_invoice_no' => $request->supplier_invoice_no,
+            'cost_center' => $request->cost_center,
+            'tax_mode' => $request->tax_mode ?? 'inclusive',
             'customer_id' => $request->customer_id,
             'biller_id' => Auth::id(),
             'warehouse_id' => $request->warehouse_id,
@@ -239,6 +244,9 @@ class PurchaseController extends Controller
             ->join('companies','purchases.customer_id','=','companies.id')
             ->select('purchases.*','warehouses.name as warehouse_name','companies.name as customer_name' )
             ->where('purchases.id' , '=' , $id)
+            ->when(Auth::user()->subscriber_id ?? null, function($q,$sub){
+                $q->where('purchases.subscriber_id',$sub);
+            })
             ->get();
             
         if(count($datas)){

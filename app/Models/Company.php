@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToSubscriber;
 
 class Company extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToSubscriber;
     protected $fillable = [
         'group_id',
         'group_name',
@@ -38,7 +39,8 @@ class Company extends Model
         'tax_number',
         'parent_company_id',
         'price_level_id',
-        'default_discount'
+        'default_discount',
+        'subscriber_id'
     ];
 
     public function group()

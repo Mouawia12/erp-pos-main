@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToSubscriber;
 
 class PurchaseDetails extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToSubscriber;
     protected $fillable = [
         'purchase_id',
         'product_code',
@@ -20,6 +21,6 @@ class PurchaseDetails extends Model
         'tax',
         'total',
         'net',
-        'returned_qnt'
+        'returned_qnt','subscriber_id'
     ];
 }

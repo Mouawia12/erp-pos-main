@@ -45,6 +45,7 @@ use App\Http\Controllers\Admin\BranchController;
 use App\Http\Controllers\Admin\CatchReciptController;
 use App\Http\Controllers\Admin\PosController;
 use App\Http\Controllers\Admin\BackupController;
+use App\Http\Controllers\Admin\SubscriberController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -142,6 +143,13 @@ Route::group(
 
     // Backup
     Route::get('/backup/database', [BackupController::class, 'download'])->name('admin.backup.db');
+
+    // Owner / Subscribers dashboard (SaaS control panel)
+    Route::group(['prefix' => 'owner', 'as' => 'owner.', 'middleware' => ['role:system_owner']], function () {
+        Route::resource('subscribers', SubscriberController::class)->except(['show']);
+        Route::post('subscribers/{subscriber}/renew', [SubscriberController::class, 'renew'])->name('subscribers.renew');
+        Route::delete('documents/{document}', [SubscriberController::class, 'deleteDocument'])->name('documents.destroy');
+    });
     
     // Inventory Routes
        Route::resource('inventory', InventoryController::class)->names([

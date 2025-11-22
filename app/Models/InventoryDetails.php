@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToSubscriber;
 
 class InventoryDetails extends Model
 {
+    use BelongsToSubscriber;
     protected $table = "inventory_details";
     protected $fillable = [
         'inventory_id', 'date', 'unit', 'item_id','quantity'

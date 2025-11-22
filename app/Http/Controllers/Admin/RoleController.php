@@ -8,6 +8,7 @@ use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 use App\Models\User; 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class RoleController extends Controller
 {
@@ -22,12 +23,18 @@ class RoleController extends Controller
     public function index(Request $request)
     {
         $roles = Role::orderBy('id', 'ASC')->where('guard_name','Admin-web')->get();
+        if(Auth::user()->subscriber_id){
+            $roles = $roles->where('name','!=','system_owner');
+        }
         return view('admin.roles.index', compact('roles'));
     }
 
     public function create()
     {
         $permission = Permission::get();
+        if(Auth::user()->subscriber_id){
+            $permission = $permission->where('guard_name','admin-web');
+        }
         return view('admin.roles.create', compact('permission'));
     }
 
@@ -38,6 +45,10 @@ class RoleController extends Controller
             'guard_name' => 'required',
             'permission' => 'required',
         ]);
+        // أمنع المشترك من إنشاء رول باسم system_owner أو مشترك آخرين
+        if(Auth::user()->subscriber_id && $request->name === 'system_owner'){
+            return redirect()->back()->with('error','غير مسموح بإنشاء هذا الدور');
+        }
         $role = Role::create([
             'name' => $request->input('name'),
             'guard_name' => $request->input('guard_name')

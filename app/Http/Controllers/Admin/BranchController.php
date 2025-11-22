@@ -37,9 +37,10 @@ class BranchController extends Controller
         ]);
 
         $branchesCount = Branch::count();
-        $maxBranchs = DB::table('system_settings')->select('max_branches')->first()->max_branches;
+        $settings = DB::table('system_settings')->select('max_branches')->first();
+        $maxBranchs = $settings->max_branches ?? null;
 
-        if($branchesCount >= $maxBranchs){
+        if($maxBranchs !== null && $branchesCount >= $maxBranchs){
             return redirect()->back()->with('error',__('main.max_warehouse'));
         }
 

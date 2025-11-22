@@ -16,7 +16,11 @@ class UserController extends Controller
     public function index(){
         $users = DB::table('users')
             ->join('roles' , 'users.role_id' , '=' , 'roles.id')
-            ->select('users.*' , 'roles.name_ar as role_ar' , 'roles.name_en as role_en') -> get();
+            ->select('users.*' , 'roles.name_ar as role_ar' , 'roles.name_en as role_en')
+            ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                $q->where('users.subscriber_id',$sub);
+            })
+            ->get();
 
         $roles = Role::all();
 

@@ -135,6 +135,16 @@
                 هاتف الفرع / Branch Phone : {{$data->branch_phone}}
             </h6> 
             @endif
+            @if(!empty($data->cr_number))
+            <h6 class="text-center mt-1" style="font-weight: bold;">
+                السجل التجاري / CR : {{$data->cr_number}}
+            </h6>
+            @endif
+            @if(!empty($data->branch_tax_number))
+            <h6 class="text-center mt-1" style="font-weight: bold;">
+                الرقم الضريبي / VAT : {{$data->branch_tax_number}}
+            </h6>
+            @endif
             <div class="clearfix"></div> 
             <h6 class="text-center mt-1" style="font-weight: bold;">
                 التاريخ / Date :
@@ -160,6 +170,18 @@
             <strong>العنوان / Address:</strong> {{ optional($vendor)->address }}
             @endif
         </div>
+        @if(!empty($data->note) || (!empty($settings) && !empty($settings->invoice_terms)))
+            <div class="mt-2" style="text-align:right; direction:rtl; border:1px dotted #aaa; padding:6px;">
+                @if(!empty($data->note))
+                    <strong>{{__('main.notes')}}:</strong>
+                    <div>{{$data->note}}</div>
+                @endif
+                @if(!empty($settings) && !empty($settings->invoice_terms))
+                    <strong>{{__('main.invoice_terms')}}:</strong>
+                    <div>{{$settings->invoice_terms}}</div>
+                @endif
+            </div>
+        @endif
         <div class="above-table w-25 text-center mt-3  justify-content-center" style="margin: 10px auto!important;">
             <table class="table-bordered text-center" style="width: 100% ; direction: rtl">
                 <thead>

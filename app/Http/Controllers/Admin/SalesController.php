@@ -38,6 +38,9 @@ class SalesController extends Controller
             ->select('sales.*','warehouses.name as warehouse_name','companies.name as customer_name','branches.branch_name')
             ->selectRaw('(sales.net - sales.paid) as remain') 
             ->where('sales.sale_id',0)
+            ->when(Auth::user()->subscriber_id ?? null, function($q, $sub){
+                $q->where('sales.subscriber_id',$sub);
+            })
             ->orderBy('sales.id', 'desc') 
             ->get(); 
 
@@ -263,6 +266,8 @@ class SalesController extends Controller
             'date' => $billDate,
             'invoice_no' => $request-> invoice_no,
             'invoice_type' => $request->invoice_type ?? 'tax_invoice',
+            'cost_center' => $request->cost_center,
+            'tax_mode' => $request->tax_mode ?? 'inclusive',
             'customer_id' => $request->customer_id,
             'customer_name' => $request->customer_name,//pos
             'customer_phone' => $request->customer_phone,//pos
@@ -405,7 +410,11 @@ class SalesController extends Controller
             ->join('sales','sales.id','=','sale_details.sale_id')
             ->select('sale_details.*')
             ->where('sales.sale_id',$invoiceId)
-            ->where('sale_details.product_id',$productId)->get();
+            ->where('sale_details.product_id',$productId)
+            ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                $q->where('sale_details.subscriber_id',$sub);
+            })
+            ->get();
 
         foreach ($allOtherSaleItems as $item){
 
@@ -422,8 +431,11 @@ class SalesController extends Controller
             ->join('companies','sales.customer_id','=','companies.id')
             ->join('branches','sales.branch_id','=','branches.id')
             ->select('sales.*','warehouses.name as warehouse_name','companies.name as customer_name'
-                     ,'branches.branch_name','branches.branch_phone','branches.branch_address' )
+                     ,'branches.branch_name','branches.branch_phone','branches.branch_address','branches.cr_number','branches.tax_number as branch_tax_number','branches.manager_name as branch_manager','branches.contact_email as branch_email' )
             ->where('sales.id' , '=' , $id)
+            ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                $q->where('sales.subscriber_id',$sub);
+            })
             ->get();
 
         if(count($datas)){
@@ -433,6 +445,9 @@ class SalesController extends Controller
                 ->join('products' , 'sale_details.product_id' , '=' , 'products.id')
                 ->select('sale_details.*' , 'products.code' , 'products.name')
                 ->where('sale_details.sale_id' , '=' , $id)
+                ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                    $q->where('sale_details.subscriber_id',$sub);
+                })
                 ->get();
 
             $payments = Payment::with('user') -> where('sale_id',$id)
@@ -443,11 +458,12 @@ class SalesController extends Controller
             $vendor = Company::find($data->customer_id);
             $cashier = Cashier::first();
             $company = CompanyInfo::first();
+            $settings = SystemSettings::first();
 
             if($datas[0]->pos == 1){   
-                return view('admin.sales.printPos',compact('data' , 'details','vendor','cashier' , 'payments','company' ))->render();
+                return view('admin.sales.printPos',compact('data' , 'details','vendor','cashier' , 'payments','company','settings' ))->render();
             } else {
-                return view('admin.sales.print',compact('data' , 'details','vendor','cashier' , 'payments','company' ))->render();
+                return view('admin.sales.print',compact('data' , 'details','vendor','cashier' , 'payments','company','settings' ))->render();
             }
 
             //return view('admin.sales.view',compact('data' , 'details','vendor','cashier' , 'payments','company' ))->render();

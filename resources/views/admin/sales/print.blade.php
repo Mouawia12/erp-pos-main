@@ -116,6 +116,26 @@
                             {{$data->branch_name}}
                         </span>
                     </h6> 
+                    @if(!empty($data->cr_number))
+                    <h6 class="text-right mt-1" style="font-weight: bold;">
+                        السجل التجاري : {{$data->cr_number}}
+                    </h6>
+                    @endif
+                    @if(!empty($data->branch_tax_number))
+                    <h6 class="text-right mt-1" style="font-weight: bold;">
+                        الرقم الضريبي : {{$data->branch_tax_number}}
+                    </h6>
+                    @endif
+                    @if(!empty($data->branch_manager))
+                    <h6 class="text-right mt-1" style="font-weight: bold;">
+                        مدير الفرع : {{$data->branch_manager}}
+                    </h6>
+                    @endif
+                    @if(!empty($data->branch_email))
+                    <h6 class="text-right mt-1" style="font-weight: bold;">
+                        بريد الفرع : {{$data->branch_email}}
+                    </h6>
+                    @endif
                 </div>
                 <div class="col-4 text-center">
                     <h4 class="text-center mt-1" style="font-weight: bold;">
@@ -156,6 +176,18 @@
                     </tr>  
                 </tbody>
             </table>    
+            @if(!empty($data->note) || (!empty($settings) && !empty($settings->invoice_terms)))
+                <div class="mt-2 text-right" style="direction:rtl;">
+                    @if(!empty($data->note))
+                        <strong>{{__('main.notes')}}:</strong>
+                        <div>{{$data->note}}</div>
+                    @endif
+                    @if(!empty($settings) && !empty($settings->invoice_terms))
+                        <strong>{{__('main.invoice_terms')}}:</strong>
+                        <div>{{$settings->invoice_terms}}</div>
+                    @endif
+                </div>
+            @endif
             <!--
             <h4 class="alert alert-secondary text-center"> 
                 {{__('main.items')}} 

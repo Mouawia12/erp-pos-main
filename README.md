@@ -41,3 +41,6 @@ The full Arabic requirements from "طلبات-تطوير-برنامج-المحا
 - Purchase payments: modal supports cash + multiple card entries, validation against invoice total, and posting each card as a separate payment entry.
 - Access policy: optional single-device login toggle added to system settings; when enabled, concurrent sessions for the same user are blocked.
 - New DB backup command and admin route: `php artisan db:backup` creates `storage/backups/db-backup-*.sql` (also accessible via `/admin/backup/database` for admin users).
+- Default invoice type setting added to system settings and reflected on invoices/prints (tax, simplified, non-tax).
+- Supplier invoice reference + attachment stored with purchase invoices.
+- Branch details (CR/tax/manager/email) added to branch screens and to invoice prints.

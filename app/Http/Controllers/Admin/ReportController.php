@@ -17,9 +17,19 @@ use App\Models\Branch;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 
 class ReportController extends Controller
 {
+    private function applySubscriberFilter($query, $table)
+    {
+        $sub = Auth::user()->subscriber_id ?? null;
+        if ($sub && Schema::hasColumn($table, 'subscriber_id')) {
+            $query->where($table . '.subscriber_id', $sub);
+        }
+        return $query;
+    }
     public function daily_sales_report(){
         $siteContrller = new SystemController();
         $warehouses = $siteContrller->getAllWarehouses();
@@ -70,6 +80,9 @@ class ReportController extends Controller
                             'warehouses.name as warehouse_name', 'branches.branch_name','sales.warehouse_id'
                             ,'sales.customer_id','sales.date')
                     ->where('sales.sale_id' , '=' ,  0)  
+                    ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                        $q->where('sale_details.subscriber_id',$sub);
+                    })
                     ->get();
  
  
@@ -398,6 +411,9 @@ class ReportController extends Controller
                  , 'purchase_details.product_id as item_id' , 'purchase_details.quantity as qnt'
                  ,'purchases.branch_id','products.code as product_code' , 'products.name as product_name')
             -> where('purchases.returned_bill_id' , '=' , 0)
+            -> when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                $q->where('purchases.subscriber_id',$sub);
+            })
             ->get();
 
         if( $warehouse > 0 ) $purchases = $purchases->where('warehouse',$warehouse);
@@ -423,6 +439,9 @@ class ReportController extends Controller
                     ,'purchase_details.product_id as item_id' , 'purchase_details.quantity as qnt'
                     ,'purchases.branch_id','products.code as product_code' , 'products.name as product_name')
             -> where('purchases.returned_bill_id' , '<>' , 0)
+            -> when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                $q->where('purchases.subscriber_id',$sub);
+            })
             ->get();
   
         if( $warehouse > 0 ) $returnPurchase = $returnPurchase->where('warehouse',$warehouse);
@@ -448,6 +467,9 @@ class ReportController extends Controller
                     ,'sales.branch_id','products.code as product_code'
                     ,'products.name as product_name')
             -> where('sales.sale_id' , '=' , 0)
+            -> when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                $q->where('sales.subscriber_id',$sub);
+            })
             ->get();
 
         if( $warehouse > 0 ) $sales = $sales->where('warehouse',$warehouse);
@@ -473,6 +495,12 @@ class ReportController extends Controller
                     ,'sales.branch_id','products.code as product_code'
                     ,'products.name as product_name')
             -> where('sales.sale_id' , '<>' , 0)
+            -> when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                $q->where('sales.subscriber_id',$sub);
+            })
+            -> when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                $q->where('sale_details.subscriber_id',$sub);
+            })
             ->get();
 
         if( $warehouse > 0 ) $salesReturn = $salesReturn->where('warehouse',$warehouse);

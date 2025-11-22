@@ -224,6 +224,9 @@ label.total {
                                     </div>
                                 </div>
                                 <div class="col-lg-12 mb-2">
+                                    <input type="text" class="form-control" name="cost_center" id="cost_center" placeholder="{{__('main.cost_center')}}">
+                                </div>
+                                <div class="col-lg-12 mb-2">
                                     <textarea class="form-control" name="notes" rows="2" placeholder="{{__('main.notes')}}"></textarea>
                                 </div>
                             </div>  

@@ -23,6 +23,7 @@ use App\Models\Purchase;
 use Carbon\Carbon; 
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 
@@ -96,7 +97,12 @@ class ReportAccountController extends Controller
             ->join('items' , 'sale_details.item_id' , '=' , 'items.id')
             -> select('items.*' , 'karats.name_ar as karat_name_ar' , 'karats.name_en as karat_name_en' ,
                 'sale_details.sale_id as bill_id' , 'sales.date as bill_date' ,'sales.bill_number as bill_no')
-            -> where('sales.total_money' , '>' , 0) ; 
+            -> where('sales.total_money' , '>' , 0)
+            -> when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                if (Schema::hasColumn('sale_details','subscriber_id')) {
+                    $q->where('sale_details.subscriber_id',$sub);
+                }
+            }); 
 
         $items_t = DB::table('exit_work_tax_details')
             -> join('sales_tax' , 'exit_work_tax_details.bill_id' , '=' , 'sales_tax.id')
@@ -104,7 +110,12 @@ class ReportAccountController extends Controller
             ->join('items' , 'exit_work_tax_details.item_id' , '=' , 'items.id')
             -> select('items.*' , 'karats.name_ar as karat_name_ar' , 'karats.name_en as karat_name_en' ,
                 'exit_work_tax_details.bill_id as bill_id' , 'sales_tax.date as bill_date' ,'sales_tax.bill_number as bill_no')
-            -> where('sales_tax.total_money' , '>' , 0) ;  
+            -> where('sales_tax.total_money' , '>' , 0)
+            -> when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                if (Schema::hasColumn('exit_work_tax_details','subscriber_id')) {
+                    $q->where('exit_work_tax_details.subscriber_id',$sub);
+                }
+            });  
 
         if($request -> branch_id > 0) $items = $items -> where('items.branch_id' ,$request -> branch_id );
         if($request -> karat > 0) $items = $items -> where('items.karat_id' , '=' ,$request -> karat ) -> get();
@@ -178,6 +189,11 @@ class ReportAccountController extends Controller
                 ,'karats.name_ar as karat_name_ar' , 'karats.name_en as karat_name_en' , 'sale_details.weight' , 'sale_details.gram_price' ,
                 'sale_details.gram_manufacture' , 'sale_details.tax','sale_details.net_money' , 'sale_details.karat_id')
             -> where('sales.net_money' ,'>' , 0)
+            -> when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                if (Schema::hasColumn('sale_details','subscriber_id')) {
+                    $q->where('sale_details.subscriber_id',$sub);
+                }
+            })
             -> orderBy('sales.id');
 
 
@@ -188,6 +204,11 @@ class ReportAccountController extends Controller
                 ,'karats.name_ar as karat_name_ar' , 'karats.name_en as karat_name_en' , 'exit_old_details.weight' , 'exit_old_details.gram_price' ,
                 'exit_old_details.gram_manufacture' , 'exit_old_details.tax','exit_old_details.net_money' , 'exit_old_details.karat_id')
             -> where('exit_olds.net_money' ,'>' , 0)
+            -> when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                if (Schema::hasColumn('exit_old_details','subscriber_id')) {
+                    $q->where('exit_old_details.subscriber_id',$sub);
+                }
+            })
             -> orderBy('exit_olds.id');
         
         $data3 = DB::table('exit_work_tax_details')
@@ -199,6 +220,11 @@ class ReportAccountController extends Controller
                 ,'karats.name_ar as karat_name_ar' , 'karats.name_en as karat_name_en' , 'exit_work_tax_details.weight' , 'exit_work_tax_details.gram_price' ,
                 'exit_work_tax_details.gram_manufacture' , 'exit_work_tax_details.tax','exit_work_tax_details.net_money' , 'exit_work_tax_details.karat_id')
             -> where('sales_tax.net_money' ,'>' , 0)
+            -> when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                if (Schema::hasColumn('exit_work_tax_details','subscriber_id')) {
+                    $q->where('exit_work_tax_details.subscriber_id',$sub);
+                }
+            })
             -> orderBy('sales_tax.id');            
 
         $data4 = DB::table('exit_old_tax_details')
@@ -208,6 +234,11 @@ class ReportAccountController extends Controller
                 ,'karats.name_ar as karat_name_ar' , 'karats.name_en as karat_name_en' , 'exit_old_tax_details.weight' , 'exit_old_tax_details.gram_price' ,
                 'exit_old_tax_details.gram_manufacture' , 'exit_old_tax_details.tax','exit_old_tax_details.net_money' , 'exit_old_tax_details.karat_id')
             -> where('exit_olds_tax.net_money' ,'>' , 0)
+            -> when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                if (Schema::hasColumn('exit_old_tax_details','subscriber_id')) {
+                    $q->where('exit_old_tax_details.subscriber_id',$sub);
+                }
+            })
             -> orderBy('exit_olds_tax.id'); 
 
         if($request -> branch_id > 0) $data = $data -> where('sales.branch_id' ,$request -> branch_id );
@@ -492,7 +523,12 @@ class ReportAccountController extends Controller
             ->join('karats' , 'enter_old_details.karat_id' , '=' , 'karats.id')
             ->select('enter_olds.bill_number'  , 'enter_olds.id','enter_olds.branch_id', 'enter_olds.date' , 'enter_olds.supplier_id as supplier_id'
                 ,'karats.name_ar as karat_name_ar' , 'karats.name_en as karat_name_en' , 'enter_old_details.weight' , 'enter_old_details.made_money' ,
-                'enter_old_details.net_weight' , 'enter_old_details.net_money' , 'enter_old_details.karat_id' , 'enter_old_details.weight21') ;
+                'enter_old_details.net_weight' , 'enter_old_details.net_money' , 'enter_old_details.karat_id' , 'enter_old_details.weight21')
+            ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                if (Schema::hasColumn('enter_old_details','subscriber_id')) {
+                    $q->where('enter_old_details.subscriber_id',$sub);
+                }
+            });
 
         if($request -> branch_id > 0) $data = $data -> where('purchases.branch_id' , $request -> branch_id);        
         if($request -> has('isStartDate')) $data = $data -> where('purchases.date' , '>=' , Carbon::parse($request -> StartDate) );
@@ -710,19 +746,34 @@ class ReportAccountController extends Controller
         $works = DB::table('sale_details')
             -> join('sales' , 'sale_details.sale_id' , '=' , 'sales.id')
             -> where('sales.total_money' , '<' , 0) 
-            ->select('sale_details.*' , 'sales.date');
+            ->select('sale_details.*' , 'sales.date')
+            ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                if (Schema::hasColumn('sale_details','subscriber_id')) {
+                    $q->where('sale_details.subscriber_id',$sub);
+                }
+            });
 
         $olds = DB::table('exit_old_details')
             -> join('exit_olds' , 'exit_old_details.bill_id' , '=' , 'exit_olds.id')
             -> where('exit_olds.total_money' , '<' , 0)
             -> where('exit_olds.bill_type' ,'=', 0)  
-            ->select('exit_old_details.*' , 'exit_olds.date');
+            ->select('exit_old_details.*' , 'exit_olds.date')
+            ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                if (Schema::hasColumn('exit_old_details','subscriber_id')) {
+                    $q->where('exit_old_details.subscriber_id',$sub);
+                }
+            });
 
         $pures = DB::table('exit_old_details')
             -> join('exit_olds' , 'exit_old_details.bill_id' , '=' , 'exit_olds.id')
             -> where('exit_olds.total_money' , '<' , 0)
             -> where('exit_olds.bill_type' , 2)  
-            ->select('exit_old_details.*' , 'exit_olds.date');
+            ->select('exit_old_details.*' , 'exit_olds.date')
+            ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                if (Schema::hasColumn('exit_old_details','subscriber_id')) {
+                    $q->where('exit_old_details.subscriber_id',$sub);
+                }
+            });
 
         if($request -> branch_id > 0) $works = $works-> where('sales.branch_id' ,$request -> branch_id);
         if($request -> branch_id > 0) $olds = $olds-> where('exit_olds.branch_id' ,$request -> branch_id);
@@ -879,7 +930,10 @@ class ReportAccountController extends Controller
                 DB::raw('sum(account_movements.debit) as debit'))
             ->groupBy('accounts_trees.id','accounts_trees.code','accounts_trees.name')
             ->where('account_movements.date','>=',$startDate)
-            ->where('account_movements.date','<=',$endDate) 
+            ->where('account_movements.date','<=',$endDate)
+            ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                $q->where('accounts_trees.subscriber_id',$sub);
+            })
             ->get();
 
         foreach ($accounts as $account){
@@ -891,6 +945,9 @@ class ReportAccountController extends Controller
                 ->groupBy('accounts_trees.id','accounts_trees.code','accounts_trees.name')
                 ->where('account_movements.date','<',$startDate)
                 ->where('accounts_trees.code','<',$account->code)
+                ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                    $q->where('accounts_trees.subscriber_id',$sub);
+                })
                 ->first();
 
             if($accountBalance){
@@ -911,7 +968,11 @@ class ReportAccountController extends Controller
     }
 
     public function box_movement_report(){ 
-        $branches = Branch::where('status',1)->get(); 
+        $branches = Branch::where('status',1)
+            ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                $q->where('subscriber_id',$sub);
+            })
+            ->get(); 
         return view('admin.ReportAccount.box_movement_report', compact('branches') );
     }
 
@@ -1459,7 +1520,12 @@ class ReportAccountController extends Controller
         $returnO = DB::table('exit_old_details')
             -> join('exit_olds' , 'exit_old_details.bill_id' , '=' , 'exit_olds.id')
             -> select('exit_old_details.*' , 'exit_olds.date' )
-            ->where('exit_olds.returned_bill_id' , '>'  , 0) ;
+            ->where('exit_olds.returned_bill_id' , '>'  , 0)
+            ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                if (Schema::hasColumn('exit_old_details','subscriber_id')) {
+                    $q->where('exit_old_details.subscriber_id',$sub);
+                }
+            }) ;
 
         if($request -> has('isStartDate')) $returnW = $returnW -> where('date' , '>=' , Carbon::parse($request -> StartDate) );
         if($request -> has('isEndDate'))   $returnW = $returnW -> where('date' , '<=' , Carbon::parse($request -> EndDate) -> addDay());
@@ -1484,20 +1550,45 @@ class ReportAccountController extends Controller
 
         $salesO = DB::table('exit_olds')
             ->where('exit_olds.returned_bill_id' , '='  , 0)
+            ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                if (Schema::hasColumn('exit_olds','subscriber_id')) {
+                    $q->where('exit_olds.subscriber_id',$sub);
+                }
+            })
             -> sum('exit_olds.total_money');
 
         $returnW = DB::table('sales')
             ->where('sales.returned_bill_id' , '<>'  , 0)
+            ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                if (Schema::hasColumn('sales','subscriber_id')) {
+                    $q->where('sales.subscriber_id',$sub);
+                }
+            })
             -> sum('sales.total_money');
 
         $returnO = DB::table('exit_olds')
             ->where('exit_olds.returned_bill_id' , '<>'  , 0)
+            ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                if (Schema::hasColumn('exit_olds','subscriber_id')) {
+                    $q->where('exit_olds.subscriber_id',$sub);
+                }
+            })
             -> sum('exit_olds.total_money');
 
         $purchaseW = DB::table('purchases')
+            ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                if (Schema::hasColumn('purchases','subscriber_id')) {
+                    $q->where('purchases.subscriber_id',$sub);
+                }
+            })
             -> sum('purchases.total_money');
 
         $purchaseO = DB::table('enter_olds')
+            ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                if (Schema::hasColumn('enter_olds','subscriber_id')) {
+                    $q->where('enter_olds.subscriber_id',$sub);
+                }
+            })
             -> sum('enter_olds.total_money');
 
         $salesWorkVAl = DB::table('sale_details')
@@ -1571,6 +1662,11 @@ class ReportAccountController extends Controller
                         ->where('account_movements.date','>=',$startDate)
                         ->where('account_movements.date','<=',$endDate)
                         ->where('accounts_trees.id' , '=' , $request -> account_id) 
+                        ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                            if (Schema::hasColumn('accounts_trees','subscriber_id')) {
+                                $q->where('accounts_trees.subscriber_id',$sub);
+                            }
+                        })
                         ->get();
 
         $account_balance = DB::table('accounts_trees')
@@ -1581,6 +1677,11 @@ class ReportAccountController extends Controller
                         ->groupBy('accounts_trees.id','accounts_trees.code','accounts_trees.name','accounts_trees.side')
                         ->where('account_movements.date','<',$startDate)
                         ->where('accounts_trees.id' , '=' , $request -> account_id) 
+                        ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                            if (Schema::hasColumn('accounts_trees','subscriber_id')) {
+                                $q->where('accounts_trees.subscriber_id',$sub);
+                            }
+                        })
                         ->first();
  
        
@@ -1729,6 +1830,11 @@ class ReportAccountController extends Controller
                         DB::raw('SUM(CASE WHEN karats.label="K18"  THEN purchase_details.weight END) K18') )
                     ->groupBy('purchase_details.karat_id','karats.name_ar')
                     ->where('purchase_details.bill_id',$account->basedon_id) 
+                    ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                        if (Schema::hasColumn('purchase_details','subscriber_id')) {
+                            $q->where('purchase_details.subscriber_id',$sub);
+                        }
+                    })
                     ->get();
 
                 if($accountkarats){
@@ -1924,5 +2030,4 @@ class ReportAccountController extends Controller
     }
 
     
-
 }

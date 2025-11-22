@@ -191,7 +191,11 @@ class AccountsTreeController extends Controller
             ->groupBy('journals.id','journals.date','journals.basedon_no',
                 'journals.basedon_id',
                 'journals.baseon_text')
-            ->orderByDesc('journals.id')->get(); 
+            ->orderByDesc('journals.id')
+            ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                $q->where('journals.subscriber_id',$sub);
+            })
+            ->get(); 
 
         return view('admin.accounts.journals',compact('journals' , 'type'));
     }
@@ -211,7 +215,10 @@ class AccountsTreeController extends Controller
             ->groupBy('journals.id','journals.date','journals.basedon_no',
                 'journals.basedon_id',
                 'journals.baseon_text')
-            ->orderByDesc('journals.id');
+            ->orderByDesc('journals.id')
+            ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                $q->where('journals.subscriber_id',$sub);
+            });
 
         if($request -> has('isStartDate')) $journals = $journals -> where('date' , '>=' , Carbon::parse($request -> StartDate) );
         if($request -> has('isEndDate')) $journals = $journals -> where('date' , '<=' , Carbon::parse($request -> EndDate) -> addDay());
