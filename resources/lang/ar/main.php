@@ -201,6 +201,8 @@ return [
     'invoice_type_simplified' => 'فاتورة ضريبية مبسطة',
     'invoice_type_nontax' => 'فاتورة غير ضريبية',
     'invoice_terms' => 'شروط وأحكام / ضمان',
+    'manage' => 'إدارة',
+    'delete_confirm' => 'هل أنت متأكد من الحذف؟',
     'cost_center' => 'مركز التكلفة',
     'tax_mode' => 'طريقة الضريبة',
     'tax_mode_inclusive' => 'شامل الضريبة',

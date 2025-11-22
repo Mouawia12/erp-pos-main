@@ -196,6 +196,8 @@ return [
     'invoice_type_simplified' => 'Simplified Tax Invoice',
     'invoice_type_nontax' => 'Non-tax Invoice',
     'invoice_terms' => 'Terms & Warranty',
+    'manage' => 'Manage',
+    'delete_confirm' => 'Are you sure you want to delete this item?',
     'cost_center' => 'Cost Center',
     'tax_mode' => 'Tax Mode',
     'tax_mode_inclusive' => 'Inclusive',

@@ -46,6 +46,7 @@ use App\Http\Controllers\Admin\CatchReciptController;
 use App\Http\Controllers\Admin\PosController;
 use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\SubscriberController;
+use App\Http\Controllers\Admin\InvoiceTermTemplateController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -143,6 +144,17 @@ Route::group(
 
     // Backup
     Route::get('/backup/database', [BackupController::class, 'download'])->name('admin.backup.db');
+
+    // Invoice terms templates
+    Route::resource('invoice-terms', InvoiceTermTemplateController::class)->names([
+        'index' => 'admin.invoice_terms.index',
+        'store' => 'admin.invoice_terms.store',
+        'update' => 'admin.invoice_terms.update',
+        'destroy' => 'admin.invoice_terms.destroy',
+        'create' => 'admin.invoice_terms.create',
+        'edit' => 'admin.invoice_terms.edit',
+        'show' => 'admin.invoice_terms.show',
+    ])->except(['show','create','edit']);
 
     // Owner / Subscribers dashboard (SaaS control panel)
     Route::group(['prefix' => 'owner', 'as' => 'owner.', 'middleware' => ['role:system_owner']], function () {

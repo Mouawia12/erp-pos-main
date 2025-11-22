@@ -42,5 +42,6 @@ The full Arabic requirements from "طلبات-تطوير-برنامج-المحا
 - Access policy: optional single-device login toggle added to system settings; when enabled, concurrent sessions for the same user are blocked.
 - New DB backup command and admin route: `php artisan db:backup` creates `storage/backups/db-backup-*.sql` (also accessible via `/admin/backup/database` for admin users).
 - Default invoice type can now be set at system level and overridden per branch or per user; forms and prints honor the resolved default (tax, simplified, non-tax).
+- Invoice terms templates: create/edit/delete reusable terms from `admin/invoice-terms` and inject them into system settings for printing on invoices.
 - Supplier invoice reference + attachment stored with purchase invoices.
 - Branch details (CR/tax/manager/email) added to branch screens and to invoice prints.

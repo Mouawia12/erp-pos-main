@@ -386,7 +386,18 @@
                                                 <div class="col-12">
                                                     <div class="form-group">
                                                         <label>{{ __('main.invoice_terms') }}</label>
-                                                        <textarea name="invoice_terms" class="form-control" rows="3" placeholder="{{__('main.invoice_terms')}}">{{ $setting->invoice_terms ?? '' }}</textarea>
+                                                        <div class="d-flex gap-2 mb-2">
+                                                            <select class="form-control" id="invoice_terms_template_selector">
+                                                                <option value="">{{ __('main.choose') }}</option>
+                                                                @foreach(\App\Models\InvoiceTermTemplate::all() as $tpl)
+                                                                    <option value="{{ $tpl->content }}">{{ $tpl->name }}</option>
+                                                                @endforeach
+                                                            </select>
+                                                            <a href="{{ route('admin.invoice_terms.index') }}" class="btn btn-outline-secondary">
+                                                                {{ __('main.manage') }}
+                                                            </a>
+                                                        </div>
+                                                        <textarea name="invoice_terms" id="invoice_terms" class="form-control" rows="3" placeholder="{{__('main.invoice_terms')}}">{{ $setting->invoice_terms ?? '' }}</textarea>
                                                     </div>
                                                 </div>
                                             </div> 
@@ -1039,6 +1050,12 @@
 <script type="text/javascript">
 
     $(document).ready(function () {
+        $('#invoice_terms_template_selector').on('change', function(){
+            const val = $(this).val();
+            if(val){
+                $('#invoice_terms').val(val);
+            }
+        });
         // $(':input','#myform')
         //     .not(':button, :submit, :reset, :hidden')
         //     .val('')
