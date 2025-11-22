@@ -127,10 +127,11 @@ class PurchaseController extends Controller
         $siteContrller = new SystemController();
         $warehouses = $siteContrller->getAllWarehouses();
         $customers = $siteContrller->getAllVendors();
+        $representatives = Representative::all();
         $setting = SystemSettings::all() -> first();
         $branches = Branch::where('status',1)->get();
 
-        return view('admin.purchases.create',compact('warehouses','customers' ,'setting','branches'));
+        return view('admin.purchases.create',compact('warehouses','customers','representatives','setting','branches'));
     }
 
     /**
@@ -191,6 +192,7 @@ class PurchaseController extends Controller
             'date' => $request->bill_date,
             'invoice_no' => $request-> invoice_no,
             'supplier_invoice_no' => $request->supplier_invoice_no,
+            'representative_id' => $request->representative_id,
             'cost_center' => $request->cost_center,
             'tax_mode' => $request->tax_mode ?? 'inclusive',
             'customer_id' => $request->customer_id,
@@ -432,6 +434,7 @@ class PurchaseController extends Controller
             'date' => $request->bill_date,
             'invoice_no' => $request-> invoice_no,
             'customer_id' => $request->customer_id,
+            'representative_id' => $request->representative_id,
             'biller_id' => Auth::id(),
             'warehouse_id' => $request->warehouse_id,
             'note' => $request->notes ? $request->notes :'',

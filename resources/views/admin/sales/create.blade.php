@@ -100,6 +100,18 @@ span strong {font-size:12px;}
                         </div>
                         <div class="col-md-3">
                             <div class="form-group">
+                                <label>{{ __('main.representatives') }}</label>
+                                <select class="js-example-basic-single w-100"
+                                    name="representative_id" id="representative_id">
+                                    <option value="">{{ __('main.choose') }}</option>
+                                    @foreach($representatives as $rep)
+                                        <option value="{{$rep->id}}">{{$rep->user_name}}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
                                 <label>{{ __('main.cost_center') }}</label>
                                 <input type="text" class="form-control" name="cost_center" id="cost_center" placeholder="{{__('main.cost_center')}}">
                             </div>
@@ -357,6 +369,13 @@ span strong {font-size:12px;}
         now.setSeconds(null);
 
         document.getElementById('bill_date').value = now.toISOString().slice(0, -1);
+
+        $('#representative_id').on('change', function(){
+            var selected = $(this).find('option:selected').text().trim();
+            if(selected && !$('#cost_center').val()){
+                $('#cost_center').val(selected);
+            }
+        });
 
         getBillNo();
         $('#warehouse_id').change(function (){

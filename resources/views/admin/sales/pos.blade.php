@@ -227,6 +227,14 @@ label.total {
                                     <input type="text" class="form-control" name="cost_center" id="cost_center" placeholder="{{__('main.cost_center')}}">
                                 </div>
                                 <div class="col-lg-12 mb-2">
+                                    <select class="form-control" name="representative_id" id="representative_id">
+                                        <option value="">{{ __('main.representatives') }}</option>
+                                        @foreach($representatives as $rep)
+                                            <option value="{{$rep->id}}">{{$rep->user_name}}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-lg-12 mb-2">
                                     <textarea class="form-control" name="notes" rows="2" placeholder="{{__('main.notes')}}"></textarea>
                                 </div>
                             </div>  
@@ -490,6 +498,13 @@ label.total {
         now.setMilliseconds(null);
         now.setSeconds(null); 
         document.getElementById('bill_date').value = now.toISOString().slice(0, -1);
+
+        $('#representative_id').on('change', function(){
+            const selectedText = $(this).find('option:selected').text().trim();
+            if(selectedText && !$('#cost_center').val()){
+                $('#cost_center').val(selectedText);
+            }
+        });
        
         $('input[name=add_item]').change(function() {
             console.log($('#add_item').val());

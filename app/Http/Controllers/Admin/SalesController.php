@@ -188,11 +188,12 @@ class SalesController extends Controller
         $siteContrller = new SystemController();
         $warehouses = $siteContrller->getAllWarehouses();
         $customers = $siteContrller->getAllClients();
+        $representatives = Representative::all();
         $settings = SystemSettings::with('currency') -> first();
         $branches = Branch::where('status',1)->get();
         $defaultInvoiceType = $this->resolveDefaultInvoiceType();
 
-        return view('admin.sales.create',compact('warehouses','customers','settings','branches','defaultInvoiceType'));
+        return view('admin.sales.create',compact('warehouses','customers','representatives','settings','branches','defaultInvoiceType'));
     }
 
     /**
@@ -269,6 +270,7 @@ class SalesController extends Controller
             'invoice_no' => $request-> invoice_no,
             'invoice_type' => $request->invoice_type ?? 'tax_invoice',
             'cost_center' => $request->cost_center,
+            'representative_id' => $request->representative_id,
             'tax_mode' => $request->tax_mode ?? 'inclusive',
             'customer_id' => $request->customer_id,
             'customer_name' => $request->customer_name,//pos
@@ -490,6 +492,7 @@ class SalesController extends Controller
         ]);
 
         $siteController = new SystemController();
+        $billDate = now()->format('Y-m-d');
         $total = 0;
         $tax = 0;
         $tax_excise = 0;
@@ -537,9 +540,10 @@ class SalesController extends Controller
 
         $sale = Sales::create([
             'sale_id' => $id,
-            'date' => $request->bill_date,
+            'date' => $billDate,
             'invoice_no' => $request-> invoice_no,
             'customer_id' => $request->customer_id,
+            'representative_id' => $request->representative_id,
             'biller_id' => Auth::id(),
             'warehouse_id' => $request->warehouse_id,
             'note' => $request->notes ? $request->notes :'',
@@ -610,10 +614,11 @@ class SalesController extends Controller
         $siteContrller = new SystemController();
         $vendors = Company::where('group_id' , '=' , 3) -> get();
         $warehouses = $siteContrller->getAllWarehouses();
-       $settings = SystemSettings::with('currency') ->first();
+        $settings = SystemSettings::with('currency') ->first();
+        $representatives = Representative::all();
         $defaultInvoiceType = $this->resolveDefaultInvoiceType();
      
-       return view('admin.sales.pos' , compact('vendors' , 'warehouses' , 'settings','defaultInvoiceType'));
+       return view('admin.sales.pos' , compact('vendors' , 'warehouses' , 'settings','representatives','defaultInvoiceType'));
     }
 
     private function resolveDefaultInvoiceType(): string
@@ -651,7 +656,7 @@ class SalesController extends Controller
        }
     }
 
-    public function print($id)
+    public function print(Request $request, $id)
     {
         $datas = DB::table('sales')
             ->join('warehouses','sales.warehouse_id','=','warehouses.id')
@@ -678,11 +683,14 @@ class SalesController extends Controller
             $vendor = Company::find($data->customer_id);
             $cashier = Cashier::first();
             $company = CompanyInfo::first();
+            $settings = SystemSettings::first();
 
             if($datas[0]->pos == 1){ 
-                return view('admin.sales.printPos',compact('data','details','vendor','cashier','payments','company'))->render();
+                return view('admin.sales.printPos',compact('data','details','vendor','cashier','payments','company','settings'))->render();
+            } elseif($request->get('format') === 'a5'){
+                return view('admin.sales.printA5',compact('data','details','vendor','cashier','payments','company','settings'))->render();
             } else {
-                return view('admin.sales.print',compact('data','details','vendor','cashier','payments','company'))->render();
+                return view('admin.sales.print',compact('data','details','vendor','cashier','payments','company','settings'))->render();
             }
            
         }

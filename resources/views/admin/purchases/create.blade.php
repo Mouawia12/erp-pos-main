@@ -104,6 +104,17 @@
                                 </div>
                                 <div class="col-md-2">
                                     <div class="form-group">
+                        <label>{{ __('main.representatives') }}</label>
+                        <select class="form-control" name="representative_id" id="representative_id">
+                            <option value="">{{ __('main.choose') }}</option>
+                            @foreach($representatives as $rep)
+                                <option value="{{$rep->id}}">{{$rep->user_name}}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group">
                                         <label>{{ __('main.tax_mode') }}</label>
                                         <select class="form-control" name="tax_mode" id="tax_mode">
                                             <option value="inclusive">{{__('main.tax_mode_inclusive')}}</option>
@@ -251,6 +262,12 @@
         now.setMilliseconds(null);
         now.setSeconds(null); 
         document.getElementById('bill_date').value = now.toISOString().slice(0, -1);
+        $('#representative_id').on('change', function(){
+            const txt = $(this).find('option:selected').text().trim();
+            if(txt && !$('#cost_center').val()){
+                $('#cost_center').val(txt);
+            }
+        });
          //document.getElementById('bill_date').valueAsDate = new Date();
 
         $('input[name=add_item]').change(function() {

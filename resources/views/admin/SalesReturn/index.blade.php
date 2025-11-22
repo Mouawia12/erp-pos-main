@@ -76,7 +76,11 @@ a.btn {
                                             <a type="button" class="btn btn-info"
                                               href="{{route('print.sales',$process->id)}}"> 
                                                عرض الفاتورة 
-                                            </a> 
+                                            </a>
+                                            <a type="button" class="btn btn-secondary mt-1"
+                                               href="{{route('print.sales',['id'=>$process->id,'format'=>'a5'])}}">
+                                                طباعة A5
+                                            </a>
                                         </td> 
                                     </tr>
                                 @endforeach

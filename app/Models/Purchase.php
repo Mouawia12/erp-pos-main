@@ -30,6 +30,7 @@ class Purchase extends Model
         'supplier_invoice_no',
         'supplier_invoice_copy',
         'cost_center',
+        'representative_id',
         'tax_mode','subscriber_id'
     ];
 
@@ -43,5 +44,9 @@ class Purchase extends Model
 
     public function customer(){
         return $this -> belongsTo(Company::class , 'customer_id');
+    }
+
+    public function representative(){
+        return $this->belongsTo(Representative::class,'representative_id');
     }
 }
