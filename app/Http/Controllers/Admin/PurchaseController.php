@@ -187,6 +187,12 @@ class PurchaseController extends Controller
             $tax +=$request->tax[$index];
             $net +=$request->net[$index];
         }
+
+        $taxForInvoice = $tax;
+        $netCalc = $total;
+        if(($request->tax_mode ?? 'inclusive') === 'exclusive'){
+            $netCalc += $taxForInvoice;
+        }
  
         $purchase = Purchase::create([
             'date' => $request->bill_date,
@@ -203,8 +209,8 @@ class PurchaseController extends Controller
             'note' => $request->notes ?? '' ,
             'total' => $total,
             'discount' => 0,
-            'tax' => $tax,
-            'net' => $net,
+            'tax' => $taxForInvoice,
+            'net' => $netCalc,
             'paid' => 0,
             'purchase_status' => 'completed',
             'payment_status' => 'not_paid',
@@ -431,6 +437,12 @@ class PurchaseController extends Controller
             $net +=$request->net[$index];
         }
 
+        $taxForInvoice = $tax;
+        $netCalc = $total;
+        if(($request->tax_mode ?? 'inclusive') === 'exclusive'){
+            $netCalc += $taxForInvoice;
+        }
+
         $return = Purchase::create([
             'returned_bill_id' => $billid,
             'date' => $request->bill_date,
@@ -444,8 +456,8 @@ class PurchaseController extends Controller
             'note' => $request->notes ? $request->notes :'',
             'total' => $total * -1,
             'discount' => 0,
-            'tax' => $tax * -1,
-            'net' => $net * -1,
+            'tax' => $taxForInvoice * -1,
+            'net' => $netCalc * -1,
             'paid' => 0,
             'purchase_status' => 'completed',
             'payment_status' => 'not_paid',

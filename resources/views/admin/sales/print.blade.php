@@ -174,6 +174,10 @@
                         <td>{{__('main.client')}} : <strong>{{$vendor->name}}</strong></td> 
                         <td>{{__('سجل ضريبي')}} : <strong>{{$vendor->vat_no}}</strong></td> 
                     </tr>  
+                    <tr>
+                        <td>{{__('main.tax_mode')}} : <strong>{{ $data->tax_mode === 'exclusive' ? __('main.tax_mode_exclusive') : __('main.tax_mode_inclusive') }}</strong></td>
+                        <td></td>
+                    </tr>
                 </tbody>
             </table>    
             @if(!empty($data->note) || (!empty($settings) && !empty($settings->invoice_terms)))

@@ -259,11 +259,16 @@ class SalesController extends Controller
             $total +=$request->total[$index];
             $tax +=$request->tax[$index];
             $tax_excise +=$request->tax_excise[$index];
-            $net +=$request->net[$index];
             $profit +=($request->price_unit[$index] - ($productDetails->cost * $unitFactor)) * $request->qnt[$index];
         }
 
+        $taxForInvoice = $tax_excise > 0 ? ($tax - $tax_excise) : $tax;
+        $net = $total;
+        if(($request->tax_mode ?? 'inclusive') === 'exclusive'){
+            $net += $taxForInvoice + $tax_excise;
+        }
         $net += $request -> additional_service ?? 0 ;
+        $net -= $request->discount;
  
         $sale = Sales::create([
             'date' => $billDate,
@@ -280,9 +285,9 @@ class SalesController extends Controller
             'note' => $request->notes ? $request->notes:'',
             'total' => $total,
             'discount' => $request->discount,
-            'tax' => $tax_excise > 0 ? $tax - $tax_excise:$tax,
+            'tax' => $taxForInvoice,
             'tax_excise' => $tax_excise,
-            'net' => $net - $request->discount,
+            'net' => $net,
             'paid' => 0,
             'sale_status' => 'completed',
             'payment_status' => 'not_paid', 
@@ -534,8 +539,13 @@ class SalesController extends Controller
             $total +=$request->total[$index];
             $tax +=$request->tax[$index];
             $tax_excise +=$request->tax_excise[$index];
-            $net +=$request->net[$index];
             $profit +=($request->price_unit[$index] - ($productDetails->cost * $unitFactor)) * $request->qnt[$index];
+        }
+
+        $taxForInvoice = $tax_excise > 0 ? ($tax - $tax_excise) : $tax;
+        $net = $total;
+        if(($request->tax_mode ?? 'inclusive') === 'exclusive'){
+            $net += $taxForInvoice + $tax_excise;
         }
 
         $sale = Sales::create([
@@ -549,7 +559,7 @@ class SalesController extends Controller
             'note' => $request->notes ? $request->notes :'',
             'total' => $total * -1,
             'discount' => $request->discount * -1, 
-            'tax' => $tax* -1,
+            'tax' => $taxForInvoice * -1,
             'tax_excise' => $tax_excise * -1 , 
             'net' => ($net - $request->discount)* -1 ,
             'paid' => 0,

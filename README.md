@@ -46,5 +46,6 @@ The full Arabic requirements from "طلبات-تطوير-برنامج-المحا
 - A5 print option for sales/returns via `print-sales/{id}?format=a5` alongside existing A4 and POS thermal layouts.
 - Cost centers / representatives: sales, returns, POS, and purchases now allow selecting a representative per invoice and optionally using it as the cost center value.
 - Sales invoices are locked after posting: only payment fields can change; deletion/editing of other fields is blocked.
+- Tax mode (inclusive/exclusive) is persisted on sales and purchases; totals are recomputed server-side to respect the selected mode and printed on A4/POS outputs.
 - Supplier invoice reference + attachment stored with purchase invoices.
 - Branch details (CR/tax/manager/email) added to branch screens and to invoice prints.

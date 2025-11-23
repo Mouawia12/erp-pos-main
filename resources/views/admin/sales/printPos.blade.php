@@ -169,6 +169,9 @@
             @if(!empty(optional($vendor)->address))
             <strong>العنوان / Address:</strong> {{ optional($vendor)->address }}
             @endif
+            <br>
+            <strong>{{__('main.tax_mode')}}:</strong>
+            {{ $data->tax_mode === 'exclusive' ? __('main.tax_mode_exclusive') : __('main.tax_mode_inclusive') }}
         </div>
         @if(!empty($data->note) || (!empty($settings) && !empty($settings->invoice_terms)))
             <div class="mt-2" style="text-align:right; direction:rtl; border:1px dotted #aaa; padding:6px;">
