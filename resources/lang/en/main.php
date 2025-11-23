@@ -311,6 +311,8 @@ return [
     'excute_btn' => 'Excute',
     'from_date' => 'Starting Date',
     'to_date' => 'Ending Date',
+    'search' => 'Search',
+    'reset' => 'Reset',
     'product_code' => 'Product Code',
     'product_name' => 'Product Name',
     'supplier_name' => 'Supplier Name',

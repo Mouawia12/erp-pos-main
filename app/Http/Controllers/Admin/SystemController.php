@@ -777,11 +777,14 @@ class SystemController extends Controller
 
             $from_account = AccountsTree::find($bill->from_account)->id;
             $to_account = AccountsTree::find($bill->to_account)->id;
+            $taxAccount = $settings->purchase_tax_account ?? $settings->sales_tax_account ?? null;
+            $taxAmount = $bill->tax_amount ?? 0;
+            $totalOut = $bill->amount + $taxAmount;
 
             $detailsData[] = [
                 'account_id' => $from_account,
                 'debit' =>  0,
-                'credit' => $bill -> amount,
+                'credit' => $totalOut,
                 'ledger_id' => 0,
                 'notes' => ''
             ];
@@ -792,6 +795,15 @@ class SystemController extends Controller
                 'ledger_id' => 0,
                 'notes' => ''
             ];
+            if($taxAccount && $taxAmount > 0){
+                $detailsData[] = [
+                    'account_id' => $taxAccount,
+                    'debit' => $taxAmount,
+                    'credit' => 0,
+                    'ledger_id' => 0,
+                    'notes' => 'ضريبة مصروف'
+                ];
+            }
             $this->insertJournal($headerData, $detailsData);
 
         }

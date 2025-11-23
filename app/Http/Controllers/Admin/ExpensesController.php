@@ -74,9 +74,13 @@ class ExpensesController extends Controller
             'docNumber' =>  'required|unique:expenses',
             'date' => 'required', 
             'amount' => 'required',
+            'tax_amount' => 'nullable|numeric',
             'from_account' => 'required',
             'to_account' => 'required',
         ]);
+
+        $taxAmount = $request->tax_amount ?? 0;
+        $totalWithTax = $request->amount + $taxAmount;
 
         $id =  Expenses::create([
             'docNumber' => $request -> docNumber,
@@ -85,6 +89,7 @@ class ExpensesController extends Controller
             'to_account' => $request -> to_account,
             'client' => $request -> client ?? '',
             'amount' => $request -> amount,
+            'tax_amount' => $taxAmount,
             'notes' => $request -> notes ?? '',  
             'payment_type' => $request -> payment_type ?? 0,
             'branch_id' => $request -> branch_id,

@@ -49,3 +49,4 @@ The full Arabic requirements from "طلبات-تطوير-برنامج-المحا
 - Tax mode (inclusive/exclusive) is persisted on sales and purchases; totals are recomputed server-side to respect the selected mode and printed on A4/POS outputs.
 - Supplier invoice reference + attachment stored with purchase invoices.
 - Branch details (CR/tax/manager/email) added to branch screens and to invoice prints.
+- Expenses: added tax field; tax is posted to configured tax account during auto-accounting.

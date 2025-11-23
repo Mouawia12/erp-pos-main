@@ -37,7 +37,62 @@ a.btn {
                         @endcan  
                     </div> 
                     <div class="clearfix"><hr></div> 
-                    
+                    <div class="px-3">
+                        <form id="filterForm" class="row g-2">
+                            <div class="col-md-2">
+                                <label>{{ __('main.bill_number') }}</label>
+                                <input type="text" class="form-control" id="filter_invoice_no" name="invoice_no" placeholder="{{__('main.bill_number')}}">
+                            </div>
+                            <div class="col-md-2">
+                                <label>{{ __('main.clients') }}</label>
+                                <select class="form-control" id="filter_customer_id" name="customer_id">
+                                    <option value="">{{ __('main.choose') }}</option>
+                                    @foreach($customers as $c)
+                                        <option value="{{$c->id}}">{{$c->name}}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label>{{ __('main.representatives') }}</label>
+                                <select class="form-control" id="filter_representative_id" name="representative_id">
+                                    <option value="">{{ __('main.choose') }}</option>
+                                    @foreach($representatives as $r)
+                                        <option value="{{$r->id}}">{{$r->user_name}}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label>{{ __('main.branche') }}</label>
+                                @if(empty(Auth::user()->branch_id))
+                                    <select class="form-control" id="filter_branch_id" name="branch_id">
+                                        <option value="">{{ __('main.choose') }}</option>
+                                        @foreach($branches as $b)
+                                            <option value="{{$b->id}}">{{$b->branch_name}}</option>
+                                        @endforeach
+                                    </select>
+                                @else
+                                    <input type="text" class="form-control" value="{{Auth::user()->branch->branch_name}}" readonly>
+                                @endif
+                            </div>
+                            <div class="col-md-2">
+                                <label>{{ __('main.from_date') ?? 'من تاريخ' }}</label>
+                                <input type="date" class="form-control" id="filter_date_from" name="date_from">
+                            </div>
+                            <div class="col-md-2">
+                                <label>{{ __('main.to_date') ?? 'إلى تاريخ' }}</label>
+                                <input type="date" class="form-control" id="filter_date_to" name="date_to">
+                            </div>
+                            <div class="col-md-3 mt-2">
+                                <label>{{ __('main.item') ?? 'الصنف' }}</label>
+                                <input type="text" class="form-control" id="filter_item_search" name="item_search" placeholder="{{__('main.product_code')}}">
+                            </div>
+                            <div class="col-md-3 d-flex align-items-end gap-2 mt-2">
+                                <button type="submit" class="btn btn-primary">{{ __('main.search') }}</button>
+                                <button type="button" id="filterReset" class="btn btn-secondary">{{ __('main.reset') ?? 'إعادة تعيين' }}</button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="clearfix"><hr></div> 
                     <div class="card-body">
                         <div class="table-responsive hoverable-table">
                             <table class="display w-100 text-nowrap table-bordered text-center" id="salesTable"> 
@@ -87,7 +142,18 @@ a.btn {
                 //serverSide: true,
                 responsive: true,
 
-                ajax: "{{ route('sales') }}",
+                ajax: {
+                    url: "{{ route('sales') }}",
+                    data: function(d){
+                        d.invoice_no = $('#filter_invoice_no').val();
+                        d.customer_id = $('#filter_customer_id').val();
+                        d.representative_id = $('#filter_representative_id').val();
+                        d.branch_id = $('#filter_branch_id').val();
+                        d.date_from = $('#filter_date_from').val();
+                        d.date_to = $('#filter_date_to').val();
+                        d.item_search = $('#filter_item_search').val();
+                    }
+                },
                 columns: [
                     {
                         data: 'id', 
@@ -152,6 +218,15 @@ a.btn {
                 "lengthMenu": [ [10, 25, 50, -1], [10, 25, 50, "All"] ],
                 order: [[0, 'desc']]
             }).buttons().container().appendTo('#ItemTable_wrapper .col-md-6:eq(0)');
+
+            $('#filterForm').on('submit', function(e){
+                e.preventDefault();
+                table.ajax.reload();
+            });
+            $('#filterReset').on('click', function(){
+                $('#filterForm')[0].reset();
+                table.ajax.reload();
+            });
         });
 </script> 
 <script type="text/javascript">

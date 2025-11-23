@@ -17,6 +17,7 @@ use App\Models\Warehouse;
 use App\Models\Branch;
 use App\Models\ProductUnit;
 use App\Models\Unit;
+use App\Models\Representative;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -31,22 +32,42 @@ class SalesController extends Controller
      */
     public function index(Request $request)
     {
-        $data = DB::table('sales')
-            ->join('warehouses','sales.warehouse_id','=','warehouses.id')
-            ->join('branches','sales.branch_id','=','branches.id')
-            ->join('companies','sales.customer_id','=','companies.id')
-            ->select('sales.*','warehouses.name as warehouse_name','companies.name as customer_name','branches.branch_name')
-            ->selectRaw('(sales.net - sales.paid) as remain') 
-            ->where('sales.sale_id',0)
+        $query = DB::table('sales as s')
+            ->join('warehouses','s.warehouse_id','=','warehouses.id')
+            ->join('branches','s.branch_id','=','branches.id')
+            ->join('companies','s.customer_id','=','companies.id')
+            ->leftJoin('representatives','representatives.id','=','s.representative_id')
+            ->select('s.*','warehouses.name as warehouse_name','companies.name as customer_name','branches.branch_name','representatives.user_name as representative_name')
+            ->selectRaw('(s.net - s.paid) as remain') 
+            ->where('s.sale_id',0)
             ->when(Auth::user()->subscriber_id ?? null, function($q, $sub){
-                $q->where('sales.subscriber_id',$sub);
+                $q->where('s.subscriber_id',$sub);
             })
-            ->orderBy('sales.id', 'desc') 
-            ->get(); 
+            ->when($request->invoice_no, fn($q,$v)=>$q->where('s.invoice_no','like','%'.$v.'%'))
+            ->when($request->customer_id, fn($q,$v)=>$q->where('s.customer_id',$v))
+            ->when($request->representative_id, fn($q,$v)=>$q->where('s.representative_id',$v))
+            ->when($request->branch_id, fn($q,$v)=>$q->where('s.branch_id',$v))
+            ->when($request->date_from, fn($q,$v)=>$q->whereDate('s.date','>=',$v))
+            ->when($request->date_to, fn($q,$v)=>$q->whereDate('s.date','<=',$v))
+            ->when($request->item_search, function($q,$v){
+                $q->whereExists(function($sub) use($v){
+                    $sub->select(DB::raw(1))
+                        ->from('sale_details as sd')
+                        ->join('products as p','p.id','=','sd.product_id')
+                        ->whereColumn('sd.sale_id','s.id')
+                        ->where(function($inner) use($v){
+                            $inner->where('p.code','like','%'.$v.'%')
+                                  ->orWhere('p.name','like','%'.$v.'%');
+                        });
+                });
+            })
+            ->orderBy('s.id', 'desc');
 
         if(!empty(Auth::user()->branch_id)) {
-            $data = $data->where('branch_id', Auth::user()->branch_id); 
+            $query->where('s.branch_id', Auth::user()->branch_id); 
         }  
+
+        $data = $query->get();
 
         if ($request->ajax()) { 
             return Datatables::of($data)->addIndexColumn()
@@ -89,7 +110,11 @@ class SalesController extends Controller
                 ->make(true);
         } 
  
-        return view('admin.sales.index');
+        $customers = Company::where('group_id',3)->get();
+        $representatives = Representative::all();
+        $branches = Branch::where('status',1)->get();
+
+        return view('admin.sales.index',compact('customers','representatives','branches'));
     
     }
 

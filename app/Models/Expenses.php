@@ -16,6 +16,7 @@ class Expenses extends Model
       'to_account',
       'client',
       'amount',
+      'tax_amount',
       'notes',
       'date',
       'docNumber',

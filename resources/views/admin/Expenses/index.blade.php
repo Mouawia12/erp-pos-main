@@ -175,6 +175,12 @@
                         </div>
                         <div class="col-6">
                             <div class="form-group">
+                                <label>{{ __('main.tax') }}</label>
+                                <input class="form-control" id="tax_amount" name="tax_amount" type="number" step="0.01" value="0">
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="form-group">
                                 <label>{{ __('main.bill_expense_client') }} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
                                 <input class="form-control" id="client" name="client" type="text">
                             </div>
@@ -431,7 +437,6 @@
 </script> 
 @endsection 
  
-
 
 
 

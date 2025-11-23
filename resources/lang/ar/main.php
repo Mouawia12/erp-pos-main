@@ -327,6 +327,8 @@ return [
     'excute_btn' => 'تنفيذ',
     'from_date' => 'تاريخ البداية',
     'to_date' => 'تاريخ النهاية',
+    'search' => 'بحث',
+    'reset' => 'إعادة تعيين',
     'product_code' => 'كود الصنف',
     'product_name' => 'إسم الصنف',
     'supplier_name' => 'إسم المورد',
