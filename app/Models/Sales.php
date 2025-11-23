@@ -35,6 +35,10 @@ class Sales extends Model
                 }
             }
         });
+
+        static::deleting(function () {
+            abort(403, 'Sales invoices are locked and cannot be deleted after posting.');
+        });
     }
 
     public function branch(){

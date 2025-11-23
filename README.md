@@ -45,5 +45,6 @@ The full Arabic requirements from "طلبات-تطوير-برنامج-المحا
 - Invoice terms templates: create/edit/delete reusable terms from `admin/invoice-terms` and inject them into system settings for printing on invoices.
 - A5 print option for sales/returns via `print-sales/{id}?format=a5` alongside existing A4 and POS thermal layouts.
 - Cost centers / representatives: sales, returns, POS, and purchases now allow selecting a representative per invoice and optionally using it as the cost center value.
+- Sales invoices are locked after posting: only payment fields can change; deletion/editing of other fields is blocked.
 - Supplier invoice reference + attachment stored with purchase invoices.
 - Branch details (CR/tax/manager/email) added to branch screens and to invoice prints.
