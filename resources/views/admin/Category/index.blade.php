@@ -39,30 +39,42 @@
                                     <tr>
                                         <th>#</th> 
                                         <th>{{__('main.name')}}</th>
-                                        <th> الفئة الرئيسية </th> 
+                                        <th>{{__('main.parent')}}</th> 
                                         <th>{{__('main.actions')}}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                @foreach($categories as $category)
-                                    <tr>
-                                        <td class="text-center">{{$loop -> index+1}}</td> 
-                                        <td class="text-center">{{$category -> name}}</td>
-                                        <td class="text-center">{{$category -> slug}} </td> 
-                                        <td class="text-center">
-                                        @can('تعديل ترميز')
-                                            <button type="button" class="btn btn-labeled btn-info " onclick="EditModal({{$category -> id}})"> 
-                                                <i class="fa fa-pen"></i> 
-                                            </button>
-                                        @endcan 
-                                        @can('حذف ترميز')
-                                            <button type="button" class="btn btn-labeled btn-danger deleteBtn "  id="{{$category -> id}}"> 
-                                                <i class="fa fa-trash"></i>
-                                            </button>
-                                        </td>
-                                        @endcan
-                                    </tr>
-                                @endforeach
+                                @php $row = 1; @endphp
+                                @php
+                                    $renderTree = function($nodes, $depth = 0) use (&$renderTree, &$row) {
+                                        foreach ($nodes as $node) {
+                                            $pad = str_repeat('-- ', $depth);
+                                            @endphp
+                                            <tr>
+                                                <td class="text-center">{{ $row++ }}</td>
+                                                <td class="text-center">{{ $pad }}{{ $node['name'] }}</td>
+                                                <td class="text-center">{{ $node['parent_name'] ?? '-' }}</td>
+                                                <td class="text-center">
+                                                    @can('تعديل ترميز')
+                                                        <button type="button" class="btn btn-labeled btn-info" onclick="EditModal({{ $node['id'] }})">
+                                                            <i class="fa fa-pen"></i>
+                                                        </button>
+                                                    @endcan
+                                                    @can('حذف ترميز')
+                                                        <button type="button" class="btn btn-labeled btn-danger deleteBtn" id="{{ $node['id'] }}">
+                                                            <i class="fa fa-trash"></i>
+                                                        </button>
+                                                    @endcan
+                                                </td>
+                                            </tr>
+                                            @php
+                                            if (!empty($node['children'])) {
+                                                $renderTree($node['children'], $depth + 1);
+                                            }
+                                        }
+                                    };
+                                    $renderTree($tree);
+                                @endphp
                                 </tbody>
                             </table>
                         </div>
@@ -108,9 +120,18 @@
                                         name="parent_id" id="parent_id">
                                     <option value="">حدد الاختيار</option>
                                     <option value ="0">رئيسي</option>
-                                    @foreach ($cats as $item)
-                                        <option value="{{$item -> id}}"> {{ $item -> name}}</option>
-                                    @endforeach
+                                    @php
+                                        $renderOptions = function($nodes, $depth = 0) use (&$renderOptions) {
+                                            foreach($nodes as $node){
+                                                $pad = str_repeat('-- ', $depth);
+                                                echo '<option value="'.$node['id'].'">'.$pad.$node['name'].'</option>';
+                                                if(!empty($node['children'])){
+                                                    $renderOptions($node['children'], $depth+1);
+                                                }
+                                            }
+                                        };
+                                        $renderOptions($tree);
+                                    @endphp
                                 </select>
                             </div>
                         </div>

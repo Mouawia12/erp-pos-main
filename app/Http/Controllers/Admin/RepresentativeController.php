@@ -47,7 +47,10 @@ class RepresentativeController extends Controller
                 'code' => 'required',
                 'name' => 'required',
                 'user_name' => 'required|unique:representatives',
-                'password' => 'required'
+                'password' => 'required',
+                'document_name' => 'nullable|string|max:191',
+                'document_number' => 'nullable|string|max:191',
+                'document_expiry_date' => 'nullable|date',
             ]);
             try {
                 Representative::create([
@@ -57,6 +60,9 @@ class RepresentativeController extends Controller
                     'password' => $request -> password,
                     'notes' => '',
                     'active' => 1,
+                    'document_name' => $request->document_name,
+                    'document_number' => $request->document_number,
+                    'document_expiry_date' => $request->document_expiry_date,
                 ]);
                 return redirect()->route('representatives')->with('success' , __('main.created'));
             } catch(QueryException $ex){
@@ -95,7 +101,10 @@ class RepresentativeController extends Controller
                 'code' => 'required',
                 'name' => 'required',
                 'user_name' => ['required' , Rule::unique('representatives')->ignore($request -> id)],
-                'password' => 'required'
+                'password' => 'required',
+                'document_name' => 'nullable|string|max:191',
+                'document_number' => 'nullable|string|max:191',
+                'document_expiry_date' => 'nullable|date',
             ]);
             try {
                 $user -> update([
@@ -105,6 +114,9 @@ class RepresentativeController extends Controller
                     'password' => $request -> password,
                     'notes' => '',
                     'active' => 1,
+                    'document_name' => $request->document_name,
+                    'document_number' => $request->document_number,
+                    'document_expiry_date' => $request->document_expiry_date,
                 ]);
                 return redirect()->route('representatives')->with('success' , __('main.created'));
             } catch(QueryException $ex){

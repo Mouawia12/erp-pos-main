@@ -154,41 +154,69 @@ class PurchaseController extends Controller
         $siteController = new SystemController();
         $total = 0;
         $tax = 0;
+        $tax_excise = 0;
         $net = 0;
 
-        $products = array();
-        $qntProducts = array();
+        $products = [];
+        $qntProducts = [];
         foreach ($request->product_id as $index=>$id){
-            $productDetails = $siteController->getProductById($id);
+            $productDetails = Product::with('productTaxes')->find($id);
             $unitId = $request->unit_id[$index] ?? $productDetails->unit;
             $unitFactor = $request->unit_factor[$index] ?? 1;
+
+            $qty = $request->qnt[$index] ?? 0;
+            $costWithoutTax = $request->price_without_tax[$index];
+            $costWithTaxInput = $request->price_with_tax[$index];
+            $taxRate = $productDetails->totalTaxRate();
+            $exciseRate = (float)($productDetails->tax_excise ?? 0);
+
+            // If price_with_tax not provided, compute it
+            $lineBase = $costWithoutTax * $qty;
+            $lineTaxExcise = $lineBase * ($exciseRate / 100);
+            $lineTax = $lineBase * ($taxRate / 100);
+            $linePriceWithTax = $lineBase + $lineTax;
+            $lineTotal = $lineBase;
+            $lineNet = $linePriceWithTax;
+
+            // Override with provided inclusive price if exists
+            if (!empty($costWithTaxInput)) {
+                $linePriceWithTax = $costWithTaxInput * $qty;
+                $lineTax = $linePriceWithTax - $lineBase;
+                $lineNet = $linePriceWithTax;
+            }
+
             $product = [
                 'purchase_id' => 0,
                 'product_code' => $productDetails->code,
                 'product_id' => $id,
-                'quantity' => $request->qnt[$index],
-                'cost_without_tax' => $request->price_without_tax[$index],
-                'cost_with_tax' => $request->price_with_tax[$index],
+                'variant_id' => $request->variant_id[$index] ?? null,
+                'variant_color' => $request->variant_color[$index] ?? null,
+                'variant_size' => $request->variant_size[$index] ?? null,
+                'variant_barcode' => $request->variant_barcode[$index] ?? null,
+                'quantity' => $qty,
+                'cost_without_tax' => $costWithoutTax,
+                'cost_with_tax' => $linePriceWithTax / max($qty,1),
                 'warehouse_id' => $request->warehouse_id,
                 'unit_id' => $unitId,
                 'batch_no' => $request->batch_no[$index] ?? null,
                 'expiry_date' => $request->expiry_date[$index] ?? null,
                 'unit_factor' => $unitFactor,
-                'tax' => $request->tax[$index],
-                'total' => $request->total[$index],
-                'net' => $request->net[$index]
+                'tax' => $lineTax,
+                'total' => $lineTotal,
+                'net' => $lineNet
             ];
 
             $item = new Product();
             $item -> product_id = $id;
-            $item -> quantity = $request->qnt[$index] * $unitFactor;
+            $item -> quantity = $qty * $unitFactor;
             $item -> warehouse_id = $request->warehouse_id; 
             $qntProducts[] = $item ;
 
             $products[] = $product;
-            $total +=$request->total[$index];
-            $tax +=$request->tax[$index];
-            $net +=$request->net[$index];
+            $total +=$lineTotal;
+            $tax +=$lineTax;
+            $tax_excise += $lineTaxExcise;
+            $net +=$lineNet;
         }
 
         $taxForInvoice = $tax;
@@ -225,6 +253,8 @@ class PurchaseController extends Controller
         foreach ($products as $product){
             $product['purchase_id'] = $purchase->id;
             PurchaseDetails::create($product);
+            $this->refreshProductPricing($product);
+            $this->syncVariantStock($product, true);
         }
 
         if($request->hasFile('supplier_invoice_copy')){
@@ -243,6 +273,57 @@ class PurchaseController extends Controller
         $siteController->purchaseJournals($purchase->id);
 
         return redirect()->route('purchases');
+    }
+
+    private function refreshProductPricing(array $purchaseRow): void
+    {
+        $product = Product::with('productTaxes')->find($purchaseRow['product_id'] ?? null);
+        if (!$product) {
+            return;
+        }
+
+        $baseCost = $purchaseRow['cost_without_tax'] ?? $product->cost;
+        $taxRateValue = $product->totalTaxRate();
+
+        $margin = $product->profit_margin;
+
+        $newPrice = $product->price;
+        if ($margin !== null) {
+            $newPrice = $baseCost * (1 + ($margin / 100));
+            if ($product->price_includes_tax) {
+                $newPrice = $newPrice * (1 + ($taxRateValue / 100));
+            }
+        }
+
+        $priceLevels = [];
+        for ($i = 1; $i <= 6; $i++) {
+            $key = 'price_level_'.$i;
+            if ($i === 1) {
+                $priceLevels[$key] = $newPrice;
+            } else {
+                $priceLevels[$key] = $product->{$key} ?? $newPrice;
+            }
+        }
+
+        $product->update(array_merge([
+            'cost' => $baseCost,
+            'price' => $newPrice,
+        ], $priceLevels));
+    }
+
+    private function syncVariantStock(array $purchaseRow, bool $isIncrease = true): void
+    {
+        if (empty($purchaseRow['variant_id'])) {
+            return;
+        }
+        $variant = \App\Models\ProductVariant::find($purchaseRow['variant_id']);
+        if (!$variant) {
+            return;
+        }
+        $qty = $purchaseRow['quantity'] ?? 0;
+        $variant->update([
+            'quantity' => $variant->quantity + ($isIncrease ? $qty : -$qty),
+        ]);
     }
 
     /**

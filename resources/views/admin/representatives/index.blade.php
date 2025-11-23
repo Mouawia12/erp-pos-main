@@ -163,6 +163,33 @@
                     </div>
 
                     <div class="row">
+                        <div class="col-4">
+                            <div class="form-group">
+                                <label>{{ __('main.rep_document_name') }}</label>
+                                <input type="text" id="document_name" name="document_name"
+                                       class="form-control"
+                                       placeholder="{{ __('main.rep_document_name') }}"  />
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="form-group">
+                                <label>{{ __('main.rep_document_number') }}</label>
+                                <input type="text" id="document_number" name="document_number"
+                                       class="form-control"
+                                       placeholder="{{ __('main.rep_document_number') }}"  />
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="form-group">
+                                <label>{{ __('main.rep_document_expiry') }}</label>
+                                <input type="date" id="document_expiry_date" name="document_expiry_date"
+                                       class="form-control"
+                                       placeholder="{{ __('main.rep_document_expiry') }}"  />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
                         <div class="col-6" style="display: block; margin: 20px auto; text-align: center;">
                             <button type="submit" class="btn btn-labeled btn-primary"  >
                                 {{__('main.save_btn')}}</button>
@@ -327,9 +354,13 @@
                     $(".modal-body #gender").val( "" );
                     $(".modal-body #company").val( "" );
                     $(".modal-body #phone").val( "" );
+                    $(".modal-body #code").val( "" );
                     $(".modal-body #id").val( 0 );
                     $(".modal-body #email").val( "" );
                     $(".modal-body #password").val( "" );
+                    $(".modal-body #document_name").val( "" );
+                    $(".modal-body #document_number").val( "" );
+                    $(".modal-body #document_expiry_date").val( "" );
                     $(".modal-body #status").val( "" );
                     $(".modal-body #group").val( "" );
                     $(".modal-body #conf_password").val( "" );
@@ -491,6 +522,9 @@
                             $(".modal-body #code").val( response.code  );
                             $(".modal-body #user_name").val( response.user_name  );
                             $(".modal-body #password").val( response.password  );
+                            $(".modal-body #document_name").val( response.document_name  );
+                            $(".modal-body #document_number").val( response.document_number  );
+                            $(".modal-body #document_expiry_date").val( response.document_expiry_date  );
                             $(".modal-body #id").val( response.id  );
                         },
                         complete: function() {

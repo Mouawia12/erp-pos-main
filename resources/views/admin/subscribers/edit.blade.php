@@ -102,7 +102,7 @@
                         <div class="col-12 mb-3">
                             <label>المستندات الحالية</label>
                             <ul class="list-group">
-                                @foreach($subscriber->documents as $doc)
+                                @foreach($subscriber->documents->whereNull('archived_at') as $doc)
                                     <li class="list-group-item d-flex justify-content-between align-items-center">
                                         <a href="{{ asset('storage/'.$doc->file_path) }}" target="_blank">{{ $doc->title ?? basename($doc->file_path) }}</a>
                                         <form action="{{ route('owner.documents.destroy',$doc) }}" method="POST" onsubmit="return confirm('حذف المستند؟');">
@@ -110,10 +110,27 @@
                                             @method('DELETE')
                                             <button class="btn btn-sm btn-danger" type="submit">حذف</button>
                                         </form>
+                                        <form action="{{ route('owner.documents.archive',$doc) }}" method="POST" onsubmit="return confirm('أرشفة المستند؟');">
+                                            @csrf
+                                            <button class="btn btn-sm btn-secondary" type="submit">أرشفة</button>
+                                        </form>
                                     </li>
                                 @endforeach
                             </ul>
                         </div>
+                        @if($subscriber->documents->whereNotNull('archived_at')->count())
+                            <div class="col-12 mb-3">
+                                <label>مستندات مؤرشفة</label>
+                                <ul class="list-group">
+                                    @foreach($subscriber->documents->whereNotNull('archived_at') as $doc)
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            <span>{{ $doc->title ?? basename($doc->file_path) }}</span>
+                                            <span class="text-muted">مؤرشفة في {{ optional($doc->archived_at)->format('Y-m-d') }}</span>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
                     @endif
                 </div>
                 <button class="btn btn-success" type="submit">حفظ</button>

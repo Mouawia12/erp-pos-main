@@ -135,8 +135,23 @@ label.total {
     color: #7c5cc4;
     font-weight: 700;
 }
+@if(isset($posMode) && $posMode === 'touch')
+.pos-page.pos-touch .btn {
+    min-height: 48px;
+    font-size: 16px;
+}
+.pos-page.pos-touch input,
+.pos-page.pos-touch select {
+    min-height: 44px;
+    font-size: 16px;
+}
+.pos-page.pos-touch .table td,
+.pos-page.pos-touch .table th {
+    font-size: 15px;
+}
+@endif
 </style> 
-<div class="pos-page"> 
+<div class="pos-page {{ isset($posMode) && $posMode === 'touch' ? 'pos-touch' : 'pos-classic' }}"> 
     <div class="row row-lg">
         <section class="forms pos-section col-xl-12">
         
@@ -660,7 +675,12 @@ label.total {
         $data = '';
         $.each(response,function (i,item) {
             suggestionItems[item.id] = item;
-            $data +='<li class="select_product" data-item-id="'+item.id+'">'+item.name+'</li>';
+            let label = item.name;
+            if(item.selected_variant){
+                label += ' | '+(item.selected_variant.color ?? '');
+                label += ' '+(item.selected_variant.size ?? '');
+            }
+            $data +='<li class="select_product" data-item-id="'+item.id+'">'+label+'</li>';
         });
         document.getElementById('products_suggestions').innerHTML = $data;
     }
@@ -698,8 +718,16 @@ label.total {
         });
 
         var price = item.price;
+        if(item.selected_variant && item.selected_variant.price){
+            price = item.selected_variant.price;
+        }
+
+        if(item.promo_discount_unit){
+            price = Math.max(price - Number(item.promo_discount_unit), 0);
+        }
+
         var taxType = item.tax_method;
-        var taxRate = item.tax_rate == 1 ? 0 : 15;
+        var taxRate = item.total_tax_rate ? Number(item.total_tax_rate) : (item.tax_rate == 1 ? 0 : 15);
         var itemTax = 0;
         var priceWithoutTax = 0;
         var priceWithTax = 0;
@@ -716,17 +744,14 @@ label.total {
         }
 
         if(taxType == 1){
-            //included
             priceWithTax = price;
             priceWithoutTax = (price / (1+(taxRate/100)));
             itemTax = priceWithTax - priceWithoutTax;
         }else{
-            //excluded
             itemTax = price * (taxRate/100);
             priceWithoutTax = price;
             priceWithTax = price + itemTax;
         } 
-        //update 19-04-2024
         var Excise = item.tax_excise;
         var taxExcise = 0;
         if(Excise > 0){    
@@ -734,7 +759,7 @@ label.total {
             itemTax = itemTax + taxExcise;
         }
         
-        var key = item.id + '_' + itemKey;
+        var key = (item.selected_variant ? ('v'+item.selected_variant.id) : ('p'+item.id)) + '_' + itemKey;
         itemKey++;
 
         sItems[key] = item;
@@ -751,6 +776,11 @@ label.total {
         sItems[key].selected_unit_id = defaultUnit;
         sItems[key].unit_factor = defaultFactor;
         sItems[key].units_options = item.units_options ?? [];
+        sItems[key].variant_id = item.selected_variant ? item.selected_variant.id : null;
+        sItems[key].variant_color = item.selected_variant ? item.selected_variant.color : null;
+        sItems[key].variant_size = item.selected_variant ? item.selected_variant.size : null;
+        sItems[key].variant_barcode = item.selected_variant ? item.selected_variant.barcode : null;
+        sItems[key].promo_discount_unit = item.promo_discount_unit ?? 0;
 
         if(isDuplicate){
             alert('{{ __('main.duplicate_item_warning') }}');
@@ -929,8 +959,11 @@ label.total {
 
             items += 1 ;
             qnts += item.qnt ;
-            total += item.price_withoute_tax*item.qnt ;
-            net += ((item.price_withoute_tax + item.item_tax)*item.qnt);
+            var lineTotal = (item.price_withoute_tax*item.qnt);
+            var lineTax = (item.item_tax*item.qnt);
+            var lineDiscount = (item.promo_discount_unit ?? 0) * item.qnt;
+            total += lineTotal ;
+            net += (lineTotal + lineTax - lineDiscount);
 
             var newTr = $('<tr data-item-id="'+i+'">');
             var tr_html ='<td><input type="hidden" name="product_id[]" value="'+(item.product_id ?? item.id)+'"> <span><strong>'+item.name + '</strong><br>' + (item.code)+'</span> </td>';
@@ -966,9 +999,14 @@ label.total {
                 tr_html +='<td hidden><input type="text" readonly="readonly" class="form-control" name="total[]" value="'+(item.price_withoute_tax*item.qnt).toFixed(2)+'"></td>';
                 tr_html +='<td hidden><input type="text" readonly="readonly" class="form-control" name="tax[]" value="'+(item.item_tax*item.qnt).toFixed(2)+'"></td>';
                 tr_html +='<td hidden><input type="hidden" class="form-control TaxExcise" name="tax_excise[]" value="'+(((item.tax_excise/100) * item.price_withoute_tax)*item.qnt).toFixed(2)+'"></td>';
-                tr_html +='<td><input type="text" readonly="readonly" class="form-control text-center" name="net[]" value="'+((item.price_withoute_tax + item.item_tax)*item.qnt).toFixed(2)+'"></td>';
+                tr_html +='<td hidden><input type="hidden" class="form-control" name="discount_unit[]" value="'+(item.promo_discount_unit ?? 0)+'"></td>';
+                tr_html +='<td><input type="text" readonly="readonly" class="form-control text-center" name="net[]" value="'+((item.price_withoute_tax + item.item_tax - (item.promo_discount_unit ?? 0))*item.qnt).toFixed(2)+'"></td>';
                 tr_html +='<td hidden><input type="hidden" class="form-control TaxRate" name="tax_rate[]" value="'+item.tax_rate+'"></td>';
                 tr_html +='<td hidden><input type="hidden" class="form-control TaxExciseRate" name="tax_excise_rate[]" value="'+item.tax_excise+'"></td>';
+                tr_html +='<td hidden><input type="hidden" name="variant_id[]" value="'+(item.variant_id ?? '')+'"></td>';
+                tr_html +='<td hidden><input type="hidden" name="variant_color[]" value="'+(item.variant_color ?? '')+'"></td>';
+                tr_html +='<td hidden><input type="hidden" name="variant_size[]" value="'+(item.variant_size ?? '')+'"></td>';
+                tr_html +='<td hidden><input type="hidden" name="variant_barcode[]" value="'+(item.variant_barcode ?? '')+'"></td>';
                 tr_html +=`<td class="text-center"> 
                                 <button type="button" class="btn btn-danger deleteBtn btn-sm" value=" '+i+' ">
                                     <i class="fa fa-close"></i>

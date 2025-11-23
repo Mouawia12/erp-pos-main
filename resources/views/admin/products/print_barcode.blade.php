@@ -441,17 +441,24 @@
             sItems = {};
         }
 
-        if(sItems[item.id]){
-            sItems[item.id].qty = sItems[item.id].qty +1;
+        let key = item.id;
+        if(item.selected_variant && item.selected_variant.id){
+            key = 'v'+item.selected_variant.id;
+        }
+
+        if(sItems[key]){
+            sItems[key].qty = sItems[key].qty +1;
         }else{
             item.qty = item.quantity > 0 ? item.quantity : 1;
-            sItems[item.id] = item; 
-            sItems[item.id].id = item.id;
-            sItems[item.id].name = item.name; 
-            sItems[item.id].code = item.code;
-            sItems[item.id].price = item.price; 
-            sItems[item.id].promo_price = item.cost; 
-            row_id = item.id
+            sItems[key] = item; 
+            sItems[key].id = key;
+            sItems[key].name = item.name; 
+            sItems[key].code = item.selected_variant ? (item.selected_variant.barcode ?? item.code) : item.code;
+            sItems[key].variant_color = item.selected_variant ? item.selected_variant.color : null;
+            sItems[key].variant_size = item.selected_variant ? item.selected_variant.size : null;
+            sItems[key].price = item.selected_variant && item.selected_variant.price ? item.selected_variant.price : item.price; 
+            sItems[key].promo_price = item.cost; 
+            row_id = key;
         }
 
         count++;
@@ -502,7 +509,11 @@
             console.log(item);
 
             var newTr = $('<tr data-item-id="'+item.id+'" data-price="'+item.price+'" data-promo-price="'+item.cost+'" data-currency="SR">');
-            var tr_html ='<td class="text-center"><input type="hidden" name="product_id[]" value="'+item.id+'"> <span>'+item.name +'</span> </td>';
+            var tr_html ='<td class="text-center"><input type="hidden" name="product_id[]" value="'+item.code+'"> <span>'+item.name +'</span>';
+            if(item.variant_color || item.variant_size){
+                tr_html += '<div style="font-size: 11px; color:#555;">'+(item.variant_color ?? '')+' '+(item.variant_size ?? '')+'</div>';
+            }
+            tr_html += '</td>';
                 tr_html +='<td class="product-code">'+(item.code)+'</td>';
                 tr_html +='<td class="text-center"><input type="number" class="form-control qty" name="qty[]" value="'+item.qty.toFixed(2)+'"></td>';
                 tr_html +=`<td class="text-center">

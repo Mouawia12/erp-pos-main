@@ -24,6 +24,43 @@
         <div class="main-header-right">
 
             <div class="nav nav-item  navbar-nav-right ml-auto">
+               @php
+                    app(\App\Services\AlertService::class)->sync();
+                    $alertUnreadCount = \App\Models\Alert::unread()->count();
+                    $latestAlerts = \App\Models\Alert::unread()->latest()->take(5)->get();
+               @endphp
+               <div class="dropdown nav-item main-header-notification">
+                    <a class="new nav-link" href="#" data-toggle="dropdown" aria-expanded="false">
+                        <i class="fa fa-bell"></i>
+                        @if($alertUnreadCount > 0)
+                            <span class="badge badge-danger nav-link-badge">{{ $alertUnreadCount }}</span>
+                        @endif
+                    </a>
+                    <div class="dropdown-menu">
+                        <div class="menu-header-content bg-primary text-white">
+                            <p class="menu-header-title mb-0">{{ __('main.alerts_center') }}</p>
+                            <p class="menu-header-subtitle mb-0">{{ __('main.alerts_unread_count', ['count'=>$alertUnreadCount]) }}</p>
+                        </div>
+                        <div class="main-notification-list Notification-scroll">
+                            @forelse($latestAlerts as $alert)
+                                <a class="d-flex p-3 border-bottom" href="{{ route('alerts.index') }}">
+                                    <div class="mr-3 notifyimg bg-{{ $alert->severity === 'danger' ? 'danger' : 'warning' }}">
+                                        <i class="fa fa-bell text-white"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="notification-label mb-0">{{ $alert->title }}</h6>
+                                        <span class="notification-subtext text-muted">{{ $alert->created_at->diffForHumans() }}</span>
+                                    </div>
+                                </a>
+                            @empty
+                                <div class="p-3 text-center text-muted">{{ __('main.no_alerts_found') }}</div>
+                            @endforelse
+                        </div>
+                        <div class="dropdown-footer text-center">
+                            <a href="{{ route('alerts.index') }}">{{ __('main.show_all') }}</a>
+                        </div>
+                    </div>
+               </div>
                <div class="dropdown main-profile-menu nav nav-item nav-link"> 
                     <a href="#" type="button" id="btnFullScreen" name="btnFullScreen" role="button">
                         <i class="fa fa-expand"></i> 

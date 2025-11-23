@@ -13,11 +13,14 @@ use App\Models\CompanyInfo;
 use App\Http\Requests\StoreSalesRequest;
 use App\Http\Requests\UpdateSalesRequest;
 use App\Models\SystemSettings;
+use App\Models\PosSettings;
 use App\Models\Warehouse;
 use App\Models\Branch;
 use App\Models\ProductUnit;
 use App\Models\Unit;
 use App\Models\Representative;
+use App\Models\Promotion;
+use App\Models\PromotionItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -116,6 +119,66 @@ class SalesController extends Controller
 
         return view('admin.sales.index',compact('customers','representatives','branches'));
     
+    }
+
+    private function resolvePromotionDiscount($productId, $variantId, $branchId, $qty, $basePrice): array
+    {
+        $today = now()->toDateString();
+        $promoItem = PromotionItem::query()
+            ->join('promotions','promotions.id','=','promotion_items.promotion_id')
+            ->where('promotions.status','active')
+            ->where(function($q) use ($today){
+                $q->whereNull('promotions.start_date')->orWhere('promotions.start_date','<=',$today);
+            })
+            ->where(function($q) use ($today){
+                $q->whereNull('promotions.end_date')->orWhere('promotions.end_date','>=',$today);
+            })
+            ->where(function($q) use ($branchId){
+                if($branchId){
+                    $q->where(function($qq) use ($branchId){
+                        $qq->whereNull('promotions.branch_id')->orWhere('promotions.branch_id',$branchId);
+                    });
+                }
+            })
+            ->where('promotion_items.product_id',$productId)
+            ->when($variantId,function($q) use ($variantId){
+                $q->where(function($qq) use ($variantId){
+                    $qq->whereNull('promotion_items.variant_id')->orWhere('promotion_items.variant_id',$variantId);
+                });
+            })
+            ->first(['promotion_items.*']);
+
+        if(!$promoItem){
+            return ['discount_unit'=>0];
+        }
+
+        if($qty < $promoItem->min_qty){
+            return ['discount_unit'=>0];
+        }
+        if($promoItem->max_qty && $qty > $promoItem->max_qty){
+            return ['discount_unit'=>0];
+        }
+
+        if($promoItem->discount_type === 'amount'){
+            return ['discount_unit'=>(float)$promoItem->discount_value];
+        }
+
+        // percent
+        return ['discount_unit'=> $basePrice * ($promoItem->discount_value/100)];
+    }
+    private function syncVariantStock(array $products, bool $isReturn = false): void
+    {
+        foreach ($products as $row) {
+            if (empty($row['variant_id'])) {
+                continue;
+            }
+            $variant = \App\Models\ProductVariant::find($row['variant_id']);
+            if (!$variant) {
+                continue;
+            }
+            $delta = $row['quantity'] * ($isReturn ? -1 : 1);
+            $variant->update(['quantity' => $variant->quantity - $delta]);
+        }
     }
 
 
@@ -255,7 +318,7 @@ class SalesController extends Controller
 
         foreach ($request->product_id as $index=>$id){ 
             
-            $productDetails = $siteController->getProductById($id);
+            $productDetails = Product::with('productTaxes')->find($id);
             $unitId = $request->unit_id[$index] ?? $productDetails->unit;
             $unitFactor = $request->unit_factor[$index] ?? 1;
             $basePrice = $request->price_unit[$index];
@@ -265,20 +328,44 @@ class SalesController extends Controller
                     $basePrice = $productDetails->$col;
                 }
             }
-            $oldPrice = $request->price_unit[$index] > 0 ? $request->price_unit[$index] : 1;
-            $ratio = $basePrice / $oldPrice;
-            $lineTotal = $request->total[$index] * $ratio;
-            $lineTax = $request->tax[$index] * $ratio;
-            $lineTaxExcise = $request->tax_excise[$index] * $ratio;
-            $lineNet = $request->net[$index] * $ratio;
+            $promoDiscount = $this->resolvePromotionDiscount(
+                $id,
+                $request->variant_id[$index] ?? null,
+                $request->branch_id ?? $siteController->getWarehouseById($request->warehouse_id)->branch_id,
+                $request->qnt[$index],
+                $basePrice
+            );
+            $discountPerUnit = $promoDiscount['discount_unit'];
+            $basePrice = max($basePrice - $discountPerUnit, 0);
+            $qty = $request->qnt[$index];
+            $taxRate = $productDetails->totalTaxRate();
+            $exciseRate = (float)($productDetails->tax_excise ?? 0);
+
+            $lineBase = $basePrice * $qty;
+            $lineTaxExcise = $lineBase * ($exciseRate / 100);
+            if($productDetails->price_includes_tax){
+                $lineTax = $lineBase - ($lineBase / (1 + ($taxRate/100)));
+                $lineTotal = $lineBase - $lineTax;
+                $linePriceWithTax = $lineBase;
+            } else {
+                $lineTax = $lineBase * ($taxRate/100);
+                $lineTotal = $lineBase;
+                $linePriceWithTax = $lineBase + $lineTax;
+            }
+            $lineNet = $linePriceWithTax;
             $product = [
                 'sale_id' => 0,
                 'product_code' => $productDetails->code,
                 'product_id' => $id,
-                'quantity' => $request->qnt[$index],
+                'variant_id' => $request->variant_id[$index] ?? null,
+                'variant_color' => $request->variant_color[$index] ?? null,
+                'variant_size' => $request->variant_size[$index] ?? null,
+                'variant_barcode' => $request->variant_barcode[$index] ?? null,
+                'quantity' => $qty,
                 'price_unit' => $basePrice,
-                'discount' => $request->discount_unit[$index] ?? 0,
-                'price_with_tax' => $request->price_with_tax[$index] * $ratio,
+                'discount' => ($discountPerUnit * $qty),
+                'discount_unit' => $discountPerUnit,
+                'price_with_tax' => $linePriceWithTax,
                 'warehouse_id' => $request->warehouse_id,
                 'unit_id' => $unitId,
                 'unit_factor' => $unitFactor,
@@ -286,7 +373,7 @@ class SalesController extends Controller
                 'tax_excise' => $lineTaxExcise, 
                 'total' => $lineTotal,
                 'lista' => 0,
-                'profit'=> ($basePrice - ($productDetails->cost * $unitFactor)) * $request->qnt[$index]
+                'profit'=> ($basePrice - ($productDetails->cost * $unitFactor)) * $qty
             ];
 
             $item = new Product();
@@ -300,14 +387,10 @@ class SalesController extends Controller
             $tax += $lineTax;
             $tax_excise += $lineTaxExcise;
             $net += $lineNet;
-            $profit +=($basePrice - ($productDetails->cost * $unitFactor)) * $request->qnt[$index];
+            $profit +=($basePrice - ($productDetails->cost * $unitFactor)) * $qty;
         }
 
         $taxForInvoice = $tax_excise > 0 ? ($tax - $tax_excise) : $tax;
-        $net = $total;
-        if(($request->tax_mode ?? 'inclusive') === 'exclusive'){
-            $net += $taxForInvoice + $tax_excise;
-        }
         $net += $request -> additional_service ?? 0 ;
         $net -= $request->discount;
  
@@ -347,6 +430,7 @@ class SalesController extends Controller
         }
 
         $siteController->syncQnt($qntProducts,null);
+        $this->syncVariantStock($products, false);
         $clientController = new ClientMoneyController();
         $clientController->syncMoney($request->customer_id,0,$net*-1);
 
@@ -550,44 +634,62 @@ class SalesController extends Controller
         $products = array();
         $qntProducts = array();
         foreach ($request->product_id as $index=>$id1){
-            $productDetails = $siteController->getProductById($id1);
+            $productDetails = Product::with('productTaxes')->find($id1);
             $unitId = $request->unit_id[$index] ?? $productDetails->unit;
             $unitFactor = $request->unit_factor[$index] ?? 1;
+            $qty = $request->qnt[$index];
+            $basePrice = $request->price_unit[$index];
+            $taxRate = $productDetails->totalTaxRate();
+            $exciseRate = (float)($productDetails->tax_excise ?? 0);
+
+            $lineBase = $basePrice * $qty;
+            $lineTaxExcise = $lineBase * ($exciseRate / 100);
+            if($productDetails->price_includes_tax){
+                $lineTax = $lineBase - ($lineBase / (1 + ($taxRate/100)));
+                $linePriceWithTax = $lineBase;
+                $lineTotal = $lineBase - $lineTax;
+            } else {
+                $lineTax = $lineBase * ($taxRate/100);
+                $lineTotal = $lineBase;
+                $linePriceWithTax = $lineBase + $lineTax;
+            }
             $product = [
                 'sale_id' => 0,
                 'product_code' => $productDetails->code,
                 'product_id' => $id1,
-                'quantity' => $request->qnt[$index] * -1,
-                'price_unit' => $request->price_unit[$index] * -1,
-                'price_with_tax' => $request->price_with_tax[$index] * -1,
+                'variant_id' => $request->variant_id[$index] ?? null,
+                'variant_color' => $request->variant_color[$index] ?? null,
+                'variant_size' => $request->variant_size[$index] ?? null,
+                'variant_barcode' => $request->variant_barcode[$index] ?? null,
+                'quantity' => $qty * -1,
+                'price_unit' => $basePrice * -1,
+                'discount_unit' => 0,
+                'price_with_tax' => $linePriceWithTax * -1,
                 'warehouse_id' => $request->warehouse_id,
                 'unit_id' => $unitId,
                 'unit_factor' => $unitFactor,
-                'tax' => $request->tax[$index]*-1,
-                'tax_excise' => $request->tax_excise[$index]* -1, 
-                'total' => $request->total[$index] * -1,
+                'tax' => $lineTax * -1,
+                'tax_excise' => $lineTaxExcise * -1, 
+                'total' => $lineTotal * -1,
                 'lista' => 0,
-                'profit'=> (($request->price_unit[$index] - ($productDetails->cost * $unitFactor)) * $request->qnt[$index]) * -1
+                'profit'=> (($basePrice - ($productDetails->cost * $unitFactor)) * $qty) * -1
             ];
 
             $item = new Product();
             $item -> product_id = $id1;
-            $item -> quantity = $request->qnt[$index]  * -1 * $unitFactor;
+            $item -> quantity = $qty  * -1 * $unitFactor;
             $item -> warehouse_id = $request->warehouse_id ;
             $qntProducts[] = $item ;
 
             $products[] = $product;
-            $total +=$request->total[$index];
-            $tax +=$request->tax[$index];
-            $tax_excise +=$request->tax_excise[$index];
-            $profit +=($request->price_unit[$index] - ($productDetails->cost * $unitFactor)) * $request->qnt[$index];
+            $total +=$lineTotal;
+            $tax +=$lineTax;
+            $tax_excise +=$lineTaxExcise;
+            $profit +=($basePrice - ($productDetails->cost * $unitFactor)) * $qty;
         }
 
         $taxForInvoice = $tax_excise > 0 ? ($tax - $tax_excise) : $tax;
-        $net = $total;
-        if(($request->tax_mode ?? 'inclusive') === 'exclusive'){
-            $net += $taxForInvoice + $tax_excise;
-        }
+        $net = $total + $taxForInvoice + $tax_excise;
 
         $sale = Sales::create([
             'sale_id' => $id,
@@ -619,6 +721,7 @@ class SalesController extends Controller
         }
 
         $siteController->syncQnt($qntProducts,null);
+        $this->syncVariantStock($products, true);
         $clientController = new ClientMoneyController();
         $clientController->syncMoney($request->customer_id,0,$net);
 
@@ -668,8 +771,10 @@ class SalesController extends Controller
         $settings = SystemSettings::with('currency') ->first();
         $representatives = Representative::all();
         $defaultInvoiceType = $this->resolveDefaultInvoiceType();
+        $posSettings = PosSettings::first();
+        $posMode = optional($posSettings)->pos_mode ?? 'classic';
      
-       return view('admin.sales.pos' , compact('vendors' , 'warehouses' , 'settings','representatives','defaultInvoiceType'));
+       return view('admin.sales.pos' , compact('vendors' , 'warehouses' , 'settings','representatives','defaultInvoiceType','posSettings','posMode'));
     }
 
     private function resolveDefaultInvoiceType(): string

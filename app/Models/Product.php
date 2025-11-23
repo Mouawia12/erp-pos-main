@@ -31,6 +31,8 @@ class Product extends Model
       'tax_rate',
       'track_quantity',
       'tax_method',
+      'price_includes_tax',
+      'profit_margin',
       'tax_excise',
       'type',
       'brand',
@@ -48,5 +50,24 @@ class Product extends Model
 
     public function units(){
       return $this -> belongsTo(Unit::class , 'unit');
+    }
+
+    public function productTaxes()
+    {
+        return $this->hasMany(ProductTax::class);
+    }
+
+    public function variants()
+    {
+        return $this->hasMany(ProductVariant::class);
+    }
+
+    public function totalTaxRate(): float
+    {
+        $base = (float) ($this->tax ?? 0);
+        $additional = $this->productTaxes->pluck('tax_rate_id')
+            ->map(fn($id)=> (float) optional(\App\Models\TaxRates::find($id))->rate)
+            ->sum();
+        return $base + $additional;
     }
 }

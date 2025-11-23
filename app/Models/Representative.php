@@ -15,7 +15,11 @@ class Representative extends Model
       'user_name',
       'password',
       'notes',
-      'active'
+      'active',
+      'document_name',
+      'document_number',
+      'document_expiry_date',
+      'subscriber_id'
     ];
 
     public function clients(){

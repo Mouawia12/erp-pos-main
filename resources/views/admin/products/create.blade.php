@@ -129,6 +129,16 @@
                                         @enderror
                                     </div>
                                 </div>  
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label>{{ __('main.additional_taxes') }}</label>
+                                        <select class="js-example-basic-multiple w-100" name="tax_rates_multi[]" multiple>
+                                            @foreach($taxRages as $tax)
+                                                <option value="{{$tax->id}}">{{$tax->rate}}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
                             
                                 <div class="col-md-3">
                                     <div class="form-group">
@@ -171,6 +181,23 @@
                                         @enderror
                                     </div>
                                 </div> 
+                                <div class="col-md-3">  
+                                    <div class="form-group">
+                                        <label>{{ __('main.profit_margin') }} %</label>
+                                        <input type="number"  id="profit_margin" name="profit_margin"
+                                               class="form-control" step="0.01"
+                                               placeholder="{{ __('main.profit_margin') }}"  />
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label>{{ __('main.price_includes_tax') }}</label>
+                                        <select class="form-control" name="price_includes_tax">
+                                            <option value="0">{{ __('main.false_val') }}</option>
+                                            <option value="1">{{ __('main.true_val') }}</option>
+                                        </select>
+                                    </div>
+                                </div>
                                 <div class="col-md-9">
                                     <div class="form-group">
                                         <label>{{ __('main.price_level') }} (1-6)</label>
@@ -181,6 +208,16 @@
                                                 </div>
                                             @endfor
                                         </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-9">
+                                    <div class="form-group">
+                                        <label>{{ __('main.additional_taxes') }}</label>
+                                        <select class="js-example-basic-multiple w-100" name="tax_rates_multi[]" multiple>
+                                            @foreach($taxRages as $tax)
+                                                <option value="{{$tax->id}}">{{$tax->rate}}</option>
+                                            @endforeach
+                                        </select>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
@@ -195,7 +232,30 @@
                                         </span>
                                         @enderror
                                     </div>
-                                </div>    
+                                </div>
+
+                                <div class="col-12">
+                                    <div class="form-group">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <label>متغيرات (لون/مقاس/باركود)</label>
+                                            <button type="button" class="btn btn-sm btn-outline-primary" id="addVariantRowBtn">+ إضافة متغير</button>
+                                        </div>
+                                        <table class="table table-bordered mt-2" id="variantRowsTable">
+                                            <thead>
+                                                <tr>
+                                                    <th>SKU</th>
+                                                    <th>اللون</th>
+                                                    <th>المقاس</th>
+                                                    <th>باركود</th>
+                                                    <th>{{ __('main.price') }}</th>
+                                                    <th>{{ __('main.quantity') }}</th>
+                                                    <th>{{ __('main.actions') }}</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody></tbody>
+                                        </table>
+                                    </div>
+                                </div>
 
                                 <div class="col-md-3">
                                     <div class="form-group">
@@ -351,6 +411,26 @@
             const tax = $('#tax_rate  option:selected').text();
             $("#tax").val(tax);
         }
+
+        $('#addVariantRowBtn').on('click', function(){
+            addVariantRow();
+        });
     }); 
+
+    function addVariantRow(data = {}) {
+        const tbody = document.querySelector('#variantRowsTable tbody');
+        const row = document.createElement('tr');
+        const index = tbody.children.length;
+        row.innerHTML = `
+            <td><input class="form-control" name="product_variants[${index}][sku]" value="${data.sku ?? ''}"></td>
+            <td><input class="form-control" name="product_variants[${index}][color]" value="${data.color ?? ''}"></td>
+            <td><input class="form-control" name="product_variants[${index}][size]" value="${data.size ?? ''}"></td>
+            <td><input class="form-control" name="product_variants[${index}][barcode]" value="${data.barcode ?? ''}"></td>
+            <td><input class="form-control" type="number" step="0.01" name="product_variants[${index}][price]" value="${data.price ?? ''}"></td>
+            <td><input class="form-control" type="number" step="0.01" name="product_variants[${index}][quantity]" value="${data.quantity ?? ''}"></td>
+            <td><button type="button" class="btn btn-sm btn-danger" onclick="this.closest('tr').remove();">حذف</button></td>
+        `;
+        tbody.appendChild(row);
+    }
 </script>
 @endsection 

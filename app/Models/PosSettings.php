@@ -32,6 +32,7 @@ class PosSettings extends Model
         'qr_print',//
         'header_print',//
         'header_img',//
-        'seller_buyer'
+        'seller_buyer',
+        'pos_mode'
         ];
 }

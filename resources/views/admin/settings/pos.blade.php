@@ -130,7 +130,20 @@
                                                             <option @if($setting?  $setting-> show_time == 2 : false) selected @endif value="2">{{__('main.false_val')}}</option>
                                                         </select>
                                                     </div>
-                                                </div> 
+                                                </div>
+                                                <div class="col-4">
+                                                    <div class="form-group">
+                                                        <label>
+                                                            {{ __('main.pos_mode') }}
+                                                            <span class="text-danger">*</span>
+                                                        </label>
+                                                        <select class="form-control" name="pos_mode" id="pos_mode">
+                                                            @php $mode = optional($setting)->pos_mode ?? 'classic'; @endphp
+                                                            <option value="classic" @if($mode === 'classic') selected @endif>{{ __('main.pos_mode_classic') }}</option>
+                                                            <option value="touch" @if($mode === 'touch') selected @endif>{{ __('main.pos_mode_touch') }}</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
                                             </div> 
                                         </div> 
                                     </div>

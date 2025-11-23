@@ -84,7 +84,8 @@ class PosSettingsController extends Controller
                     'qr_print' => $request -> qr_print,//
                     'header_print' => $request -> header_print,//
                     'header_img' => $imageName,
-                    'seller_buyer' => $request -> seller_buyer
+                    'seller_buyer' => $request -> seller_buyer,
+                    'pos_mode' => $request->pos_mode ?? 'classic',
                 ]);
 
                 return redirect()->route('pos_settings')->with('success' , __('main.created'));
@@ -163,7 +164,8 @@ class PosSettingsController extends Controller
                     'qr_print' => $request -> qr_print,//
                     'header_print' => $request -> header_print,//
                     'header_img' => $imageName,
-                    'seller_buyer' => $request -> seller_buyer
+                    'seller_buyer' => $request -> seller_buyer,
+                    'pos_mode' => $request->pos_mode ?? $setting->pos_mode ?? 'classic',
 
                 ]);
 

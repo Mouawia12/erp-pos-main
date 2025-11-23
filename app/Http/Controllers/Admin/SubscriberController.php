@@ -97,6 +97,15 @@ class SubscriberController extends Controller
         return redirect()->route('owner.subscribers.index')->with('success', __('main.deleted') ?? 'تم الحذف');
     }
 
+    public function archiveDocument(SubscriberDocument $document)
+    {
+        if (!Auth::user() || !Auth::user()->hasRole('system_owner')) {
+            abort(403);
+        }
+        $document->update(['archived_at' => now()]);
+        return back()->with('success', __('main.archived') ?? 'تم الأرشفة');
+    }
+
     public function renew(Request $request, Subscriber $subscriber)
     {
         $validated = $request->validate([

@@ -49,6 +49,9 @@
                 @if(session('success'))
                     <div class="alert alert-success">{{ session('success') }}</div>
                 @endif
+                @if(session('error'))
+                    <div class="alert alert-danger">{{ session('error') }}</div>
+                @endif
                 <table class="table table-bordered text-center align-middle">
                     <thead>
                         <tr>
@@ -76,6 +79,12 @@
                                 </td>
                                 <td>
                                     @if($subscriber->system_url)
+                                        <div class="input-group input-group-sm mb-2">
+                                            <input type="text" class="form-control" value="{{ $subscriber->system_url }}" readonly id="link-{{ $subscriber->id }}">
+                                            <div class="input-group-append">
+                                                <button class="btn btn-outline-primary" type="button" onclick="copyLink({{ $subscriber->id }})">نسخ</button>
+                                            </div>
+                                        </div>
                                         <a href="{{ $subscriber->system_url }}" target="_blank">الدخول للعميل (قراءة فقط)</a>
                                     @else
                                         -
@@ -89,6 +98,10 @@
                                     <div>من: {{ optional($subscriber->subscription_start)->format('Y-m-d') ?? '-' }}</div>
                                     <div>إلى: {{ optional($subscriber->subscription_end)->format('Y-m-d') ?? '-' }}</div>
                                     <small>المستخدمون المسموحون: {{ $subscriber->users_limit }}</small>
+                                    @if($subscriber->subscription_end)
+                                        @php $days = now()->startOfDay()->diffInDays(optional($subscriber->subscription_end)->startOfDay(), false); @endphp
+                                        <div class="text-muted">متبقي: {{ $days }} يوم</div>
+                                    @endif
                                 </td>
                                 <td>
                                     @php $badge = 'secondary';
@@ -124,5 +137,15 @@
                 </table>
             </div>
         </div>
-    </div>
+</div>
+@endsection
+
+@section('js')
+<script>
+    function copyLink(id){
+        const input = document.getElementById('link-'+id);
+        input.select();
+        document.execCommand('copy');
+    }
+</script>
 @endsection

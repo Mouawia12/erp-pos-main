@@ -192,6 +192,7 @@
                         <th class="text-center">{{__('المنتج')}}<br>Product</th> 
                         <th class="text-center">{{__('main.quantity')}}<br>Qty</th>  
                         <th class="text-center">{{__('main.Amount')}}<br>Amount</th>  
+                        <th class="text-center">{{__('main.discount')}}<br>Disc</th>  
     
                     </tr>
                 </thead>
@@ -201,9 +202,18 @@
                     @endphp
                     @foreach($details as $detail)
                         <tr> 
-                            <td>{{$detail ->name }}</td> 
+                            <td>
+                                {{$detail ->name }}
+                                @if(!empty($detail->variant_color) || !empty($detail->variant_size))
+                                    <div style="font-size: 11px; color:#555;">
+                                        @if(!empty($detail->variant_color)) {{$detail->variant_color}} @endif
+                                        @if(!empty($detail->variant_size)) - {{$detail->variant_size}} @endif
+                                    </div>
+                                @endif
+                            </td> 
                             <td>{{$detail ->quantity }}</td>  
                             <td>{{$detail ->total }}</td> 
+                            <td>{{ number_format($detail->discount_unit ?? 0,2) }}</td> 
                         </tr>
                     @php
                        $qty = $qty + $detail ->quantity;
@@ -221,10 +231,18 @@
                     </tr>
                     <tr>
                         <th colspan="2" class="alert alert text-center">
-                          {{__('main.discount')}}  (Discount)
+                         {{__('main.discount')}}  (Discount)
                         </th>
                         <th colspan="1" class="alert alert text-center">
                            {{$data->discount}} -
+                        </th>
+                    </tr>
+                    <tr>
+                        <th colspan="2" class="alert alert text-center">
+                          {{__('main.promotions') ?? 'العروض الترويجية'}} (Promo)
+                        </th>
+                        <th colspan="1" class="alert alert text-center">
+                           {{ number_format($details->sum('discount_unit'),2) }} -
                         </th>
                     </tr>
                     <tr>

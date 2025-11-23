@@ -21,4 +21,9 @@ class Category extends Model
         'status'
 
     ];
+
+    public function children()
+    {
+        return $this->hasMany(Category::class, 'parent_id');
+    }
 }

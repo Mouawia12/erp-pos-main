@@ -228,6 +228,63 @@
                                     <div class="row">
                                         <div class="col-12">
                                             <div class="form-group">
+                                                <label>{{ __('main.profit_margin') }} %</label>
+                                                <input type="number"  id="profit_margin" name="profit_margin"
+                                                       class="form-control" step="0.01"
+                                                       placeholder="{{ __('main.profit_margin') }}" value="{{ $product->profit_margin }}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <div class="form-group">
+                                                <label>{{ __('main.price_includes_tax') }}</label>
+                                                <select class="form-control" name="price_includes_tax">
+                                                    <option value="0" @if(!$product->price_includes_tax) selected @endif>{{ __('main.false_val') }}</option>
+                                                    <option value="1" @if($product->price_includes_tax) selected @endif>{{ __('main.true_val') }}</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <div class="form-group">
+                                                <label>{{ __('main.additional_taxes') }}</label>
+                                                <select class="js-example-basic-multiple w-100" name="tax_rates_multi[]" multiple>
+                                                    @foreach($taxRages as $tax)
+                                                        <option value="{{$tax->id}}" @if(!empty($productTaxes) && in_array($tax->id, $productTaxes)) selected @endif>{{$tax->rate}}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <div class="form-group">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <label>متغيرات (لون/مقاس/باركود)</label>
+                                                    <button type="button" class="btn btn-sm btn-outline-primary" id="addVariantRowBtn">+ إضافة متغير</button>
+                                                </div>
+                                                <table class="table table-bordered mt-2" id="variantRowsTable">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>SKU</th>
+                                                            <th>اللون</th>
+                                                            <th>المقاس</th>
+                                                            <th>باركود</th>
+                                                            <th>{{ __('main.price') }}</th>
+                                                            <th>{{ __('main.quantity') }}</th>
+                                                            <th>{{ __('main.actions') }}</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody></tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <div class="form-group">
                                                 <label>{{ __('main.price_level') }} (1-6)</label>
                                                 <div class="row">
                                                     @for($i=1;$i<=6;$i++)
@@ -414,6 +471,36 @@
                 firstRow.find('input[name*="[price]"]').val(val);
             }
         });
+
+        // Variants
+        function addVariantRow(data = {}) {
+            const tbody = document.querySelector('#variantRowsTable tbody');
+            const row = document.createElement('tr');
+            const index = tbody.children.length;
+            row.innerHTML = `
+                <td><input class="form-control" name="product_variants[${index}][sku]" value="${data.sku ?? ''}"></td>
+                <td><input class="form-control" name="product_variants[${index}][color]" value="${data.color ?? ''}"></td>
+                <td><input class="form-control" name="product_variants[${index}][size]" value="${data.size ?? ''}"></td>
+                <td><input class="form-control" name="product_variants[${index}][barcode]" value="${data.barcode ?? ''}"></td>
+                <td><input class="form-control" type="number" step="0.01" name="product_variants[${index}][price]" value="${data.price ?? ''}"></td>
+                <td><input class="form-control" type="number" step="0.01" name="product_variants[${index}][quantity]" value="${data.quantity ?? ''}"></td>
+                <td><button type="button" class="btn btn-sm btn-danger" onclick="this.closest('tr').remove();">حذف</button></td>
+            `;
+            tbody.appendChild(row);
+        }
+        $('#addVariantRowBtn').on('click', function(){ addVariantRow(); });
+        @if(!empty($productVariants))
+            @foreach($productVariants as $variant)
+                addVariantRow({
+                    sku: "{{ $variant->sku }}",
+                    color: "{{ $variant->color }}",
+                    size: "{{ $variant->size }}",
+                    barcode: "{{ $variant->barcode }}",
+                    price: "{{ $variant->price }}",
+                    quantity: "{{ $variant->quantity }}"
+                });
+            @endforeach
+        @endif
 
         $('#tax_rate').change(function (){
             const tax = $('#tax_rate  option:selected').text();

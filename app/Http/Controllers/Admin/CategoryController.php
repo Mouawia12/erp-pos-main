@@ -22,10 +22,17 @@ class CategoryController extends Controller
      */
     public function index()
     {
-        $categories = Category::all();
+        $categories = Category::orderBy('parent_id')->orderBy('name')->get();
         $cats = Category::where('status',1) -> get();
         $tax_excises = TaxExcise::where('status',1) -> get();
-        return view ('admin.Category.index' , ['categories' => $categories , 'cats' => $cats,'tax_excises' => $tax_excises]);
+        $tree = $this->buildTree($categories);
+
+        return view ('admin.Category.index' , [
+            'categories' => $categories,
+            'cats' => $cats,
+            'tax_excises' => $tax_excises,
+            'tree' => $tree
+        ]);
     }
 
     /**
@@ -104,6 +111,13 @@ class CategoryController extends Controller
         exit;
     }
 
+    public function tree()
+    {
+        $categories = Category::orderBy('parent_id')->orderBy('name')->get();
+        $tree = $this->buildTree($categories);
+        return response()->json($tree);
+    }
+
     /**
      * Update the specified resource in storage.
      *
@@ -157,5 +171,22 @@ class CategoryController extends Controller
             $category -> delete();
             return redirect()->route('categories')->with('success' , __('main.deleted'));
         }
+    }
+
+    private function buildTree($categories, $parentId = 0)
+    {
+        return $categories
+            ->where('parent_id', $parentId)
+            ->map(function ($category) use ($categories) {
+                return [
+                    'id' => $category->id,
+                    'name' => $category->name,
+                    'code' => $category->code,
+                    'slug' => $category->slug,
+                    'parent_name' => optional($categories->firstWhere('id', $category->parent_id))->name,
+                    'children' => $this->buildTree($categories, $category->id),
+                ];
+            })
+            ->values();
     }
 }

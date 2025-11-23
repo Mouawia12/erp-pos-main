@@ -7,6 +7,9 @@ use App\Models\Product;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Models\ProductUnit;
+use App\Models\ProductVariant;
+use App\Models\ProductTax;
+use App\Models\PromotionItem;
 use App\Models\PurchaseDetails;
 use App\Models\SaleDetails;
 use App\Models\SystemSettings;
@@ -110,10 +113,21 @@ class ProductController extends Controller
             'price_level_6' => 'nullable|numeric',
             'category_id' => 'required',
             'tax_rate' => 'required',
+            'tax_rates_multi' => 'nullable|array',
+            'tax_rates_multi.*' => 'integer|exists:tax_rates,id',
             'tax_method' => 'required',
+            'price_includes_tax' => 'nullable|boolean',
+            'profit_margin' => 'nullable|numeric',
             'type' => 'required',
             'brand' => 'required',
             //'slug' => 'required',
+            'product_variants' => 'nullable|array',
+            'product_variants.*.sku' => 'nullable|string|max:191',
+            'product_variants.*.color' => 'nullable|string|max:191',
+            'product_variants.*.size' => 'nullable|string|max:191',
+            'product_variants.*.barcode' => 'nullable|string|max:191',
+            'product_variants.*.price' => 'nullable|numeric',
+            'product_variants.*.quantity' => 'nullable|numeric',
         ]);
         $siteController = new SystemController();
         $tax_excise = $siteController->getCategoryById($request->category_id)->tax_excise;
@@ -151,6 +165,8 @@ class ProductController extends Controller
                 'tax_rate' => $request->tax_rate,
                 'track_quantity' => $request->track_quantity ?? 0,
                 'tax_method' => $request->tax_method,
+                'price_includes_tax' => $request->boolean('price_includes_tax'),
+                'profit_margin' => $request->profit_margin,
                 'tax_excise' => $tax_excise > 0 ? $tax_excise:0,
                 'type' => $request->type,
                 'brand' => $request->brand,
@@ -164,6 +180,8 @@ class ProductController extends Controller
                 'status' => $request->status ?? 1,
             ]);
             if($product){ 
+                $this->syncProductTaxes($product->id, $request->input('tax_rates_multi', []));
+                $this->syncProductVariants($product->id, $request->input('product_variants', []));
                 $unitsTable = $request->product_units;
                 if($unitsTable && is_array($unitsTable)){
                     foreach ($unitsTable as $row){
@@ -225,18 +243,69 @@ class ProductController extends Controller
      */
     public function edit($id)
     {
-        $product = Product::find($id);
-        if($product){
-            $systemController = new SystemController();
-            $brands = $systemController->getAllBrands();
-            $units = $systemController->getAllUnits();
-            $categories = $systemController->getAllMainCategories();
-            $taxRages = $systemController->getAllTaxRates();
-            $taxTypes = $systemController->getAllTaxTypes();
-            $productUnits = ProductUnit::where('product_id',$id)->get();
+            $product = Product::find($id);
+            if($product){
+                $systemController = new SystemController();
+                $brands = $systemController->getAllBrands();
+                $units = $systemController->getAllUnits();
+                $categories = $systemController->getAllMainCategories();
+                $taxRages = $systemController->getAllTaxRates();
+                $taxTypes = $systemController->getAllTaxTypes();
+                $productUnits = ProductUnit::where('product_id',$id)->get();
+                $productTaxes = ProductTax::where('product_id',$id)->pluck('tax_rate_id')->toArray();
+                $productVariants = ProductVariant::where('product_id',$id)->get();
 
-            return view('admin.products.update',
-                compact('product','brands','categories','taxRages','taxTypes','units','productUnits'));
+                return view('admin.products.update',
+                compact('product','brands','categories','taxRages','taxTypes','units','productUnits','productTaxes','productVariants'));
+            }
+        }
+
+    private function syncProductTaxes(int $productId, array $taxIds): void
+    {
+        ProductTax::where('product_id', $productId)->delete();
+        $taxIds = array_filter($taxIds);
+        $rows = [];
+        foreach ($taxIds as $taxId) {
+            $rows[] = [
+                'product_id' => $productId,
+                'tax_rate_id' => $taxId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+        if (!empty($rows)) {
+            ProductTax::insert($rows);
+        }
+    }
+
+    private function syncProductVariants(int $productId, array $variants = []): void
+    {
+        ProductVariant::where('product_id', $productId)->delete();
+        $variants = array_filter($variants ?? [], function ($row) {
+            return !empty($row['color']) || !empty($row['size']) || !empty($row['sku']) || !empty($row['barcode']);
+        });
+
+        $totalQty = 0;
+        $rows = [];
+        foreach ($variants as $row) {
+            $qty = isset($row['quantity']) ? (float)$row['quantity'] : 0;
+            $totalQty += $qty;
+            $rows[] = [
+                'product_id' => $productId,
+                'sku' => $row['sku'] ?? null,
+                'color' => $row['color'] ?? null,
+                'size' => $row['size'] ?? null,
+                'barcode' => $row['barcode'] ?? null,
+                'price' => $row['price'] ?? null,
+                'quantity' => $qty,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+
+        if (!empty($rows)) {
+            ProductVariant::insert($rows);
+            Product::where('id', $productId)->update(['quantity' => $totalQty]);
         }
     }
 
@@ -266,10 +335,21 @@ class ProductController extends Controller
                 'price_level_6' => 'nullable|numeric',
                 'category_id' => 'required',
                 'tax_rate' => 'required',
+                'tax_rates_multi' => 'nullable|array',
+                'tax_rates_multi.*' => 'integer|exists:tax_rates,id',
                 'tax_method' => 'required',
+                'price_includes_tax' => 'nullable|boolean',
+                'profit_margin' => 'nullable|numeric',
                 'type' => 'required',
                 'brand' => 'required', 
                 'img' => 'max:2000',
+                'product_variants' => 'nullable|array',
+                'product_variants.*.sku' => 'nullable|string|max:191',
+                'product_variants.*.color' => 'nullable|string|max:191',
+                'product_variants.*.size' => 'nullable|string|max:191',
+                'product_variants.*.barcode' => 'nullable|string|max:191',
+                'product_variants.*.price' => 'nullable|numeric',
+                'product_variants.*.quantity' => 'nullable|numeric',
             ]);
 
             $siteController = new SystemController();
@@ -306,6 +386,8 @@ class ProductController extends Controller
                     'tax_rate' => $request->tax_rate,
                     'track_quantity' => $request->track_quantity ?? 0,
                     'tax_method' => $request->tax_method,
+                    'price_includes_tax' => $request->boolean('price_includes_tax'),
+                    'profit_margin' => $request->profit_margin,
                     'tax_excise' => $tax_excise > 0 ? $tax_excise:0,
                     'type' => $request->type,
                     'brand' => $request->brand,
@@ -319,6 +401,8 @@ class ProductController extends Controller
                     'status' => $request->status ?? 1
 
                 ]);
+                $this->syncProductTaxes($product->id, $request->input('tax_rates_multi', []));
+                $this->syncProductVariants($product->id, $request->input('product_variants', []));
 
                 $units = ProductUnit::where('product_id' , '=' , $product -> id) -> get();
                 foreach ($units as $unit){
@@ -421,6 +505,32 @@ class ProductController extends Controller
             ->orWhere('name','=' , $code)
             ->first(); 
 
+        if(!$product){
+            $variant = ProductVariant::where('barcode',$code)->orWhere('sku',$code)->first();
+            if($variant){
+                $product = Product::find($variant->product_id);
+                $product = $this->appendProductMeta($product);
+                $product->selected_variant = $variant;
+                if(!empty($variant->price)){
+                    $product->price = $variant->price;
+                }
+                $product->variant_color = $variant->color;
+                $product->variant_size = $variant->size;
+                return $product;
+            }
+
+            // special barcode for promotions
+            $promoItem = PromotionItem::where('special_barcode',$code)->first();
+            if($promoItem){
+                $product = Product::find($promoItem->product_id);
+                $product = $this->appendProductMeta($product);
+                $product->selected_variant = $promoItem->variant_id ? ProductVariant::find($promoItem->variant_id) : null;
+                $product->variant_color = $promoItem->variant_color;
+                $product->variant_size = $promoItem->variant_size;
+                return $product;
+            }
+        }
+
         return $this->appendProductMeta($product);
     }
     
@@ -431,8 +541,43 @@ class ProductController extends Controller
 
         $product->last_sale_price = $this->getLastSalePrice($product->id);
         $product->units_options = $this->getUnitsForProduct($product->id,$product);
+        $product->variants = ProductVariant::where('product_id',$product->id)->get();
+        $product->total_tax_rate = $product->totalTaxRate();
+        $product->promo_discount_unit = $this->getPromotionDiscountPreview($product);
 
         return $product;
+    }
+
+    private function getPromotionDiscountPreview($product): float
+    {
+        $today = now()->toDateString();
+        $branchId = auth()->user()->branch_id ?? null;
+        $promoItem = PromotionItem::query()
+            ->join('promotions','promotions.id','=','promotion_items.promotion_id')
+            ->where('promotions.status','active')
+            ->where(function($q) use ($today){
+                $q->whereNull('promotions.start_date')->orWhere('promotions.start_date','<=',$today);
+            })
+            ->where(function($q) use ($today){
+                $q->whereNull('promotions.end_date')->orWhere('promotions.end_date','>=',$today);
+            })
+            ->when($branchId,function($q) use ($branchId){
+                $q->where(function($qq) use ($branchId){
+                    $qq->whereNull('promotions.branch_id')->orWhere('promotions.branch_id',$branchId);
+                });
+            })
+            ->where('promotion_items.product_id',$product->id)
+            ->first(['promotion_items.*']);
+
+        if(!$promoItem){
+            return 0;
+        }
+
+        if($promoItem->discount_type === 'amount'){
+            return (float)$promoItem->discount_value;
+        }
+
+        return $product->price * ($promoItem->discount_value/100);
     }
 
     private function getLastSalePrice($productId){

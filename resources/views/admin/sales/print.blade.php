@@ -205,7 +205,8 @@
                         <th class="text-center">{{__('main.price.unit')}}<br>(U.Price)</th> 
                         <th class="text-center">{{__('main.quantity')}}<br>(Qty) </th>
                         <th class="text-center">{{__('main.amount')}}<br>(Amount)</th> 
-                        <th colspan="2" class="text-center">{{__('main.tax')}}<br> (Vat)</th>
+                        <th class="text-center">{{__('main.tax')}}<br> (Vat)</th>
+                        <th class="text-center">{{__('main.discount')}}<br>(Disc)</th>
                         <th class="text-center">{{__('main.total_with_tax')}}<br>(Total With Vat)</th>
                     </tr>
                 </thead>
@@ -213,13 +214,26 @@
                     @foreach($details as $detail)
                         <tr>
                             <td>{{$loop -> index+1}}</td>
-                            <td>{{$detail ->name }} -- {{$detail ->code }}</td>
+                            <td>
+                                {{$detail ->name }} -- {{$detail ->code }}
+                                @if(!empty($detail->variant_color) || !empty($detail->variant_size))
+                                    <div style="font-size: 11px; color:#555;">
+                                        @if(!empty($detail->variant_color)) {{$detail->variant_color}} @endif
+                                        @if(!empty($detail->variant_size)) - {{$detail->variant_size}} @endif
+                                    </div>
+                                @endif
+                            </td>
                             <td>{{$detail ->price_unit }}</td> 
                             <td>{{$detail ->quantity }}</td>
                             <td>{{$detail ->total }}</td>
-                            <td> {{'%'. $detail ->taxRate + $detail ->taxExciseRate }}</td>
-                            <td>{{$detail ->tax + $detail ->tax_excise}}</td> 
-                            <td>{{$detail ->total + $detail->tax + $detail ->tax_excise}}</td>
+                            <td>{{ number_format($detail->discount_unit ?? 0,2) }}</td>
+                            <td>
+                                {{ number_format($detail ->tax + $detail ->tax_excise,2) }}
+                                <div style="font-size: 10px; color:#555;">
+                                    {{'%'. ($detail ->taxRate + $detail ->taxExciseRate) }}
+                                </div>
+                            </td> 
+                            <td>{{ number_format($detail ->total + $detail->tax + $detail ->tax_excise - ($detail->discount_unit ?? 0),2) }}</td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -239,6 +253,14 @@
                         </th>  
                         <th colspan="6" class="text-center">
                             {{__('main.discount')}}  (Discount)
+                        </th> 
+                    </tr>
+                    <tr>
+                        <th colspan="2" class="text-center">  
+                           {{ number_format($details->sum('discount_unit'),2) }} -
+                        </th>  
+                        <th colspan="6" class="text-center">
+                            {{__('main.promotions') ?? 'العروض الترويجية'}} (Promo Disc)
                         </th> 
                     </tr>
                     <tr>

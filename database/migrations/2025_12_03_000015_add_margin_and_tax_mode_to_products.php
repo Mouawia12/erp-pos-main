@@ -1,0 +1,32 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('products', function (Blueprint $table) {
+            if (!Schema::hasColumn('products', 'price_includes_tax')) {
+                $table->boolean('price_includes_tax')->default(false)->after('tax_method');
+            }
+            if (!Schema::hasColumn('products', 'profit_margin')) {
+                $table->decimal('profit_margin', 8, 2)->nullable()->after('price_includes_tax');
+            }
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('products', function (Blueprint $table) {
+            if (Schema::hasColumn('products', 'profit_margin')) {
+                $table->dropColumn('profit_margin');
+            }
+            if (Schema::hasColumn('products', 'price_includes_tax')) {
+                $table->dropColumn('price_includes_tax');
+            }
+        });
+    }
+};

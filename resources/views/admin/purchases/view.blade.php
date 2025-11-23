@@ -173,7 +173,15 @@
                             @foreach($details as $detail)
                                 <tr>
                                     <td class="text-center">{{$loop->index+1 }}</td>
-                                    <td class="text-center">{{$detail ->name }} -- {{$detail ->code }}</td>
+                                    <td class="text-center">
+                                        {{$detail ->name }} -- {{$detail ->code }}
+                                        @if(!empty($detail->variant_color) || !empty($detail->variant_size))
+                                            <div style="font-size: 11px; color:#555;">
+                                                @if(!empty($detail->variant_color)) {{$detail->variant_color}} @endif
+                                                @if(!empty($detail->variant_size)) - {{$detail->variant_size}} @endif
+                                            </div>
+                                        @endif
+                                    </td>
                                     <td class="text-center">{{$detail ->cost_without_tax }}</td> 
                                     <td class="text-center">{{$detail ->quantity }}</td>
                                     <td class="text-center">{{$detail ->total }}</td>

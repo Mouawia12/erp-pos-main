@@ -772,4 +772,35 @@ class ReportController extends Controller
             'warehouseSelected'=>$request->warehouse_id,
         ]);
     }
+
+    public function vendorAging(Request $request)
+    {
+        $vendors = VendorMovement::select('vendor_id')
+            ->selectRaw('SUM(debit - credit) as balance')
+            ->groupBy('vendor_id')
+            ->with('company')
+            ->get();
+
+        $report = [];
+        foreach($vendors as $v){
+            $movs = VendorMovement::where('vendor_id',$v->vendor_id)->orderBy('date')->get();
+            $aging = ['current'=>0,'30'=>0,'60'=>0,'90'=>0,'over'=>0];
+            foreach($movs as $mv){
+                $days = now()->diffInDays(Carbon::parse($mv->date));
+                $val = ($mv->debit - $mv->credit);
+                if($days <= 30) $aging['current'] += $val;
+                elseif($days <= 60) $aging['30'] += $val;
+                elseif($days <= 90) $aging['60'] += $val;
+                elseif($days <= 120) $aging['90'] += $val;
+                else $aging['over'] += $val;
+            }
+            $report[] = [
+                'vendor' => optional($v->company)->name ?? '',
+                'balance' => $v->balance,
+                'aging' => $aging,
+            ];
+        }
+
+        return view('admin.Report.vendor_aging', compact('report'));
+    }
 }

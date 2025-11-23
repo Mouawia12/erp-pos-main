@@ -37,6 +37,7 @@ use App\Http\Controllers\Admin\AdvancePaymentController;
 use App\Http\Controllers\Admin\SalaryDocController;
 use App\Http\Controllers\Admin\InventoryController;
 use App\Http\Controllers\Admin\PermissionController;
+use App\Http\Controllers\Admin\AlertController;
 use App\Http\Controllers\Admin\ReportAccountController;
 use App\Http\Controllers\Admin\CompanyInfoController;
 use App\Http\Controllers\Admin\AdminController;
@@ -161,6 +162,7 @@ Route::group(
         Route::resource('subscribers', SubscriberController::class)->except(['show']);
         Route::post('subscribers/{subscriber}/renew', [SubscriberController::class, 'renew'])->name('subscribers.renew');
         Route::delete('documents/{document}', [SubscriberController::class, 'deleteDocument'])->name('documents.destroy');
+        Route::post('documents/{document}/archive', [SubscriberController::class, 'archiveDocument'])->name('documents.archive');
     });
     
     // Inventory Routes
@@ -191,6 +193,7 @@ Route::group(
     Route::post('storeCategory', [CategoryController::class, 'store'])->name('storeCategory');
     Route::get('/deleteCategory/{id}', [CategoryController::class, 'destroy'])->name('deleteCategory');
     Route::get('/getCategory/{id}', [CategoryController::class, 'edit'])->name('getCategory');
+    Route::get('/categories/tree/json', [CategoryController::class, 'tree'])->name('categories.tree');
     
     Route::get('/currency', [CurrencyController::class, 'index'])->name('currency');
     Route::post('storeCurrency', [CurrencyController::class, 'store'])->name('storeCurrency');
@@ -230,6 +233,11 @@ Route::group(
     Route::get('/pos_settings', [PosSettingsController::class, 'index'])->name('pos_settings');
     Route::post('storePosSettings', [PosSettingsController::class, 'store'])->name('storePosSettings');
     Route::post('updatePosSettings', [PosSettingsController::class, 'update'])->name('updatePosSettings');
+
+    Route::get('/alerts', [AlertController::class, 'index'])->name('alerts.index');
+    Route::post('/alerts/refresh', [AlertController::class, 'refresh'])->name('alerts.refresh');
+    Route::post('/alerts/{alert}/read', [AlertController::class, 'markRead'])->name('alerts.read');
+    Route::post('/alerts/{alert}/resolve', [AlertController::class, 'resolve'])->name('alerts.resolve');
     
     Route::get('/cashiers', [CashierController::class, 'index'])->name('cashiers');
     Route::post('storeCashier', [CashierController::class, 'store'])->name('storeCashier');
@@ -269,6 +277,31 @@ Route::group(
     Route::post('/products/print_barcode', [ProductController::class, 'do_print_barcode'])->name('preview_barcode');
     Route::get('/products/print_qr', [ProductController::class, 'print_qr'])->name('print_qr');
     Route::post('/products/print_qr', [ProductController::class, 'do_print_qr'])->name('preview_qr');
+
+    // Quotations
+    Route::resource('quotations', QuotationController::class);
+    Route::post('quotations/{quotation}/convert', [QuotationController::class, 'convertToInvoice'])->name('quotations.convert');
+
+    // Promotions
+    Route::resource('promotions', PromotionController::class);
+
+    // Warehouse transfers
+    Route::resource('transfers', WarehouseTransferController::class)->except(['edit','update']);
+    Route::post('transfers/{transfer}/approve', [WarehouseTransferController::class, 'approve'])->name('transfers.approve');
+    Route::post('transfers/{transfer}/reject', [WarehouseTransferController::class, 'reject'])->name('transfers.reject');
+    Route::post('transfers/{transfer}/damaged', [WarehouseTransferController::class, 'markDamaged'])->name('transfers.damaged');
+    Route::get('reports/transfers', [ReportTransferController::class, 'index'])->name('reports.transfers');
+
+    // Stock counts (inventory)
+    Route::resource('stock_counts', StockCountController::class)->except(['edit','update','show']);
+    Route::post('stock_counts/{stock_count}/approve', [StockCountController::class, 'approve'])->name('stock_counts.approve');
+
+    // Financial reports
+    Route::get('reports/trial-balance', [FinancialReportController::class, 'trialBalance'])->name('reports.trial_balance');
+    Route::get('reports/general-ledger', [FinancialReportController::class, 'generalLedger'])->name('reports.general_ledger');
+    Route::get('reports/account-balances', [FinancialReportController::class, 'accountBalances'])->name('reports.account_balances');
+    Route::get('reports/income-statement', [FinancialStatementController::class, 'incomeStatement'])->name('reports.income_statement');
+    Route::get('reports/balance-sheet', [FinancialStatementController::class, 'balanceSheet'])->name('reports.balance_sheet');
 
     Route::get('/update_qnt', [UpdateQuntityController::class, 'index'])->name('update_qnt');
     Route::get('/add_update_qnt', [UpdateQuntityController::class, 'create'])->name('add_update_qnt');
@@ -360,6 +393,7 @@ Route::group(
     Route::get('/accounts/journals/{type}',[AccountsTreeController::class,'journals'])->name('journals');
     Route::get('/accounts/journals/preview/{id}',[AccountsTreeController::class,'previewJournal'])->name('preview_journal');
     Route::post('/accounts/journals_search', [AccountsTreeController::class, 'journals_search'])->name('journals_search');
+    Route::get('/reports/vendor-aging',[ReportController::class,'vendorAging'])->name('reports.vendor_aging');
 
     Route::get('/accounts/manual',[JournalController::class,'create'])->name('manual_journal');
     Route::post('/accounts/manual',[JournalController::class,'store'])->name('store_manual');

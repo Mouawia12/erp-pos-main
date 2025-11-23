@@ -49,12 +49,18 @@
                     <span class="side-menu__label"> الرئيسية </span>
                 </a>
             </li>  
+            <li class="slide {{ Request::is('admin/alerts*') ? 'active' : '' }}">
+                <a class="side-menu__item" href="{{ route('alerts.index') }}">
+                    <i class="fa fa-bell side-menu__icon"></i>
+                    <span class="side-menu__label">{{ __('main.alerts_center') }}</span>
+                </a>
+            </li>
             @if(Auth::user() && Auth::user()->hasRole('system_owner'))
-                <li class="slide {{ Request::is('admin/owner/subscribers*') ? 'active' : '' }}">
-                    <a class="side-menu__item" href="{{ route('owner.subscribers.index') }}">
-                        <i class="fa fa-building-user side-menu__icon"></i>
-                        <span class="side-menu__label">لوحة المشتركين</span>
-                    </a>
+            <li class="slide {{ Request::is('admin/owner/subscribers*') ? 'active' : '' }}">
+                <a class="side-menu__item" href="{{ route('owner.subscribers.index') }}">
+                    <i class="fa fa-building-user side-menu__icon"></i>
+                    <span class="side-menu__label">لوحة المشتركين</span>
+                </a>
                 </li>
             @endif
             @can(['عرض صنف','اضافة صنف'])                
@@ -85,6 +91,24 @@
                     </ul>
                 </li>  
             @endcan 
+            <li class="slide {{ Request::is('admin/promotions*') ? 'active' : '' }}">
+                <a class="side-menu__item" href="{{ route('promotions.index') }}">
+                    <i class="fa fa-gift side-menu__icon"></i>
+                    <span class="side-menu__label">{{ __('main.promotions') ?? 'العروض الترويجية' }}</span>
+                </a>
+            </li>
+            <li class="slide {{ Request::is('admin/transfers*') ? 'active' : '' }}">
+                <a class="side-menu__item" href="{{ route('transfers.index') }}">
+                    <i class="fa fa-exchange-alt side-menu__icon"></i>
+                    <span class="side-menu__label">{{ __('main.transfer_requests') ?? 'تحويلات المخازن' }}</span>
+                </a>
+            </li>
+            <li class="slide {{ Request::is('admin/stock_counts*') ? 'active' : '' }}">
+                <a class="side-menu__item" href="{{ route('stock_counts.index') }}">
+                    <i class="fa fa-clipboard-list side-menu__icon"></i>
+                    <span class="side-menu__label">{{ __('main.inventory') ?? 'جرد المخزون' }}</span>
+                </a>
+            </li>
             @can('عرض مبيعات')                  
                 <li class="slide">
                     <a class="side-menu__item" data-toggle="slide" href="#"> 
