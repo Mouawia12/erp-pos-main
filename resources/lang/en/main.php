@@ -198,6 +198,7 @@ return [
     'invoice_terms' => 'Terms & Warranty',
     'manage' => 'Manage',
     'delete_confirm' => 'Are you sure you want to delete this item?',
+    'walk_in_customer' => 'Walk-in customer override',
     'cost_center' => 'Cost Center',
     'tax_mode' => 'Tax Mode',
     'tax_mode_inclusive' => 'Inclusive',

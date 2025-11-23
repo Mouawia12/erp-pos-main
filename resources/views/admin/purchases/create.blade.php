@@ -96,6 +96,17 @@
                                         </select>
                                     </div>
                                 </div>  
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="d-block">{{ __('main.walk_in_customer') ?? 'مورد نقدي/افتراضي' }}</label>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="walk_in_supplier_toggle">
+                                            <label class="form-check-label" for="walk_in_supplier_toggle">{{ __('main.enable') }}</label>
+                                        </div>
+                                        <input type="text" class="form-control mt-2 d-none" name="supplier_name" id="walk_in_supplier_name" placeholder="{{__('main.customer_name')}}">
+                                        <input type="text" class="form-control mt-2 d-none" name="supplier_phone" id="walk_in_supplier_phone" placeholder="{{__('main.customer_phone')}}">
+                                    </div>
+                                </div>
                                 <div class="col-md-2">
                                     <div class="form-group">
                                         <label>{{ __('main.cost_center') }}</label>
@@ -266,6 +277,13 @@
             const txt = $(this).find('option:selected').text().trim();
             if(txt && !$('#cost_center').val()){
                 $('#cost_center').val(txt);
+            }
+        });
+        $('#walk_in_supplier_toggle').on('change', function(){
+            const enabled = $(this).is(':checked');
+            $('#walk_in_supplier_name, #walk_in_supplier_phone').toggleClass('d-none', !enabled);
+            if(!enabled){
+                $('#walk_in_supplier_name, #walk_in_supplier_phone').val('');
             }
         });
          //document.getElementById('bill_date').valueAsDate = new Date();

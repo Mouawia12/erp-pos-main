@@ -100,6 +100,17 @@ span strong {font-size:12px;}
                         </div>
                         <div class="col-md-3">
                             <div class="form-group">
+                                <label class="d-block">{{ __('main.walk_in_customer') ?? 'عميل نقدي/افتراضي' }}</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="walk_in_toggle">
+                                    <label class="form-check-label" for="walk_in_toggle">{{ __('main.enable') }}</label>
+                                </div>
+                                <input type="text" class="form-control mt-2 d-none" name="customer_name" id="walk_in_name" placeholder="{{__('main.customer_name')}}">
+                                <input type="text" class="form-control mt-2 d-none" name="customer_phone" id="walk_in_phone" placeholder="{{__('main.customer_phone')}}">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
                                 <label>{{ __('main.representatives') }}</label>
                                 <select class="js-example-basic-single w-100"
                                     name="representative_id" id="representative_id">
@@ -374,6 +385,14 @@ span strong {font-size:12px;}
             var selected = $(this).find('option:selected').text().trim();
             if(selected && !$('#cost_center').val()){
                 $('#cost_center').val(selected);
+            }
+        });
+
+        $('#walk_in_toggle').on('change', function(){
+            const enabled = $(this).is(':checked');
+            $('#walk_in_name, #walk_in_phone').toggleClass('d-none', !enabled);
+            if(!enabled){
+                $('#walk_in_name, #walk_in_phone').val('');
             }
         });
 

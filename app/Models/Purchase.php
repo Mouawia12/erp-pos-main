@@ -31,6 +31,8 @@ class Purchase extends Model
         'supplier_invoice_copy',
         'cost_center',
         'representative_id',
+        'supplier_name',
+        'supplier_phone',
         'tax_mode','subscriber_id'
     ];
 
