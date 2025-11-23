@@ -91,7 +91,7 @@ span strong {font-size:12px;}
                                 <select class="js-example-basic-single w-100"
                                     name="customer_id" id="customer_id" required> 
                                     @foreach ($customers as $customer)
-                                        <option value="{{$customer -> id}}" data-default-discount="{{$customer->default_discount ?? 0}}">
+                                        <option value="{{$customer -> id}}" data-default-discount="{{$customer->default_discount ?? 0}}" data-representative="{{$customer->representative_id_ ?? ''}}">
                                             {{ $customer -> name}}
                                         </option>
                                     @endforeach
@@ -432,9 +432,13 @@ span strong {font-size:12px;}
 
         $('#customer_id').on('change', function(){
             var defaultDiscount = $(this).find(':selected').data('default-discount') || 0;
+            var repId = $(this).find(':selected').data('representative') || '';
             if(defaultDiscount > 0){
                 $('#discount').val(defaultDiscount);
                 NetAfterDiscount();
+            }
+            if(repId){
+                $('#representative_id').val(repId).trigger('change');
             }
         });
 

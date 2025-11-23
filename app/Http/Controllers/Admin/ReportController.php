@@ -14,6 +14,7 @@ use App\Models\CompanyInfo;
 use App\Models\Sales;
 use App\Models\Purchase;
 use App\Models\Branch;
+use App\Models\WarehouseProducts;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -693,5 +694,82 @@ class ReportController extends Controller
         }
 
         return view('admin.Report.account_balance_report',compact('accounts'));
+    }
+
+    public function expiryReport(Request $request)
+    {
+        $branches = Branch::where('status',1)->get();
+        $warehouses = Warehouse::all();
+
+        $dateFrom = $request->date_from ?? now()->toDateString();
+        $dateTo = $request->date_to ?? now()->addDays(30)->toDateString();
+
+        $data = DB::table('purchase_details as pd')
+            ->join('purchases as p','p.id','=','pd.purchase_id')
+            ->join('products as pr','pr.id','=','pd.product_id')
+            ->join('warehouses as w','w.id','=','pd.warehouse_id')
+            ->leftJoin('branches as b','b.id','=','p.branch_id')
+            ->select(
+                'pr.code','pr.name',
+                'pd.batch_no','pd.expiry_date','pd.quantity','pd.warehouse_id',
+                'w.name as warehouse_name','b.branch_name',
+                DB::raw('DATEDIFF(pd.expiry_date, CURDATE()) as days_to_expiry')
+            )
+            ->whereNotNull('pd.expiry_date')
+            ->whereBetween('pd.expiry_date', [$dateFrom, $dateTo])
+            ->when($request->branch_id, fn($q,$v)=>$q->where('p.branch_id',$v))
+            ->when($request->warehouse_id, fn($q,$v)=>$q->where('pd.warehouse_id',$v))
+            ->when(Auth::user()->branch_id ?? null, fn($q,$v)=>$q->where('p.branch_id',$v))
+            ->orderBy('pd.expiry_date','asc')
+            ->get();
+
+        if($request->ajax()){
+            return response()->json($data);
+        }
+
+        return view('admin.Report.expiry_report',[
+            'branches'=>$branches,
+            'warehouses'=>$warehouses,
+            'data'=>$data,
+            'dateFrom'=>$dateFrom,
+            'dateTo'=>$dateTo,
+            'branchSelected'=>$request->branch_id,
+            'warehouseSelected'=>$request->warehouse_id,
+        ]);
+    }
+
+    public function lowStockReport(Request $request)
+    {
+        $branches = Branch::where('status',1)->get();
+        $warehouses = Warehouse::all();
+
+        $data = WarehouseProducts::query()
+            ->join('products','products.id','=','warehouse_products.product_id')
+            ->join('warehouses','warehouses.id','=','warehouse_products.warehouse_id')
+            ->leftJoin('branches','branches.id','=','warehouses.branch_id')
+            ->select(
+                'products.code','products.name','products.alert_quantity',
+                'warehouse_products.quantity','warehouse_products.cost',
+                'warehouses.name as warehouse_name','branches.branch_name','warehouses.branch_id'
+            )
+            ->where('products.alert_quantity','>',0)
+            ->whereColumn('warehouse_products.quantity','<=','products.alert_quantity')
+            ->when($request->branch_id, fn($q,$v)=>$q->where('warehouses.branch_id',$v))
+            ->when($request->warehouse_id, fn($q,$v)=>$q->where('warehouse_products.warehouse_id',$v))
+            ->when(Auth::user()->branch_id ?? null, fn($q,$v)=>$q->where('warehouses.branch_id',$v))
+            ->orderBy('warehouse_products.quantity','asc')
+            ->get();
+
+        if($request->ajax()){
+            return response()->json($data);
+        }
+
+        return view('admin.Report.low_stock_report',[
+            'branches'=>$branches,
+            'warehouses'=>$warehouses,
+            'data'=>$data,
+            'branchSelected'=>$request->branch_id,
+            'warehouseSelected'=>$request->warehouse_id,
+        ]);
     }
 }

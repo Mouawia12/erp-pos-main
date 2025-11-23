@@ -377,6 +377,17 @@
                                                 </div>
                                                 <div class="col-4">
                                                     <div class="form-group">
+                                                        <label>{{ __('main.default_product_type') ?? 'نوع الصنف الافتراضي' }}</label>
+                                                        <select class="form-control" name="default_product_type" id="default_product_type">
+                                                            @php $defProdType = $setting->default_product_type ?? '1'; @endphp
+                                                            <option value="1" @if($defProdType=='1') selected @endif>{{ __('main.General') }}</option>
+                                                            <option value="2" @if($defProdType=='2') selected @endif>{{ __('main.Collection') }}</option>
+                                                            <option value="3" @if($defProdType=='3') selected @endif>{{ __('main.Service') }}</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="col-4">
+                                                    <div class="form-group">
                                                         <label>{{ __('main.tax_number') }}</label>
                                                         <input type="text" class="form-control" name="tax_number" id="tax_number" value="{{ $setting->tax_number ?? ''}}">
                                                     </div>

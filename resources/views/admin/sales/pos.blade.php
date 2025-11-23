@@ -195,7 +195,7 @@ label.total {
                                     <div class="form-group">  
                                         <select id="customer_id" name="customer_id" class="js-example-basic-single w-100" required>
                                             @foreach($vendors as $vendor)
-                                                <option value="{{$vendor -> id}}">{{$vendor -> name}}</option>
+                                                <option value="{{$vendor -> id}}" data-representative="{{$vendor->representative_id_ ?? ''}}" data-default-discount="{{$vendor->default_discount ?? 0}}">{{$vendor -> name}}</option>
                                             @endforeach
                                         </select> 
                                     </div>
@@ -503,6 +503,17 @@ label.total {
             const selectedText = $(this).find('option:selected').text().trim();
             if(selectedText && !$('#cost_center').val()){
                 $('#cost_center').val(selectedText);
+            }
+        });
+        $('#customer_id').on('change', function(){
+            const repId = $(this).find(':selected').data('representative') || '';
+            const defaultDiscount = parseFloat($(this).find(':selected').data('default-discount')) || 0;
+            if(repId){
+                $('#representative_id').val(repId).trigger('change');
+            }
+            if(defaultDiscount > 0){
+                $('#discount').val(defaultDiscount);
+                NetAfterDiscount();
             }
         });
        

@@ -32,6 +32,10 @@ class CompaniesTableSeeder extends Seeder
                     'status' => 1,
                     'cr_number' => $sub->cr_number,
                     'tax_number' => $sub->tax_number,
+                    'parent_company_id' => null,
+                    'price_level_id' => 1,
+                    'default_discount' => 0,
+                    'representative_id_' => 0,
                     'subscriber_id' => $sub->id,
                 ]
             );
@@ -56,6 +60,10 @@ class CompaniesTableSeeder extends Seeder
                     'status' => 1,
                     'cr_number' => $sub->cr_number,
                     'tax_number' => $sub->tax_number,
+                    'parent_company_id' => null,
+                    'price_level_id' => null,
+                    'default_discount' => 0,
+                    'representative_id_' => 0,
                     'subscriber_id' => $sub->id,
                 ]
             );

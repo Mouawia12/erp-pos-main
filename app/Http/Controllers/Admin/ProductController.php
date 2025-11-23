@@ -11,7 +11,6 @@ use App\Models\PurchaseDetails;
 use App\Models\SaleDetails;
 use App\Models\SystemSettings;
 use App\Models\UpdateQuntityDetails;
-use App\Models\WarehouseProducts;
 use App\Models\Warehouse;
 use App\Models\CompanyInfo;
 use Illuminate\Database\QueryException;
@@ -20,6 +19,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Auth;
 use DataTables;
+use App\Models\WarehouseProducts as WarehouseProductModel;
+use App\Models\WarehouseProducts;
 
 class ProductController extends Controller
 {
@@ -80,8 +81,9 @@ class ProductController extends Controller
         $categories = $systemController->getAllMainCategories();
         $taxRages = $systemController->getAllTaxRates();
         $taxTypes = $systemController->getAllTaxTypes();
+        $settings = SystemSettings::first();
 
-        return view('admin.products.create',compact('brands','categories','taxRages','taxTypes','units'));
+        return view('admin.products.create',compact('brands','categories','taxRages','taxTypes','units','settings'));
     }
 
     /**
@@ -100,6 +102,12 @@ class ProductController extends Controller
             'unit' => 'required',
             'cost' => 'required',
             'price' => 'required',
+            'price_level_1' => 'nullable|numeric',
+            'price_level_2' => 'nullable|numeric',
+            'price_level_3' => 'nullable|numeric',
+            'price_level_4' => 'nullable|numeric',
+            'price_level_5' => 'nullable|numeric',
+            'price_level_6' => 'nullable|numeric',
             'category_id' => 'required',
             'tax_rate' => 'required',
             'tax_method' => 'required',
@@ -122,6 +130,10 @@ class ProductController extends Controller
        
         try
         {
+            $priceLevels = [];
+            for($i=1;$i<=6;$i++){
+                $priceLevels['price_level_'.$i] = $request->input('price_level_'.$i,$request->price);
+            }
        
             $product = Product::create([
                 'code' => $request->code,
@@ -129,6 +141,7 @@ class ProductController extends Controller
                 'unit' => $request->unit,
                 'cost' => $request->cost,
                 'price' => $request->price,
+                ...$priceLevels,
                 'lista' => $request->lista ?? 0,
                 'alert_quantity' => $request->alert_quantity ?? 0,
                 'category_id' => $request->category_id,
@@ -152,8 +165,11 @@ class ProductController extends Controller
             ]);
             if($product){ 
                 $unitsTable = $request->product_units;
-                if($unitsTable){
+                if($unitsTable && is_array($unitsTable)){
                     foreach ($unitsTable as $row){
+                        if(empty($row['unit']) || $row['price']===''){
+                            continue;
+                        }
                         ProductUnit::create([
                             'product_id' => $product->id,
                             'unit_id' => $row['unit'],
@@ -174,7 +190,7 @@ class ProductController extends Controller
                 $systemController = new SystemController();
                 $warehouses = $systemController->getAllWarehouses();
                 foreach ($warehouses as $warehouse){
-                    WarehouseProducts::create([
+                    WarehouseProductModel::create([
                         'warehouse_id' => $warehouse->id,
                         'product_id' => $product->id,
                         'cost' => $product->cost,
@@ -217,9 +233,10 @@ class ProductController extends Controller
             $categories = $systemController->getAllMainCategories();
             $taxRages = $systemController->getAllTaxRates();
             $taxTypes = $systemController->getAllTaxTypes();
+            $productUnits = ProductUnit::where('product_id',$id)->get();
 
             return view('admin.products.update',
-                compact('product','brands','categories','taxRages','taxTypes','units'));
+                compact('product','brands','categories','taxRages','taxTypes','units','productUnits'));
         }
     }
 
@@ -241,6 +258,12 @@ class ProductController extends Controller
                 'unit' => 'required',
                 'cost' => 'required',
                 'price' => 'required',
+                'price_level_1' => 'nullable|numeric',
+                'price_level_2' => 'nullable|numeric',
+                'price_level_3' => 'nullable|numeric',
+                'price_level_4' => 'nullable|numeric',
+                'price_level_5' => 'nullable|numeric',
+                'price_level_6' => 'nullable|numeric',
                 'category_id' => 'required',
                 'tax_rate' => 'required',
                 'tax_method' => 'required',
@@ -263,12 +286,17 @@ class ProductController extends Controller
             }
 
             try {
+                $priceLevels = [];
+                for($i=1;$i<=6;$i++){
+                    $priceLevels['price_level_'.$i] = $request->input('price_level_'.$i,$request->price);
+                }
                 $product -> update ([
                     'code' => $request->code,
                     'name' => $request->name,
                     'unit' => $request->unit,
                     'cost' => $request->cost,
                     'price' => $request->price,
+                    ...$priceLevels,
                     'lista' => $request->lista ?? 0,
                     'alert_quantity' => $request->alert_quantity ?? 0,
                     'category_id' => $request->category_id,
@@ -297,8 +325,11 @@ class ProductController extends Controller
                     $unit -> delete();
                 }
                 $unitsTable = $request->product_units;
-                if($unitsTable){
+                if($unitsTable && is_array($unitsTable)){
                     foreach ($unitsTable as $row){
+                        if(empty($row['unit']) || $row['price']===''){
+                            continue;
+                        }
                         ProductUnit::create([
                             'product_id' => $product->id,
                             'unit_id' => $row['unit'],
@@ -320,7 +351,7 @@ class ProductController extends Controller
 //                $systemController = new SystemController();
 //                $warehouses = $systemController->getAllWarehouses();
 //                foreach ($warehouses as $warehouse){
-//                    WarehouseProducts::create([
+//                    WarehouseProductModel::create([
 //                        'warehouse_id' => $warehouse->id,
 //                        'product_id' => $product->id,
 //                        'cost' => $product->cost,
@@ -350,7 +381,7 @@ class ProductController extends Controller
             $purchases = PurchaseDetails::where('product_id', '=', $request->id)->get(); 
             if (count($sales) == 0 && count($purchases) == 0 ) {
                     $unites = ProductUnit::where('product_id', '=', $request->id)->get();
-                    $warehouseProducts = WarehouseProducts::where('product_id', '=', $request->id)->get();
+                    $warehouseProducts = WarehouseProductModel::where('product_id', '=', $request->id)->get();
                     foreach ($unites as $unit){
                         $unit -> delete();
                     }
@@ -609,5 +640,32 @@ class ProductController extends Controller
         echo json_encode ($data);
         exit;
     
+    }
+
+    public function locations($id)
+    {
+        $product = Product::findOrFail($id);
+        $salesLast = SaleDetails::join('sales','sales.id','=','sale_details.sale_id')
+            ->where('sale_details.product_id',$id)
+            ->select('sale_details.price_unit','sales.warehouse_id')
+            ->orderByDesc('sale_details.id')
+            ->get()
+            ->groupBy('warehouse_id')
+            ->map(function($group){ return $group->first()->price_unit; });
+
+        $locations = WarehouseProductModel::query()
+            ->join('warehouses','warehouses.id','=','warehouse_products.warehouse_id')
+            ->select('warehouses.name as warehouse_name','warehouse_products.quantity','warehouse_products.cost','warehouse_products.warehouse_id')
+            ->where('warehouse_products.product_id',$id)
+            ->get()
+            ->map(function($row) use ($salesLast){
+                $row->last_sale_price = $salesLast[$row->warehouse_id] ?? 0;
+                return $row;
+            });
+
+        return response()->json([
+            'product' => $product->only(['id','name','code']),
+            'locations' => $locations,
+        ]);
     }
 }

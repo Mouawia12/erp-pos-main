@@ -228,6 +228,44 @@
                                     <div class="row">
                                         <div class="col-12">
                                             <div class="form-group">
+                                                <label>{{ __('main.price_level') }} (1-6)</label>
+                                                <div class="row">
+                                                    @for($i=1;$i<=6;$i++)
+                                                        @php $field = 'price_level_'.$i; @endphp
+                                                        <div class="col-md-2 mb-2">
+                                                            <input type="number" step="0.01" class="form-control" name="price_level_{{$i}}" value="{{ $product->$field ?? '' }}" placeholder="Level {{$i}}">
+                                                        </div>
+                                                    @endfor
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <div class="form-group">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <label>الوحدات الإضافية</label>
+                                                    <button type="button" class="btn btn-sm btn-outline-primary" id="addUnitRowBtn">+ إضافة وحدة</button>
+                                                </div>
+                                                <table class="table table-bordered mt-2" id="unitRowsTable">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>{{ __('main.units') }}</th>
+                                                            <th>{{ __('main.price') }}</th>
+                                                            <th>معامل التحويل</th>
+                                                            <th>{{ __('main.barcode') ?? 'باركود' }}</th>
+                                                            <th>{{ __('main.actions') }}</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <div class="form-group">
                                                 <label>{{ __('main.units') }} <span class="text-danger">*</span>  </label>
                                                 <select class="js-example-basic-single w-100 @error('unit') is-invalid @enderror"     name="unit">
                                                     @foreach($units as $unit) 
@@ -329,6 +367,53 @@
     $(document).ready(function () {
 
         document.title = "{{ __('main.update_product')}}";
+
+        // وحدات متعددة
+        const unitOptionsHtml = `@foreach($units as $unit)<option value="{{$unit->id}}">{{$unit->name}}</option>@endforeach`;
+        let unitRowIndex = 0;
+        function addUnitRow(unitId, price, factor, barcode, canDelete=true){
+            const row = `<tr data-index="${unitRowIndex}">
+                <td><select name="product_units[${unitRowIndex}][unit]" class="form-control">${unitOptionsHtml}</select></td>
+                <td><input type="number" step="0.01" name="product_units[${unitRowIndex}][price]" class="form-control" value="${price ?? ''}"></td>
+                <td><input type="number" step="0.01" name="product_units[${unitRowIndex}][conversion_factor]" class="form-control" value="${factor ?? 1}"></td>
+                <td><input type="text" name="product_units[${unitRowIndex}][barcode]" class="form-control" value="${barcode ?? ''}"></td>
+                <td class="d-flex gap-1">
+                    <button type="button" class="btn btn-sm btn-outline-secondary generateBarcode">{{ __('main.generate') ?? 'توليد' }}</button>
+                    ${canDelete ? '<button type="button" class="btn btn-sm btn-danger removeUnitRow">-</button>' : ''}
+                </td>
+            </tr>`;
+            $('#unitRowsTable tbody').append(row);
+            const $lastRow = $('#unitRowsTable tbody tr').last();
+            if(unitId){ $lastRow.find('select').val(unitId); }
+            unitRowIndex++;
+        }
+
+        const existingUnits = @json($productUnits ?? []);
+        if(existingUnits.length){
+            existingUnits.forEach((u,idx)=>{
+                addUnitRow(u.unit_id, u.price, u.conversion_factor ?? 1, u.barcode ?? '', idx>0);
+            });
+        } else {
+            addUnitRow({{$product->unit}}, {{$product->price}}, 1, '', false);
+        }
+
+        $('#addUnitRowBtn').on('click', function(){
+            addUnitRow('', '', 1, '', true);
+        });
+        $(document).on('click','.removeUnitRow', function(){
+            $(this).closest('tr').remove();
+        });
+        $(document).on('click','.generateBarcode', function(){
+            const code = '9' + Math.floor(100000000000 + Math.random() * 900000000000).toString().slice(0,12);
+            $(this).closest('tr').find('input[name*="[barcode]"]').val(code);
+        });
+        $('#price').on('change', function(){
+            const val = $(this).val();
+            const firstRow = $('#unitRowsTable tbody tr').first();
+            if(firstRow.length){
+                firstRow.find('input[name*="[price]"]').val(val);
+            }
+        });
 
         $('#tax_rate').change(function (){
             const tax = $('#tax_rate  option:selected').text();

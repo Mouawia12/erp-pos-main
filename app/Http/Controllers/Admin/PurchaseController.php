@@ -15,6 +15,7 @@ use App\Models\ProductUnit;
 use App\Models\Unit;
 use App\Models\Warehouse; 
 use App\Models\Branch;
+use App\Models\Representative;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -170,6 +171,8 @@ class PurchaseController extends Controller
                 'cost_with_tax' => $request->price_with_tax[$index],
                 'warehouse_id' => $request->warehouse_id,
                 'unit_id' => $unitId,
+                'batch_no' => $request->batch_no[$index] ?? null,
+                'expiry_date' => $request->expiry_date[$index] ?? null,
                 'unit_factor' => $unitFactor,
                 'tax' => $request->tax[$index],
                 'total' => $request->total[$index],
@@ -419,6 +422,8 @@ class PurchaseController extends Controller
                 'cost_with_tax' => $request->price_with_tax[$index] * -1,
                 'warehouse_id' => $request->warehouse_id,
                 'unit_id' => $unitId,
+                'batch_no' => $request->batch_no[$index] ?? null,
+                'expiry_date' => $request->expiry_date[$index] ?? null,
                 'unit_factor' => $unitFactor,
                 'tax' => $request->tax[$index] * -1,
                 'total' => $request->total[$index] * -1,

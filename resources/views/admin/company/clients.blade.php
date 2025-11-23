@@ -169,6 +169,17 @@
                                 <textarea type="text"  id="address" name="address" class="form-control" placeholder="{{ __('main.address') }}"></textarea>
                             </div>
                         </div> 
+                        <div class="col-4">
+                            <div class="form-group">
+                                <label>{{ __('main.representatives') }}</label>
+                                <select class="form-control" id="representative_id_" name="representative_id_">
+                                    <option value="">{{ __('main.choose') }}</option>
+                                    @foreach($representatives as $rep)
+                                        <option value="{{$rep->id}}">{{$rep->user_name}}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
                  
                         @if($type == 3)
                             <div class="col-4" >
@@ -209,6 +220,22 @@
                         </div>
                         <div class="col-4" >
                             <div class="form-group">
+                                <label>{{ __('main.cr_number') ?? 'CR' }}</label>
+                                <input type="text"  id="cr_number" name="cr_number"
+                                       class="form-control"
+                                       placeholder="{{ __('main.cr_number') ?? 'CR' }}"  />
+                            </div>
+                        </div>
+                        <div class="col-4" >
+                            <div class="form-group">
+                                <label>{{ __('main.tax_number') ?? 'Tax Number' }}</label>
+                                <input type="text"  id="tax_number" name="tax_number"
+                                       class="form-control"
+                                       placeholder="{{ __('main.tax_number') ?? 'Tax Number' }}"  />
+                            </div>
+                        </div>
+                        <div class="col-4" >
+                            <div class="form-group">
                                 <label>{{ __('main.opening_balance') }} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
                                 <input type="number" step="any"  id="opening_balance" name="opening_balance"
                                        class="form-control"
@@ -232,6 +259,34 @@
                                        placeholder="{{ __('main.opening_balance') }}"  />
                             </div>
                         </div> 
+                        <div class="col-4">
+                            <div class="form-group">
+                                <label>{{ __('main.parent_company') ?? 'الكيان الرئيسي' }}</label>
+                                <select class="form-control" id="parent_company_id" name="parent_company_id">
+                                    <option value="">{{ __('main.choose') }}</option>
+                                    @foreach($parentCompanies as $c)
+                                        <option value="{{$c->id}}">{{$c->company}}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="form-group">
+                                <label>{{ __('main.price_level') ?? 'مستوى السعر' }}</label>
+                                <select class="form-control" id="price_level_id" name="price_level_id">
+                                    <option value="">{{ __('main.choose') }}</option>
+                                    @for($i=1;$i<=6;$i++)
+                                        <option value="{{$i}}">{{ __('main.price_level') ?? 'مستوى السعر' }} {{$i}}</option>
+                                    @endfor
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="form-group">
+                                <label>{{ __('main.default_discount') ?? 'الخصم الافتراضي' }}</label>
+                                <input type="number" step="0.01" class="form-control" id="default_discount" name="default_discount" value="0">
+                            </div>
+                        </div>
                     @endif
                     </div> 
                     <div class="row">
@@ -400,6 +455,12 @@
                             $(".modal-body #email").val( response.email );
                             $(".modal-body #account_id").val( response.account_id ).trigger("change");
                             $(".modal-body #vat_no").val( response.vat_no );
+                            $(".modal-body #cr_number").val( response.cr_number );
+                            $(".modal-body #tax_number").val( response.tax_number );
+                            $(".modal-body #parent_company_id").val( response.parent_company_id ).trigger('change');
+                            $(".modal-body #price_level_id").val( response.price_level_id ).trigger('change');
+                            $(".modal-body #default_discount").val( response.default_discount );
+                            $(".modal-body #representative_id_").val( response.representative_id_ ).trigger('change');
                             $(".modal-body #opening_balance").val(  response.opening_balance );
                             try {
                                 $(".modal-body #customer_group_id").val( response.customer_group_id).trigger("change");

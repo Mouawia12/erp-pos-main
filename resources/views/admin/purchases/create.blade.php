@@ -91,7 +91,7 @@
                                             name="customer_id" id="customer_id" required>
                                             <option  value="0" selected>حدد الاختيار</option>
                                             @foreach ($customers as $supplier)
-                                                <option value="{{$supplier -> id}}"> {{ $supplier -> name}}</option>
+                                                <option value="{{$supplier -> id}}" data-representative="{{$supplier->representative_id_ ?? ''}}"> {{ $supplier -> name}}</option>
                                             @endforeach
                                         </select>
                                         <div class="mt-1 d-flex gap-2">
@@ -185,6 +185,8 @@
                                                             <th class="col-md-2 text-center">{{__('main.price.unit')}}</th>
                                                             <th class="col-md-1 text-center" hidden>{{__('main.price.unit').'+'.__('main.tax')}}</th>
                                                             <th class="col-md-1 text-center">{{__('main.quantity')}} </th>
+                                                            <th class="col-md-2 text-center">{{__('main.batch_no') ?? 'رقم التشغيل'}}</th>
+                                                            <th class="col-md-2 text-center">{{__('main.expiry_date') ?? 'تاريخ الانتهاء'}}</th>
                                                             <th class="col-md-2 text-center">{{__('main.mount')}}</th>
                                                             <th class="col-md-2 text-center">{{__('main.tax')}}</th>
                                                             <th class="col-md-2 text-center">{{__('main.total')}}</th>
@@ -193,7 +195,7 @@
                                                     </thead>
                                                     <tbody id="tbody"></tbody>  
                                                     <tfoot>
-                                                        <th colspan="5">
+                                                        <th colspan="7">
                                                             {{__('main.sum')}}
                                                         </th> 
                                                         <td class="text-center" colspan="1">
@@ -290,6 +292,12 @@
             const txt = $(this).find('option:selected').text().trim();
             if(txt && !$('#cost_center').val()){
                 $('#cost_center').val(txt);
+            }
+        });
+        $('#customer_id').on('change', function(){
+            const repId = $(this).find(':selected').data('representative') || '';
+            if(repId){
+                $('#representative_id').val(repId).trigger('change');
             }
         });
         $('#walk_in_supplier_toggle').on('change', function(){
@@ -678,6 +686,8 @@ function openDialog(){
                 tr_html +='<td><input type="number" class="form-control iPrice" name="price_without_tax[]" value="'+item.price_withoute_tax.toFixed(2)+'"></td>';
                 tr_html +='<td hidden><input type="hidden" class="form-control iPriceWTax" name="price_with_tax[]" value="'+item.price_with_tax.toFixed(2)+'"></td>';
                 tr_html +='<td><input type="number" class="form-control iQuantity" name="qnt[]" value="'+item.qnt+'"></td>';
+                tr_html +='<td><input type="text" class="form-control" name="batch_no[]" value="'+(item.batch_no ?? '')+'" placeholder="{{__('main.batch_no') ?? 'Batch'}}"></td>';
+                tr_html +='<td><input type="date" class="form-control" name="expiry_date[]" value="'+(item.expiry_date ?? '')+'"></td>';
                 tr_html +='<td><input type="text" readonly="readonly" class="form-control" name="total[]" value="'+(item.price_withoute_tax*item.qnt).toFixed(2)+'"></td>';
                 tr_html +='<td><input type="text" readonly="readonly" class="form-control" name="tax[]" value="'+(item.item_tax*item.qnt).toFixed(2)+'"></td>';
                 tr_html +='<td><input type="text" readonly="readonly" class="form-control" name="net[]" value="'+(item.price_with_tax*item.qnt).toFixed(2)+'"></td>';

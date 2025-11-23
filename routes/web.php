@@ -264,6 +264,7 @@ Route::group(
     Route::post('/products/delete', [ProductController::class, 'delete'])->name('product.delete');
     Route::get('/getProduct/{code}', [ProductController::class, 'getProduct'])->name('getProduct');
     Route::get('/get-product-warehouse/{warehouse_id}/{code}', [ProductController::class, 'get_product_warehouse'])->name('get.product.warehouse');
+    Route::get('/products/{id}/locations', [ProductController::class, 'locations'])->name('products.locations');
     Route::get('/products/print_barcode', [ProductController::class, 'print_barcode'])->name('print_barcode');
     Route::post('/products/print_barcode', [ProductController::class, 'do_print_barcode'])->name('preview_barcode');
     Route::get('/products/print_qr', [ProductController::class, 'print_qr'])->name('print_qr');
@@ -317,6 +318,13 @@ Route::group(
     Route::get('/purchases/payments/add/{id}',[PaymentController::class,'addPurchasesPayment'])->name('add_purchases_payments');
     Route::post('/purchases/payments/add/{id}',[PaymentController::class,'storePurchasesPayment'])->name('store_purchases_payments');
     Route::get('/purchases/payments/delete/{id}',[PaymentController::class,'deletePurchasesPayment'])->name('delete_purchases_payments');
+
+    // Reports: expiry / near-expiry items
+    Route::get('/reports/expiry', [ReportController::class, 'expiryReport'])->name('reports.expiry');
+    Route::post('/reports/expiry', [ReportController::class, 'expiryReport'])->name('reports.expiry.search');
+    // Reports: low stock
+    Route::get('/reports/low-stock', [ReportController::class, 'lowStockReport'])->name('reports.low_stock');
+    Route::post('/reports/low-stock', [ReportController::class, 'lowStockReport'])->name('reports.low_stock.search');
     Route::get('/sales/payments/{id}',[PaymentController::class,'getSalesPayments'])->name('sales_payments');
     Route::get('/sales/payments/show/{remain}',[PaymentController::class,'showSalePayment'])->name('show_sales_payments');
     Route::get('/sales/payments/add/{id}',[PaymentController::class,'addSalePayment'])->name('add_sales_payments');

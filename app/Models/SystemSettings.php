@@ -56,6 +56,7 @@ class SystemSettings extends Model
         'weight_start',//
         'weight_length',//
         'weight_divider',//
+        'default_product_type',
         'default_invoice_type',
         'invoice_terms',
         'email_protocol',//

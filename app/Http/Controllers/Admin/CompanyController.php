@@ -9,6 +9,7 @@ use App\Http\Requests\StoreCompanyRequest;
 use App\Http\Requests\UpdateCompanyRequest;
 use App\Models\CustomerGroup;
 use App\Models\SystemSettings;
+use App\Models\Representative;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -26,15 +27,17 @@ class CompanyController extends Controller
         $companies = Company::with('group') -> get();
         $groups = CustomerGroup::all(); 
         $settings = SystemSettings::all()-> first();
+        $parentCompanies = Company::where('group_id',$type)->get();
+        $representatives = Representative::all();
         
         if($type == 3){ 
             $accounts = AccountsTree::where('parent_code',1107)->get();
             return view('admin.company.clients' , ['type' => $type , 'companies' =>
-            $companies , 'groups' => $groups , 'accounts' => $accounts , 'settings' => $settings] );
+            $companies , 'groups' => $groups , 'accounts' => $accounts , 'settings' => $settings,'parentCompanies'=>$parentCompanies,'representatives'=>$representatives] );
         }else{
             $accounts = AccountsTree::where('parent_code',2101)->get();
             return view('admin.company.supplier' , ['type' => $type , 'companies' =>
-            $companies , 'groups' => $groups , 'accounts' => $accounts , 'settings' => $settings] );
+            $companies , 'groups' => $groups , 'accounts' => $accounts , 'settings' => $settings,'parentCompanies'=>$parentCompanies,'representatives'=>$representatives] );
 
         }
 
@@ -76,6 +79,11 @@ class CompanyController extends Controller
                         'customer_group_name' => '',
                         'name' => $request->company,
                         'company' => $request->company,
+                        'cr_number' => $request->cr_number ?? null,
+                        'tax_number' => $request->tax_number ?? null,
+                        'parent_company_id' => $request->parent_company_id ?? null,
+                        'price_level_id' => $request->price_level_id ?? null,
+                        'default_discount' => $request->default_discount ?? 0,
                         'vat_no' => $request->vat_no ?? '',
                         'address' => $request-> address ?? '',
                         'city' => '' ,
@@ -92,7 +100,8 @@ class CompanyController extends Controller
                         'credit_amount' => $request -> credit_amount ?? 0 ,
                         'stop_sale' =>$request -> has('stop_sale')? 1: 0 ,
                         'account_id' => 0,
-                        'user_id' => Auth::user() -> id 
+                        'user_id' => Auth::user() -> id,
+                        'representative_id_' => $request->representative_id_ ?? 0,
                     ]);
     
                     $code = $this->get_account_code_no($company);
@@ -212,6 +221,8 @@ class CompanyController extends Controller
                     'cr_number' => $request->cr_number ?? $company->cr_number,
                     'tax_number' => $request->tax_number ?? $company->tax_number,
                     'vat_no' => $request->vat_no ?? 0,
+                    'cr_number' => $request->cr_number ?? $company->cr_number,
+                    'tax_number' => $request->tax_number ?? $company->tax_number,
                     'address' => $request-> address ?? '',
                     'city' => '' ,
                     'state' => '',
@@ -230,6 +241,7 @@ class CompanyController extends Controller
                     'parent_company_id' => $request->parent_company_id ?? $company->parent_company_id,
                     'price_level_id' => $request->price_level_id ?? $company->price_level_id,
                     'default_discount' => $request->default_discount ?? $company->default_discount,
+                    'representative_id_' => $request->representative_id_ ?? $company->representative_id_,
 
                 ]);
 

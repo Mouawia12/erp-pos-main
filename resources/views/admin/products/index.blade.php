@@ -51,6 +51,7 @@
                                         <th>{{__('main.tax_excise')}}</th>
                                         <th>{{__('main.alert_quantity')}}</th>
                                         <th>{{__('main.status')}}</th>
+                                        <th>{{__("main.locations") ?? "المستودعات"}}</th>
                                         <th>{{__('main.actions')}}</th>
                                     </tr>
                                 </thead>
@@ -217,6 +218,15 @@
                         searchable: false
                     },
                     {
+                        data: 'id',
+                        name: 'locations',
+                        orderable: false,
+                        searchable: false,
+                        render: function(data){
+                            return '<button class="btn btn-sm btn-outline-info locationsBtn" data-id="'+data+'">{{__("main.locations") ?? "المستودعات"}}</button>';
+                        }
+                    },
+                    {
                         data: 'action',
                         name: 'action',
                         orderable: false,
@@ -294,6 +304,22 @@
             $('#deleteModal').modal("hide");
             id = 0 ;
         });
+
+        $(document).on('click','.locationsBtn', function(){
+            const id = $(this).data('id');
+            $.get("{{ url('/admin/products') }}/"+id+"/locations", function(resp){
+                if(resp && resp.locations){
+                    let html = '<h6>'+resp.product.name+' ('+resp.product.code+')</h6>';
+                    html += '<table class="table table-bordered"><thead><tr><th>{{__("main.warehouse")}}</th><th>{{__("main.quantity")}}</th><th>{{__("main.cost")}}</th><th>{{__("main.last_sale_price") ?? "آخر سعر بيع"}}</th></tr></thead><tbody>';
+                    resp.locations.forEach(function(loc){
+                        html += '<tr><td>'+loc.warehouse_name+'</td><td>'+loc.quantity+'</td><td>'+loc.cost+'</td><td>'+loc.last_sale_price+'</td></tr>';
+                    });
+                    html += '</tbody></table>';
+                    $('#locationsBody').html(html);
+                    $('#locationsModal').modal('show');
+                }
+            });
+        });
         document.title = "{{ __('main.products_list')}}";
 
     });
@@ -346,4 +372,20 @@
         });
     }
 </script>
+
+<div class="modal fade" id="locationsModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{{ __('main.locations') ?? 'المستودعات' }}</h5>
+                <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="locationsBody"></div>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection 

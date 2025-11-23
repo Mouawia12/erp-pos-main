@@ -51,3 +51,6 @@ The full Arabic requirements from "طلبات-تطوير-برنامج-المحا
 - Branch details (CR/tax/manager/email) added to branch screens and to invoice prints.
 - Expenses: added tax field; tax is posted to configured tax account during auto-accounting.
 - Quick-add shortcuts on sales/purchases screens to open add customer/supplier, representative, and product in a new tab.
+- Product price levels (up to 6): products seed price_level_1..6; sales auto-picks customer price level and recalculates lines/totals accordingly.
+- Product locations modal from list: per-warehouse quantity, cost, and last sale price.
+- Multi-unit management: add/edit units with conversion factor and per-unit barcode, plus quick barcode generator per unit.

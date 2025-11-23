@@ -22,6 +22,7 @@ class BranchesTableSeeder extends Seeder
                     'tax_number' => $sub->tax_number,
                     'manager_name' => $sub->responsible_person,
                     'contact_email' => $sub->contact_email,
+                    'default_invoice_type' => 'simplified_tax_invoice',
                     'status' => 1,
                     'subscriber_id' => $sub->id,
                 ]

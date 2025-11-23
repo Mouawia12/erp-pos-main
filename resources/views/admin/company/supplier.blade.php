@@ -213,6 +213,33 @@
                         </div>
                         <div class="col-6 " >
                             <div class="form-group">
+                                <label>{{ __('main.cr_number') ?? 'CR' }}</label>
+                                <input type="text"  id="cr_number" name="cr_number"
+                                       class="form-control"
+                                       placeholder="{{ __('main.cr_number') ?? 'CR' }}"  />
+                            </div>
+                        </div>
+                        <div class="col-6 " >
+                            <div class="form-group">
+                                <label>{{ __('main.tax_number') ?? 'Tax Number' }}</label>
+                                <input type="text"  id="tax_number" name="tax_number"
+                                       class="form-control"
+                                       placeholder="{{ __('main.tax_number') ?? 'Tax Number' }}"  />
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="form-group">
+                                <label>{{ __('main.representatives') }}</label>
+                                <select class="form-control" id="representative_id_" name="representative_id_">
+                                    <option value="">{{ __('main.choose') }}</option>
+                                    @foreach($representatives as $rep)
+                                        <option value="{{$rep->id}}">{{$rep->user_name}}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-6 " >
+                            <div class="form-group">
                                 <label>{{ __('main.opening_balance') }} <span class="text-danger">*</span> </label>
                                 <input type="number" step="any"  id="opening_balance" name="opening_balance"
                                        class="form-control"
@@ -409,6 +436,9 @@
                             $(".modal-body #email").val(  response.email );
                             $(".modal-body #account_id").val(  response.account_id ).trigger("change");
                             $(".modal-body #vat_no").val(  response.vat_no );
+                            $(".modal-body #cr_number").val(  response.cr_number );
+                            $(".modal-body #tax_number").val(  response.tax_number );
+                            $(".modal-body #representative_id_").val(  response.representative_id_ ).trigger('change');
                             $(".modal-body #opening_balance").val(  response.opening_balance );
                             try {
                                 $(".modal-body #customer_group_id").val(  response.customer_group_id );

@@ -115,6 +115,7 @@ class DatabaseSeeder extends Seeder
             SaleDetailsTableSeeder::class,
             PurchaseDetailsTableSeeder::class,
             MultiSubscriberDataSeeder::class,
+            InvoiceTermTemplatesSeeder::class,
         ]);
     }
 }

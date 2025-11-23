@@ -240,6 +240,8 @@ class SalesController extends Controller
         $billDate = now()->format('Y-m-d H:i:s');
 
         $siteController = new SystemController();
+        $customer = Company::find($request->customer_id);
+        $customerPriceLevel = $customer->price_level_id ?? null;
         $total = 0;
         $tax = 0;
         $tax_excise = 0;
@@ -256,22 +258,35 @@ class SalesController extends Controller
             $productDetails = $siteController->getProductById($id);
             $unitId = $request->unit_id[$index] ?? $productDetails->unit;
             $unitFactor = $request->unit_factor[$index] ?? 1;
+            $basePrice = $request->price_unit[$index];
+            if($customerPriceLevel){
+                $col = 'price_level_'.$customerPriceLevel;
+                if(!empty($productDetails->$col)){
+                    $basePrice = $productDetails->$col;
+                }
+            }
+            $oldPrice = $request->price_unit[$index] > 0 ? $request->price_unit[$index] : 1;
+            $ratio = $basePrice / $oldPrice;
+            $lineTotal = $request->total[$index] * $ratio;
+            $lineTax = $request->tax[$index] * $ratio;
+            $lineTaxExcise = $request->tax_excise[$index] * $ratio;
+            $lineNet = $request->net[$index] * $ratio;
             $product = [
                 'sale_id' => 0,
                 'product_code' => $productDetails->code,
                 'product_id' => $id,
                 'quantity' => $request->qnt[$index],
-                'price_unit' => $request->price_unit[$index],
+                'price_unit' => $basePrice,
                 'discount' => $request->discount_unit[$index] ?? 0,
-                'price_with_tax' => $request->price_with_tax[$index],
+                'price_with_tax' => $request->price_with_tax[$index] * $ratio,
                 'warehouse_id' => $request->warehouse_id,
                 'unit_id' => $unitId,
                 'unit_factor' => $unitFactor,
-                'tax' => $request->tax_excise[$index]> 0 ? $request->tax[$index] - $request->tax_excise[$index]:$request->tax[$index],
-                'tax_excise' => $request->tax_excise[$index], 
-                'total' => $request->total[$index],
+                'tax' => $lineTaxExcise > 0 ? $lineTax - $lineTaxExcise:$lineTax,
+                'tax_excise' => $lineTaxExcise, 
+                'total' => $lineTotal,
                 'lista' => 0,
-                'profit'=> ($request->price_unit[$index] - ($productDetails->cost * $unitFactor)) * $request->qnt[$index]
+                'profit'=> ($basePrice - ($productDetails->cost * $unitFactor)) * $request->qnt[$index]
             ];
 
             $item = new Product();
@@ -281,10 +296,11 @@ class SalesController extends Controller
             $qntProducts[] = $item ;
 
             $products[] = $product;
-            $total +=$request->total[$index];
-            $tax +=$request->tax[$index];
-            $tax_excise +=$request->tax_excise[$index];
-            $profit +=($request->price_unit[$index] - ($productDetails->cost * $unitFactor)) * $request->qnt[$index];
+            $total += $lineTotal;
+            $tax += $lineTax;
+            $tax_excise += $lineTaxExcise;
+            $net += $lineNet;
+            $profit +=($basePrice - ($productDetails->cost * $unitFactor)) * $request->qnt[$index];
         }
 
         $taxForInvoice = $tax_excise > 0 ? ($tax - $tax_excise) : $tax;
