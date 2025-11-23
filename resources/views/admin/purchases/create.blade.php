@@ -94,6 +94,11 @@
                                                 <option value="{{$supplier -> id}}"> {{ $supplier -> name}}</option>
                                             @endforeach
                                         </select>
+                                        <div class="mt-1 d-flex gap-2">
+                                            <a href="{{ route('clients',4) }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                {{ __('main.add_new') }} {{ __('main.supplier') }}
+                                            </a>
+                                        </div>
                                     </div>
                                 </div>  
                                 <div class="col-md-4">
@@ -131,6 +136,14 @@
                                             <option value="inclusive">{{__('main.tax_mode_inclusive')}}</option>
                                             <option value="exclusive">{{__('main.tax_mode_exclusive')}}</option>
                                         </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label>{{ __('main.products') ?? 'منتجات' }}</label>
+                                        <a href="{{ route('createProduct') }}" target="_blank" class="btn btn-sm btn-outline-primary w-100">
+                                            {{ __('main.add_new') }}
+                                        </a>
                                     </div>
                                 </div>
                             </div> 

@@ -96,6 +96,11 @@ span strong {font-size:12px;}
                                         </option>
                                     @endforeach
                                 </select>
+                                <div class="mt-1 d-flex gap-2">
+                                    <a href="{{ route('clients',3) }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                        {{ __('main.add_new') }} {{ __('main.clients') }}
+                                    </a>
+                                </div>
                             </div>
                         </div>
                         <div class="col-md-3">
@@ -119,6 +124,11 @@ span strong {font-size:12px;}
                                         <option value="{{$rep->id}}">{{$rep->user_name}}</option>
                                     @endforeach
                                 </select>
+                                <div class="mt-1">
+                                    <a href="{{ route('representatives') }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                        {{ __('main.add_new') }} {{ __('main.representatives') }}
+                                    </a>
+                                </div>
                             </div>
                         </div>
                         <div class="col-md-3">
@@ -142,6 +152,11 @@ span strong {font-size:12px;}
                                                     </div>
                                                     <input type="text" name="add_item" id="add_item" value="" class="form-control input-lg ui-autocomplete-input" placeholder="{{__('main.barcode.note')}}" autocomplete="off">
                                                 </div> 
+                                                <div class="mt-1">
+                                                    <a href="{{ route('createProduct') }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                        {{ __('main.add_new') }} {{ __('main.products') ?? 'منتج' }}
+                                                    </a>
+                                                </div>
                                             </div>
                                             <ul class="suggestions" id="products_suggestions" style="display: block">
                                             </ul>

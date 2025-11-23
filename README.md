@@ -50,3 +50,4 @@ The full Arabic requirements from "طلبات-تطوير-برنامج-المحا
 - Supplier invoice reference + attachment stored with purchase invoices.
 - Branch details (CR/tax/manager/email) added to branch screens and to invoice prints.
 - Expenses: added tax field; tax is posted to configured tax account during auto-accounting.
+- Quick-add shortcuts on sales/purchases screens to open add customer/supplier, representative, and product in a new tab.
