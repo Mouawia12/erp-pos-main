@@ -89,7 +89,7 @@
                                         <label>{{ __('main.supplier') }} <span class="text-danger">*</span> </label>
                                         <select class="js-example-basic-single w-100"
                                             name="customer_id" id="customer_id" required>
-                                            <option  value="0" selected>حدد الاختيار</option>
+                                            <option  value="0" selected>{{ __('main.choose') }}</option>
                                             @foreach ($customers as $supplier)
                                                 <option value="{{$supplier -> id}}" data-representative="{{$supplier->representative_id_ ?? ''}}"> {{ $supplier -> name}}</option>
                                             @endforeach
@@ -103,7 +103,7 @@
                                 </div>  
                                 <div class="col-md-4">
                                     <div class="form-group">
-                                        <label class="d-block">{{ __('main.walk_in_customer') ?? 'مورد نقدي/افتراضي' }}</label>
+                                        <label class="d-block">{{ __('main.walk_in_supplier') }}</label>
                                         <div class="form-check">
                                             <input class="form-check-input" type="checkbox" id="walk_in_supplier_toggle">
                                             <label class="form-check-label" for="walk_in_supplier_toggle">{{ __('main.enable') }}</label>
@@ -140,7 +140,7 @@
                                 </div>
                                 <div class="col-md-2">
                                     <div class="form-group">
-                                        <label>{{ __('main.products') ?? 'منتجات' }}</label>
+                                        <label>{{ __('main.products') }}</label>
                                         <a href="{{ route('createProduct') }}" target="_blank" class="btn btn-sm btn-outline-primary w-100">
                                             {{ __('main.add_new') }}
                                         </a>
@@ -185,8 +185,8 @@
                                                             <th class="col-md-2 text-center">{{__('main.price.unit')}}</th>
                                                             <th class="col-md-1 text-center" hidden>{{__('main.price.unit').'+'.__('main.tax')}}</th>
                                                             <th class="col-md-1 text-center">{{__('main.quantity')}} </th>
-                                                            <th class="col-md-2 text-center">{{__('main.batch_no') ?? 'رقم التشغيل'}}</th>
-                                                            <th class="col-md-2 text-center">{{__('main.expiry_date') ?? 'تاريخ الانتهاء'}}</th>
+                                                            <th class="col-md-2 text-center">{{__('main.batch_no')}}</th>
+                                                            <th class="col-md-2 text-center">{{__('main.expiry_date')}}</th>
                                                             <th class="col-md-2 text-center">{{__('main.mount')}}</th>
                                                             <th class="col-md-2 text-center">{{__('main.tax')}}</th>
                                                             <th class="col-md-2 text-center">{{__('main.total')}}</th>
@@ -353,10 +353,10 @@
                 if(rows > 0){  
                     document.getElementById('formPurchase').submit(); 
                 } else {
-                    alert($('<div>{{trans('يجب تحديد تفاصيل واصناف الفاتورة')}}</div>').text());
+                    alert($('<div>{{__('main.invoice_details_required')}}</div>').text());
                 }
             } else {
-                alert($('<div>{{trans('يجب تحديد العميل والمستودع')}}</div>').text());
+                alert($('<div>{{__('main.customer_warehouse_required')}}</div>').text());
             } 
         });
 
@@ -408,7 +408,7 @@
                     console.log(response);
                     if (response) {
                         $('#warehouse_id').empty();
-                        //$('#warehouse_id').append('<option value="0">حدد الاختيار ..</option>');
+                        //$('#warehouse_id').append('<option value="0">{{ __('main.choose') }}</option>');
                         for (let i = 0; i < response.length; i++){
                             $('#warehouse_id').append('<option value="'+response[i].id+'">'+response[i].name + '</option>');
                         }

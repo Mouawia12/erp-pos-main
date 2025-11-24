@@ -268,14 +268,14 @@ span strong {font-size:12px;}
                             <div class="row" style="align-items: baseline; margin-bottom: 10px;">
                                 <div class="col-md-6">
                                     <div class="form-group">
-                                        <label>{{ __('نوع الخصم') }} </label> 
+                                        <label>{{ __('main.discount_type') }} </label> 
                                         <select class="js-example-basic-single w-100"
                                             name="discount_type" id="discount_type">  
-                                            <option value="1">قيمة</option> 
-                                            <option value="2">نسبة مئوية</option> 
-                                        </select>
+                                            <option value="1">{{ __('main.discount_amount') }}</option> 
+                                            <option value="2">{{ __('main.discount_percent') }}</option> 
+                                        </select> 
                                     </div>
-                                </div> 
+                                </div>
                                 <div class="col-md-6" >
                                     <div class="form-group">
                                         <label> {{__('main.discount')}} </label>
@@ -364,7 +364,7 @@ span strong {font-size:12px;}
             if(Number(money) == ( Number(cash) + Number(visa) ) ){
                 document.getElementById('salesform').submit(); 
             } else {
-                alert('لابد ان يكون مجموع المبلغين مساويا لاجمالى الفاتورة');
+                alert('{{ __('main.payments_must_match_total') }}');
             } 
         });
 
@@ -481,10 +481,10 @@ span strong {font-size:12px;}
                     addPayments(net_after_discount);
                    //document.getElementById('salesform').submit(); 
                 } else {
-                    alert($('<div>{{trans('يجب تحديد تفاصيل واصناف الفاتورة')}}</div>').text());
+                    alert($('<div>{{__('main.invoice_details_required')}}</div>').text());
                 }
             } else {
-                alert($('<div>{{trans('يجب تحديد العميل والمستودع')}}</div>').text());
+                alert($('<div>{{__('main.customer_warehouse_required')}}</div>').text());
             } 
         });
 
