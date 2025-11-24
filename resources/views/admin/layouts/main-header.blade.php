@@ -28,7 +28,22 @@
                     app(\App\Services\AlertService::class)->sync();
                     $alertUnreadCount = \App\Models\Alert::unread()->count();
                     $latestAlerts = \App\Models\Alert::unread()->latest()->take(5)->get();
+                    $currentLocale = app()->getLocale();
+                    $toggleLocale = $currentLocale === 'ar' ? 'en' : 'ar';
+                    $localeLabel = $currentLocale === 'ar' ? __('main.lang_ar') : __('main.lang_en');
+                    $toggleLabel = $currentLocale === 'ar' ? __('main.switch_to_en') : __('main.switch_to_ar');
+                    $localeFlag = $currentLocale === 'ar' ? asset('assets/img/arabic.png') : asset('assets/img/english.png');
+                    $toggleFlag = $currentLocale === 'ar' ? asset('assets/img/english.png') : asset('assets/img/arabic.png');
                @endphp
+               <div class="nav-item mx-2">
+                    <a class="btn btn-sm btn-outline-primary d-flex align-items-center"
+                       style="border-radius:20px;padding:6px 12px;"
+                       rel="alternate" hreflang="{{ $toggleLocale }}"
+                       href="{{ LaravelLocalization::getLocalizedURL($toggleLocale, null, [], true) }}">
+                        <i class="fa fa-globe" style="margin-inline-end:8px;"></i>
+                        <span class="fw-bold">{{ $toggleLabel }}</span>
+                    </a>
+               </div>
                <div class="dropdown nav-item main-header-notification">
                     <a class="new nav-link" href="#" data-toggle="dropdown" aria-expanded="false">
                         <i class="fa fa-bell"></i>

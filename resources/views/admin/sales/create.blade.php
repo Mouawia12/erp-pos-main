@@ -950,5 +950,6 @@ span strong {font-size:12px;}
 
     } 
 </script>
+<script src="{{ asset('js/offline-pos.js') }}"></script>
 
 @endsection 

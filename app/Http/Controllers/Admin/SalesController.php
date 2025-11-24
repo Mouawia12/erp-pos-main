@@ -21,6 +21,7 @@ use App\Models\Unit;
 use App\Models\Representative;
 use App\Models\Promotion;
 use App\Models\PromotionItem;
+use App\Services\DocumentNumberService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -183,40 +184,17 @@ class SalesController extends Controller
 
 
     public function get_sales_pos_no($type,$id){ 
-
         $warehouse = Warehouse::find($id);
-        $bills = Sales::where('sale_id' , 0 )
-            ->where('branch_id',$warehouse->branch_id)
-            ->count();
+        $service = app(DocumentNumberService::class);
+        $settings = SystemSettings::first();
+        $next = $service->next('sales', $warehouse->branch_id, $settings?->sales_prefix);
 
-        if($bills > 0){
-            $id = $bills ;
-        } else{
-            $id = 0 ;
-        }
-            
-        $settings = SystemSettings::all();
-        $prefix = "";
-
-        if(count($settings) > 0){
-            if($settings[0] -> sales_prefix)
-                $prefix = $settings[0] -> sales_prefix ;
-            else
-                $prefix = "" ;
-        } else {
-            $prefix = "";
-        }
-
-        $prefix = $prefix .'-'.$warehouse ->branch_id.'-';
- 
         if($type == 1){
-            $no = $prefix . str_pad($id + 1, 6 , '0' , STR_PAD_LEFT);
-            return $no ; 
-        }else{
-            $no = json_encode($prefix . str_pad($id + 1, 6 , '0' , STR_PAD_LEFT)) ;
-            echo $no ;
-            exit;
+            return $next;
         }
+
+        echo json_encode($next);
+        exit;
     }
 
 

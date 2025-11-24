@@ -23,7 +23,7 @@
     <div class="breadcrumb-header justify-content-center"> 
         <div> 
             <h3 class="text-center">
-                [  {{\Carbon\Carbon::now() -> format('d - m - Y')}} / {{__('main.remaining_days')}} : {{$remaining_days}}  ]
+                [  {{\Carbon\Carbon::now()->format('d - m - Y')}} / {{ __('main.remaining_days') }} : {{ $remaining_days }}  ]
             </h3>  
         </div> 
     </div>
@@ -45,7 +45,7 @@
                     <div class="card overflow-hidden sales-card bg-success-gradient"> 
                         <div class="pl-3 pt-3 pr-3 pb-2 pt-0"> 
                             <div class="">
-                                <h3 class="mb-3 text-white">مبيعات اليوم</h3>
+                                <h3 class="mb-3 text-white">{{ __('main.today_sales') }}</h3>
                             </div>
                             <div class="pb-0 mt-0">
                                 <div class="d-flex">
@@ -69,7 +69,7 @@
                         <div class="card overflow-hidden sales-card bg-warning-gradient"> 
                             <div class="pl-3 pt-3 pr-3 pb-2 pt-0"> 
                                 <div class="">
-                                    <h3 class="mb-3 text-white">مرتجع مبيعات اليوم</h3>
+                                    <h3 class="mb-3 text-white">{{ __('main.today_sales_return') }}</h3>
                                 </div>
                                 <div class="pb-0 mt-0">
                                     <div class="d-flex">
@@ -95,7 +95,7 @@
                             <div class="pl-3 pt-3 pr-3 pb-2 pt-0">
 
                                 <div class="">
-                                    <h3 class="mb-3 text-white">مشتريات اليوم</h3>
+                                    <h3 class="mb-3 text-white">{{ __('main.today_purchases') }}</h3>
                                 </div>
                                 <div class="pb-0 mt-0">
                                     <div class="d-flex">
@@ -119,7 +119,7 @@
                         <div class="card overflow-hidden sales-card bg-danger-gradient"> 
                             <div class="pl-3 pt-3 pr-3 pb-2 pt-0"> 
                                 <div class="">
-                                    <h3 class="mb-3 text-white"> مردود مشتريات اليوم</h3>
+                                    <h3 class="mb-3 text-white">{{ __('main.today_purchase_return') }}</h3>
                                 </div>
                                 <div class="pb-0 mt-0">
                                     <div class="d-flex">
@@ -145,7 +145,7 @@
                             <div class="pl-3 pt-3 pr-3 pb-2 pt-0">
 
                                 <div class="">
-                                    <h3 class="mb-3 text-white">العملاء</h3>
+                                    <h3 class="mb-3 text-white">{{ __('main.clients') }}</h3>
                                 </div>
                                 <div class="pb-0 mt-0">
                                     <div class="d-flex">
@@ -171,7 +171,7 @@
                             <div class="pl-3 pt-3 pr-3 pb-2 pt-0">
 
                                 <div class="">
-                                    <h3 class="mb-3 text-white">الموردين</h3>
+                                    <h3 class="mb-3 text-white">{{ __('main.suppliers') }}</h3>
                                 </div>
                                 <div class="pb-0 mt-0">
                                     <div class="d-flex">
@@ -197,7 +197,7 @@
                             <div class="pl-3 pt-3 pr-3 pb-2 pt-0">
 
                                 <div class="">
-                                    <h3 class="mb-3 text-white">مستخدمين</h3>
+                                    <h3 class="mb-3 text-white">{{ __('main.users') }}</h3>
                                 </div>
                                 <div class="pb-0 mt-0">
                                     <div class="d-flex">
@@ -224,7 +224,7 @@
                             <div class="pl-3 pt-3 pr-3 pb-2 pt-0">
 
                                 <div class="">
-                                    <h3 class="mb-3 text-white">فروع</h3>
+                                    <h3 class="mb-3 text-white">{{ __('main.branches') }}</h3>
                                 </div>
                                 <div class="pb-0 mt-0">
                                     <div class="d-flex">
@@ -247,10 +247,10 @@
                 <div class="card">
                     <div class="card-header pb-0">
                         <h3 class="card-title mb-2">
-                            احصائيات عامة 
+                            {{ __('main.general_stats') }} 
                         </h3>
                         <p class="tx-12 mb-0 text-muted">
-                            فى العداد التالى يوضح النسبة المئوية   
+                            {{ __('main.stats_hint') }}   
                         </p>
                     </div>
                     <div class="card-body sales-info ot-0 pb-0 pt-0">
@@ -270,21 +270,19 @@
                         <div class="col-md-6 col">
                             <p class="mb-0 d-flex">
                                 <span class="legend bg-primary brround"></span>
-                                نسبة المبيعات
+                                {{ __('main.sales_percentage') }}
                             </p>
                             <h3 class="mb-1 text-center">
-                                 
-                                ريال
+                                {{ __('main.currency_symbol') }}
                             </h3>
                         </div>
                         <div class="col-md-6 col">
                             <p class="mb-0 d-flex">
                                 <span class="legend bg-info brround"></span>
-                                نسبة المشتريات 
+                                {{ __('main.purchase_percentage') }} 
                             </p>
                             <h3 class="mb-1 text-center">
-                                
-                                ريال
+                                {{ __('main.currency_symbol') }}
                             </h3>
                         </div>
                     </div>
@@ -298,7 +296,7 @@
                         <div class="col-md-12">
                             <div class="d-flex align-items-center pb-2">
                                 <p class="mb-0">
-                                    اجمالى المبيعات
+                                    {{ __('main.total_sales') }}
                                 </p>
                             </div>
                             <h4 class="fw-bold mb-2">
@@ -318,7 +316,7 @@
                         <div class="col-md-12 mt-4 mt-md-0">
                             <div class="d-flex align-items-center pb-2">
                                 <p class="mb-0">
-                                    اجمالى المشتريات
+                                    {{ __('main.total_purchases') }}
                                 </p>
                             </div>
                             <h4 class="fw-bold mb-2">
@@ -338,7 +336,7 @@
                         <div class="col-md-12 mt-4 mt-md-0">
                             <div class="d-flex align-items-center pb-2">
                                 <p class="mb-0">
-                                    اجمالى المردودات
+                                    {{ __('main.total_returns') }}
                                 </p>
                             </div>
                             <h4 class="fw-bold mb-2">
@@ -359,7 +357,7 @@
         <div class="col-xl-8 col-lg-12">
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title">مخطط المبيعات والمشتريات (آخر 7 أيام)</h5>
+                    <h5 class="card-title">{{ __('main.sales_purchase_chart_title') }}</h5>
                     <div style="height:300px;">
                         <canvas id="salesPurchaseChart"></canvas>
                     </div>
@@ -369,7 +367,7 @@
         <div class="col-xl-4 col-lg-12">
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title">توزيع العملاء/الموردين</h5>
+                    <h5 class="card-title">{{ __('main.client_supplier_chart_title') }}</h5>
                     <div style="height:260px;">
                         <canvas id="clientSupplierChart"></canvas>
                     </div>
@@ -381,7 +379,15 @@
 @section('js')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    const labels = {!! json_encode($chartLabels ?? ['اليوم','اليوم-1','اليوم-2','اليوم-3','اليوم-4','اليوم-5','اليوم-6']) !!};
+    const labels = {!! json_encode($chartLabels ?? [
+        __('main.today'),
+        __('main.today_minus_1'),
+        __('main.today_minus_2'),
+        __('main.today_minus_3'),
+        __('main.today_minus_4'),
+        __('main.today_minus_5'),
+        __('main.today_minus_6'),
+    ]) !!};
     const salesData = {!! json_encode($salesChart ?? [0,0,0,0,0,0,0]) !!};
     const purchaseData = {!! json_encode($purchaseChart ?? [0,0,0,0,0,0,0]) !!};
     const clientsCount = {{ $clients->count() ?? 0 }};
@@ -395,8 +401,8 @@
             data: {
                 labels: labels,
                 datasets: [
-                    {label: 'المبيعات', data: salesData, backgroundColor: 'rgba(40,167,69,0.5)', borderColor: '#28a745'},
-                    {label: 'المشتريات', data: purchaseData, backgroundColor: 'rgba(0,123,255,0.4)', borderColor: '#007bff'},
+                    {label: '{{ __('main.sales') }}', data: salesData, backgroundColor: 'rgba(40,167,69,0.5)', borderColor: '#28a745'},
+                    {label: '{{ __('main.purchases') }}', data: purchaseData, backgroundColor: 'rgba(0,123,255,0.4)', borderColor: '#007bff'},
                 ]
             },
             options: {
@@ -415,7 +421,7 @@
         new Chart(ctx2, {
             type: 'doughnut',
             data: {
-                labels: ['عملاء','موردين'],
+                labels: ['{{ __('main.clients') }}','{{ __('main.suppliers') }}'],
                 datasets: [{
                     data: [clientsCount, suppliersCount],
                     backgroundColor: ['#17a2b8','#ffc107']

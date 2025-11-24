@@ -658,6 +658,21 @@
                                                     </div>
                                                 </div>
                                             </div>
+
+                                            <div class="row">
+                                                <div class="col-4">
+                                                    <div class="form-group">
+                                                        <label>{{ __('main.per_user_sequence') }}</label>
+                                                        <div class="form-check">
+                                                            <input type="checkbox" class="form-check-input" id="per_user_sequence" name="per_user_sequence"
+                                                                   value="1" @if($setting? $setting->per_user_sequence : false) checked @endif>
+                                                            <label class="form-check-label" for="per_user_sequence">
+                                                                {{ __('main.per_user_sequence_hint') }}
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
         
                                             <div class="row">
                                                 <div class="col-4">

@@ -1095,6 +1095,6 @@ label.total {
         dom: 'tp'
     });
  
- 
-</script> 
+</script>
+<script src="{{ asset('js/offline-pos.js') }}"></script>
 @endsection 

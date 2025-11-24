@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="en">
+@php $isRtl = app()->getLocale() === 'ar'; @endphp
+<html lang="{{ app()->getLocale() }}" dir="{{ $isRtl ? 'rtl' : 'ltr' }}">
 <head>
     <meta charset="UTF-8">
     <meta name='viewport' content='width=device-width, initial-scale=1.0, user-scalable=0'>
@@ -51,6 +52,7 @@
         body, html {
             font-family: 'Almarai' !important;
             font-size: 14px !important;
+            direction: {{ $isRtl ? 'rtl' : 'ltr' }};
         }
 
         .navigation.navigation-main {
@@ -78,6 +80,25 @@
             height: 40px!important;
             line-height: 40px!important;
             outline: 0!important;
+        }
+        /* LTR/RTL adjustments */
+        body.ltr .app-sidebar {
+            text-align: left;
+        }
+        body.ltr .side-menu__item,
+        body.ltr .side-menu__label {
+            text-align: left;
+        }
+        body.ltr .side-menu__item .angle {
+            float: right;
+        }
+        body.ltr .main-header,
+        body.ltr .main-content {
+            direction: ltr;
+        }
+        body.rtl .main-header,
+        body.rtl .main-content {
+            direction: rtl;
         }
         .dropdown-menu.show{
             right: 0!important;
@@ -134,7 +155,7 @@
         }
     </style>
 </head> 
-<body class="main-body app sidebar-mini">
+<body class="main-body app sidebar-mini {{ $isRtl ? 'rtl' : 'ltr' }}">
 @include('admin.layouts.main-sidebar')
 <!-- main-content -->
 <div class="main-content app-content">

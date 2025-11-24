@@ -22,7 +22,7 @@ Laravel 10 / PHP 8.1 project for multi-branch accounting, inventory, POS, and ZA
 9) Dev server: `php artisan serve` and `npm run dev` (or `npm run build` for production assets).
 
 ## Requirements Checklist
-The full Arabic requirements from "طلبات-تطوير-برنامج-المحاسبة-والمخزون-كلاود.pdf" are captured in `docs/requirements-checklist.md`. Use it to mark items as ✅/⚠️/❌ after verifying against the running system.
+The full Arabic requirements from "طلبات-تطوير-برنامج-المحاسبة-والمخزون-كلاود.pdf" are captured in `docs/requirements-checklist.md`. Use it to mark items as ✅/⚠️/❌ after verifying against the running system. For a condensed view of what is still missing, see `docs/pending-gaps.md`.
 
 ## Working Notes
 - Preserve existing production data; add schema changes via migrations only.

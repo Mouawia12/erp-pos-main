@@ -74,6 +74,7 @@ class SystemSettings extends Model
         'tobacco_tax',
         'tax_number',
         'single_device_login',
+        'per_user_sequence',
         'created_at', 
         'updated_at', 
         'enable_inventory',

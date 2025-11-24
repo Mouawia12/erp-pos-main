@@ -1,6 +1,7 @@
  <!-- main-sidebar -->
 <div class="app-sidebar__overlay" data-toggle="sidebar"></div>
-<aside class="app-sidebar sidebar-scroll">
+@php $isRtl = app()->getLocale() === 'ar'; @endphp
+<aside class="app-sidebar sidebar-scroll" style="{{ $isRtl ? '' : 'direction:ltr;text-align:left;' }}">
     <style type="text/css">
         ::-webkit-scrollbar {width: 7px !important;}
         ::-webkit-scrollbar-track {background: #eee !important;}
@@ -32,7 +33,7 @@
                             @if(!empty(Auth::user()->branch_id) && optional(Auth::user()->branch)->branch_name)
                                 [ {{ optional(Auth::user()->branch)->branch_name }} ]
                             @else
-                                [ {{__('كل الفروع')}} ]
+                                [ {{ __('main.all_branches') }} ]
                             @endif
                         <h5>
                     </div>
@@ -46,7 +47,7 @@
             <li class="slide {{ Request::is('home*') ? 'active' : '' }}">
                 <a class="side-menu__item" href="{{ url('/admin/' . $page='home') }}"> 
                     <i class="fa fa-home side-menu__icon"></i>
-                    <span class="side-menu__label"> الرئيسية </span>
+                    <span class="side-menu__label">{{ __('main.dashboard') }}</span>
                 </a>
             </li>  
             <li class="slide {{ Request::is('admin/alerts*') ? 'active' : '' }}">
@@ -59,7 +60,7 @@
             <li class="slide {{ Request::is('admin/owner/subscribers*') ? 'active' : '' }}">
                 <a class="side-menu__item" href="{{ route('owner.subscribers.index') }}">
                     <i class="fa fa-building-user side-menu__icon"></i>
-                    <span class="side-menu__label">لوحة المشتركين</span>
+                    <span class="side-menu__label">{{ __('main.subscribers_panel') }}</span>
                 </a>
                 </li>
             @endif
@@ -67,9 +68,7 @@
                 <li class="slide">
                     <a class="side-menu__item" data-toggle="slide" href="#">
                         <i class="fas fa-barcode side-menu__icon"></i>
-                        <span class="side-menu__label">
-                        {{__('main.products')}}
-                    </span><i class="angle fe fe-chevron-down"></i>
+                        <span class="side-menu__label">{{__('main.products')}}</span><i class="angle fe fe-chevron-down"></i>
                     </a> 
                     <ul class="slide-menu">  
                         <li>
@@ -94,19 +93,19 @@
             <li class="slide {{ Request::is('admin/promotions*') ? 'active' : '' }}">
                 <a class="side-menu__item" href="{{ route('promotions.index') }}">
                     <i class="fa fa-gift side-menu__icon"></i>
-                    <span class="side-menu__label">{{ __('main.promotions') ?? 'العروض الترويجية' }}</span>
+                    <span class="side-menu__label">{{ __('main.promotions') }}</span>
                 </a>
             </li>
             <li class="slide {{ Request::is('admin/transfers*') ? 'active' : '' }}">
                 <a class="side-menu__item" href="{{ route('transfers.index') }}">
                     <i class="fa fa-exchange-alt side-menu__icon"></i>
-                    <span class="side-menu__label">{{ __('main.transfer_requests') ?? 'تحويلات المخازن' }}</span>
+                    <span class="side-menu__label">{{ __('main.transfer_requests') }}</span>
                 </a>
             </li>
             <li class="slide {{ Request::is('admin/stock_counts*') ? 'active' : '' }}">
                 <a class="side-menu__item" href="{{ route('stock_counts.index') }}">
                     <i class="fa fa-clipboard-list side-menu__icon"></i>
-                    <span class="side-menu__label">{{ __('main.inventory') ?? 'جرد المخزون' }}</span>
+                    <span class="side-menu__label">{{ __('main.inventory') }}</span>
                 </a>
             </li>
             @can('عرض مبيعات')                  
@@ -242,19 +241,17 @@
                 <li class="slide">
                     <a class="side-menu__item" data-toggle="slide" href="#">
                         <i class="fa fa-newspaper side-menu__icon"></i>
-                        <span class="side-menu__label">
-                           قائمة الجرد
-                    </span><i class="angle fe fe-chevron-down"></i>
+                        <span class="side-menu__label">{{ __('main.inventory_menu') }}</span><i class="angle fe fe-chevron-down"></i>
                     </a> 
                     <ul class="slide-menu">    
                         <li>
                             <a class="slide-item" href="{{route('admin.inventory.create')}}">
-                                جرد جديد
+                                {{ __('main.inventory_new') }}
                             </a>
                         </li>  
                         <li>
                             <a class="slide-item" href="{{route('admin.inventory.index')}}">
-                               محاضر الجرد
+                               {{ __('main.inventory_list') }}
                             </a>
                         </li>  
                                                               
@@ -286,9 +283,7 @@
                 <li class="slide">
                     <a class="side-menu__item" data-toggle="slide" href="#"> 
                         <i class="fa fa-file-invoice-dollar side-menu__icon"></i>
-                        <span class="side-menu__label">
-                        التقارير المحاسبية
-                    </span><i class="angle fe fe-chevron-down"></i>
+                        <span class="side-menu__label">{{ __('main.accounting_reports') }}</span><i class="angle fe fe-chevron-down"></i>
                     </a> 
                     <ul class="slide-menu">   
                         <li>
@@ -313,7 +308,7 @@
                         </li> 
                         <li>
                             <a class="slide-item" href="{{route('tax.declaration')}}">
-                                الاقرار الضريبي
+                                {{ __('main.tax_declaration') }}
                             </a>
                         </li>             
                     </ul>
@@ -405,22 +400,20 @@
                 <li class="slide">
                     <a class="side-menu__item" data-toggle="slide" href="#">
                         <i class="fa fa-code-branch side-menu__icon"></i>
-                        <span class="side-menu__label">
-                        الفروع
-                    </span><i class="angle fe fe-chevron-down"></i>
+                        <span class="side-menu__label">{{ __('main.branches') }}</span><i class="angle fe fe-chevron-down"></i>
                     </a>
                     <ul class="slide-menu">
                         @can('اضافة فرع')
                             <li>
                                 <a class="slide-item" href="{{ route('admin.branches.create') }}">
-                                    اضافة فرع جديد
+                                    {{ __('main.branch_add') }}
                                 </a>
                             </li>
                         @endcan
                         @can('عرض فرع')
                             <li>
                                 <a class="slide-item" href="{{ route('admin.branches.index') }}">
-                                    قائمة الفروع
+                                    {{ __('main.branches_list') }}
                                 </a>
                             </li>
                         @endcan
@@ -436,36 +429,34 @@
                 <li class="slide">
                     <a class="side-menu__item" data-toggle="slide" href="#">
                         <i class="fa fa-users-gear side-menu__icon"></i>
-                        <span class="side-menu__label">
-                         الصلاحيات والمستخدمين
-                    </span><i class="angle fe fe-chevron-down"></i>
+                        <span class="side-menu__label">{{ __('main.roles_users') }}</span><i class="angle fe fe-chevron-down"></i>
                     </a>
                     <ul class="slide-menu">
                         @can('اضافة صلاحية')
                             <li>
                                 <a class="slide-item" href="{{ route('admin.roles.create') }}">
-                                    اضافة صلاحية جديد
+                                    {{ __('main.role_add') }}
                                 </a>
                             </li>
                         @endcan
                         @can('عرض صلاحية')
                             <li>
                                 <a class="slide-item" href="{{ route('admin.roles.index') }}">
-                                    قائمة صلاحيات المستخدمين
+                                    {{ __('main.roles_list') }}
                                 </a>
                             </li>
                         @endcan
                         @can('اضافة مستخدم')
                             <li>
                                 <a class="slide-item" href="{{ route('admin.admins.create') }}">
-                                    اضافة مستخدم جديد
+                                    {{ __('main.user_add') }}
                                 </a>
                             </li>
                         @endcan
                         @can('عرض مستخدم')
                             <li>
                                 <a class="slide-item" href="{{ route('admin.admins.index') }}">
-                                    قائمة المستخدمين
+                                    {{ __('main.users_list') }}
                                 </a>
                             </li>
                         @endcan
