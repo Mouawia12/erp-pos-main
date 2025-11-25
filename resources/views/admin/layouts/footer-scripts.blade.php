@@ -31,6 +31,57 @@
 <script src="{{URL::asset('assets/plugins/datatables-buttons/js/buttons.html5.min.js')}}"></script>
 <script src="{{URL::asset('assets/plugins/datatables-buttons/js/buttons.print.js')}}"></script>
 <script src="{{URL::asset('assets/plugins/datatables-buttons/js/buttons.colVis.min.js')}}"></script> 
+@php
+    $datatableLanguage = __('datatable');
+@endphp
+<script>
+    (function ($) {
+        if (!$.fn || !$.fn.dataTable) {
+            return;
+        }
+        var lang = @json($datatableLanguage);
+        window.appDataTableLang = lang;
+        var languageOptions = {
+            decimal: lang.decimal || '',
+            emptyTable: lang.emptyTable || '',
+            info: lang.info || '',
+            infoEmpty: lang.infoEmpty || '',
+            infoFiltered: lang.infoFiltered || '',
+            infoPostFix: lang.infoPostFix || '',
+            thousands: lang.thousands || ',',
+            lengthMenu: lang.lengthMenu || '',
+            loadingRecords: lang.loadingRecords || '',
+            processing: lang.processing || '',
+            search: lang.search || '',
+            searchPlaceholder: lang.searchPlaceholder || '',
+            zeroRecords: lang.zeroRecords || '',
+            paginate: lang.paginate || {},
+            aria: lang.aria || {}
+        };
+        $.extend(true, $.fn.dataTable.defaults, {
+            language: languageOptions
+        });
+        if ($.fn.dataTable.ext && $.fn.dataTable.ext.buttons && lang.buttons) {
+            var buttons = $.fn.dataTable.ext.buttons;
+            if (buttons.copy && lang.buttons.copy) {
+                buttons.copy.text = lang.buttons.copy;
+                buttons.copy.titleAttr = lang.buttons.copy;
+            }
+            if (buttons.excel && lang.buttons.excel) {
+                buttons.excel.text = lang.buttons.excel;
+                buttons.excel.titleAttr = lang.buttons.excel;
+            }
+            if (buttons.print && lang.buttons.print) {
+                buttons.print.text = lang.buttons.print;
+                buttons.print.titleAttr = lang.buttons.print;
+            }
+            if (buttons.colvis && lang.buttons.colvis) {
+                buttons.colvis.text = lang.buttons.colvis;
+                buttons.colvis.titleAttr = lang.buttons.colvis;
+            }
+        }
+    })(jQuery);
+</script>
 <script src="{{URL::asset('assets/plugins/select2/js/select2.full.min.js')}}"></script> 
 
 <script>
