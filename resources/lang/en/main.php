@@ -366,6 +366,7 @@ return [
     'bill_number' => 'Process Number',
     'warehouse' => 'Warehouse',
     'user_enter' => 'Date Entry',
+    'note' => 'Note',
     'notes' => 'Notes',
     'add_item_hint' => 'Please Add Item To System List',
     'notfound' => 'Sorry, this product is not registered in your system',
