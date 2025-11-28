@@ -28,15 +28,25 @@ class WarehouseController extends Controller
 
     public function index()
     {
-       
-        if (!empty(Auth::user()->branch_id)) {
-            $warehouses = Warehouse::where('branch_id', Auth::user()->branch_id)->get(); 
-            $branches = Branch::where('id', Auth::user()->branch_id)->where('status',1)->get(); 
-        }else{
-            $warehouses = Warehouse::all();
-            $branches = Branch::where('status',1)->get(); 
-        }
-        return view('admin.warehouse.index' , ['warehouses' => $warehouses,'branches' => $branches]);
+        $user = Auth::user();
+        $subscriberId = $user->subscriber_id;
+        $userBranchId = $user->branch_id;
+
+        $warehouses = Warehouse::query()
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->when(!$subscriberId && $userBranchId, fn($q) => $q->where('branch_id', $userBranchId))
+            ->get();
+
+        $branches = Branch::query()
+            ->where('status', 1)
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->when(!$subscriberId && $userBranchId, fn($q) => $q->where('id', $userBranchId))
+            ->get();
+
+        return view('admin.warehouse.index', [
+            'warehouses' => $warehouses,
+            'branches' => $branches,
+        ]);
     }
 
     /**
@@ -58,14 +68,23 @@ class WarehouseController extends Controller
     public function store(Request $request)
     {
 
+        $user = Auth::user();
+        $subscriberId = $user->subscriber_id;
+
         if($request -> id == 0){
-         
+
             $request['code'] = Warehouse::count() + 1;
             $validated = $request->validate([
                 'code' => 'required|unique:warehouses',
                 'name' => 'required',
-                'branch_id' => 'required'
+                'branch_id' => 'required|integer'
             ]);
+
+            $branch = Branch::query()
+                ->where('id', $request->branch_id)
+                ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+                ->when(!$subscriberId && $user->branch_id, fn($q) => $q->where('id', $user->branch_id))
+                ->firstOrFail();
             try {
                 Warehouse::create([
                     'code' => $request->code,
@@ -76,9 +95,10 @@ class WarehouseController extends Controller
                     'tax_number' => $request->tax_number ?? ' ',
                     'commercial_registration' => $request->commercial_registration ??  ' ',
                     'serial_prefix' => $request->serial_prefix ?? ' ',
-                    'branch_id' => $request->branch_id, 
-                    'user_id' => Auth::user() -> id
-
+                    'branch_id' => $branch->id,
+                    'subscriber_id' => $subscriberId,
+                    'status' => 1,
+                    'user_id' => $user->id
                 ]);
                 return redirect()->route('warehouses')->with('success' , __('main.created'));
             } catch(QueryException $ex){
@@ -125,11 +145,20 @@ class WarehouseController extends Controller
     public function update(Request $request)
     {
         $warehouse = Warehouse::find($request -> id);
+        $user = Auth::user();
+        $subscriberId = $user->subscriber_id;
+
         if($warehouse){
             $validated = $request->validate([
-                //'code' => ['required' , Rule::unique('warehouses')->ignore($request -> id)],
                 'name' => 'required',
+                'branch_id' => 'required|integer'
             ]);
+
+            $branch = Branch::query()
+                ->where('id', $request->branch_id)
+                ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+                ->when(!$subscriberId && $user->branch_id, fn($q) => $q->where('id', $user->branch_id))
+                ->firstOrFail();
             try {
             $warehouse -> update([ 
                 'name' => $request->name,
@@ -139,8 +168,9 @@ class WarehouseController extends Controller
                 'tax_number' => $request->tax_number ?? ' ',
                 'commercial_registration' => $request->commercial_registration ??  ' ',
                 'serial_prefix' => $request->serial_prefix ?? ' ',
-                'branch_id' => $request->branch_id, 
-                'user_id' => Auth::user() -> id
+                'branch_id' => $branch->id, 
+                'subscriber_id' => $subscriberId,
+                'user_id' => $user->id
             ]);
                 return redirect()->route('warehouses')->with('success' , __('main.updated'));
             } catch(QueryException $ex){ 

@@ -12,11 +12,11 @@ class SubscribersTableSeeder extends Seeder
     {
         $samples = [
             [
-                'company_name' => 'مشترك ألف',
+                'company_name' => 'مشترك تجريبي',
                 'cr_number' => 'CR-1001',
                 'tax_number' => 'TAX-1001',
-                'responsible_person' => 'أحمد',
-                'contact_email' => 'ahmed@example.com',
+                'responsible_person' => 'Demo Admin',
+                'contact_email' => 'admin@example.com',
                 'contact_phone' => '050000001',
                 'address' => 'الرياض',
                 'system_url' => null,
@@ -24,9 +24,9 @@ class SubscribersTableSeeder extends Seeder
                 'subscription_start' => now()->subMonths(1),
                 'subscription_end' => now()->addYear(),
                 'status' => 'active',
-                'login_email' => 'ahmed@example.com',
-                'login_password' => Hash::make('password123'),
-                'login_password_plain' => 'password123',
+                'login_email' => 'admin@example.com',
+                'login_password' => Hash::make('password'),
+                'login_password_plain' => 'password',
             ],
             [
                 'company_name' => 'مشترك باء',

@@ -36,19 +36,6 @@ class DatabaseSeeder extends Seeder
     {
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-        $user = User::updateOrCreate(
-            ['email' => 'admin@example.com'],
-            [
-                'name' => 'Demo Admin',
-                'password' => Hash::make('password'),
-                'branch_id' => 1,
-                'phone_number' => '0000000000',
-                'profile_pic' => '',
-                'role_name' => 'مدير النظام',
-                'status' => 1,
-            ]
-        );
-
         // الدور الأساس للمشتركين: مدير النظام مع كامل الصلاحيات
         $mainRole = Role::firstOrCreate(
             ['name' => 'مدير النظام', 'guard_name' => 'admin-web'],
@@ -56,10 +43,6 @@ class DatabaseSeeder extends Seeder
         );
 
         $mainRole->syncPermissions(Permission::all());
-
-        if ($user) {
-            $user->assignRole($mainRole->name);
-        }
 
         // تنظيف أي دور قديم باسم subscriber: نقل المستخدمين إليه إلى دور مدير النظام ثم حذفه
         $oldSubscriberRole = Role::where('name', 'subscriber')->where('guard_name','admin-web')->first();

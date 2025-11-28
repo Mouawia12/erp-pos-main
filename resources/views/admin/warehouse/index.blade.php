@@ -110,21 +110,19 @@
                                 <label class="d-block">
                                 {{ __('main.branche') }}<span class="text-danger">*</span> 
                                 </label>
-                                @if(empty(Auth::user()->branch_id))
-                                    <select required  class="form-control" name="branch_id" id="branch_id">
-                                        <option value="0">حدد الاختيار</option>
-                                        @foreach($branches as $branch)
-                                            <option value="{{$branch->id}}">{{$branch->branch_name}}</option>
-                                        @endforeach
-                                    </select>
-                                @else
-                                    <input class="form-control" type="text" readonly
-                                           value="{{Auth::user()->branch->branch_name}}"/>
-                                    <input required class="form-control" type="hidden" id="branch_id"
-                                           name="branch_id"
-                                           value="{{Auth::user()->branch_id}}"/>
-                                @endif 
-
+                                <select required class="form-control" name="branch_id" id="branch_id">
+                                    <option value="">{{ 'اختر الفرع' }}</option>
+                                    @foreach($branches as $branch)
+                                        <option value="{{$branch->id}}">
+                                            {{$branch->branch_name}}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @if($branches->isEmpty())
+                                    <small class="text-danger d-block mt-1">
+                                        لا توجد فروع متاحة، قم بإنشاء فرع أولاً.
+                                    </small>
+                                @endif
                             </div>
                         </div>
                         <div class="col-md-6" >
@@ -262,9 +260,7 @@
                     $(".modal-body #tax_number").val( "" );
                     $(".modal-body #commercial_registration").val( "" );
                     $(".modal-body #serial_prefix").val( "" );
-                    @if(empty(Auth::user()->branch_id))
-                        $(".modal-body #branch_id").val(0).trigger("change");  
-                    @endif
+                    $(".modal-body #branch_id").val('').trigger("change");  
                     $(".modal-body #id").val(0);
                 },
                 complete: function() {

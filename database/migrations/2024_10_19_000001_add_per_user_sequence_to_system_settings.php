@@ -8,15 +8,23 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('system_settings', function (Blueprint $table) {
-            $table->boolean('per_user_sequence')->default(false)->after('single_device_login');
+        $afterColumn = Schema::hasColumn('system_settings', 'single_device_login')
+            ? 'single_device_login'
+            : 'payment_method';
+
+        Schema::table('system_settings', function (Blueprint $table) use ($afterColumn) {
+            if (!Schema::hasColumn('system_settings', 'per_user_sequence')) {
+                $table->boolean('per_user_sequence')->default(false)->after($afterColumn);
+            }
         });
     }
 
     public function down(): void
     {
         Schema::table('system_settings', function (Blueprint $table) {
-            $table->dropColumn('per_user_sequence');
+            if (Schema::hasColumn('system_settings', 'per_user_sequence')) {
+                $table->dropColumn('per_user_sequence');
+            }
         });
     }
 };

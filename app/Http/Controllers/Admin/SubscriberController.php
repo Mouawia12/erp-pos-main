@@ -7,11 +7,13 @@ use App\Models\Subscriber;
 use App\Models\SubscriberDocument;
 use App\Models\SubscriberRenewal;
 use App\Models\User;
+use App\Services\SubscriberProvisioner;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Spatie\Permission\Models\Role;
 
 class SubscriberController extends Controller
@@ -48,13 +50,13 @@ class SubscriberController extends Controller
         $data = $this->validateRequest($request);
         $data['created_by'] = Auth::id();
 
-        [$loginEmail, $loginPassword, $loginPlain] = $this->prepareCredentials($request);
+        [$loginEmail, $loginPassword, $loginPlain, $passwordChanged] = $this->prepareCredentials($request);
         $data['login_email'] = $loginEmail;
         $data['login_password'] = $loginPassword;
         $data['login_password_plain'] = $loginPlain;
 
         $subscriber = Subscriber::create($data);
-        $this->syncUserAccount($subscriber, $loginEmail, $loginPlain);
+        $this->syncUserAccount($subscriber, $loginEmail, $loginPassword);
         $this->refreshStatus($subscriber);
 
         $this->storeDocuments($request, $subscriber->id);
@@ -70,16 +72,16 @@ class SubscriberController extends Controller
 
     public function update(Request $request, Subscriber $subscriber)
     {
-        $data = $this->validateRequest($request, $subscriber->id);
-        [$loginEmail, $loginPassword, $loginPlain] = $this->prepareCredentials($request, $subscriber);
+        $data = $this->validateRequest($request, $subscriber);
+        [$loginEmail, $loginPassword, $loginPlain, $passwordChanged] = $this->prepareCredentials($request, $subscriber);
         $data['login_email'] = $loginEmail;
-        if ($loginPassword) {
+        if ($passwordChanged) {
             $data['login_password'] = $loginPassword;
             $data['login_password_plain'] = $loginPlain;
         }
 
         $subscriber->update($data);
-        $this->syncUserAccount($subscriber, $loginEmail, $loginPlain);
+        $this->syncUserAccount($subscriber, $loginEmail, $loginPassword);
         $this->refreshStatus($subscriber);
 
         $this->storeDocuments($request, $subscriber->id);
@@ -152,8 +154,22 @@ class SubscriberController extends Controller
         return back()->with('success', __('main.deleted') ?? 'تم الحذف');
     }
 
-    private function validateRequest(Request $request, ?int $id = null): array
+    private function validateRequest(Request $request, ?Subscriber $subscriber = null): array
     {
+        $subscriberId = $subscriber?->id;
+        $subscriberUserId = $subscriber?->user_id;
+
+        $loginEmailRules = [
+            'required',
+            'email',
+            'max:255',
+            Rule::unique('subscribers', 'login_email')->ignore($subscriberId),
+        ];
+
+        $loginEmailRules[] = $subscriberUserId
+            ? Rule::unique('users', 'email')->ignore($subscriberUserId)
+            : Rule::unique('users', 'email');
+
         return $request->validate([
             'company_name' => 'required|string|max:255',
             'cr_number' => 'nullable|string|max:255',
@@ -161,8 +177,8 @@ class SubscriberController extends Controller
             'responsible_person' => 'nullable|string|max:255',
             'contact_email' => 'nullable|email|max:255',
             'contact_phone' => 'nullable|string|max:255',
-            'login_email' => 'nullable|email|max:255',
-            'login_password' => 'nullable|string|max:255',
+            'login_email' => $loginEmailRules,
+            'login_password' => 'nullable|string|min:6|max:255',
             'address' => 'nullable|string|max:255',
             'system_url' => 'nullable|string|max:255',
             'users_limit' => 'nullable|integer|min:1',
@@ -181,41 +197,46 @@ class SubscriberController extends Controller
         $passwordInput = $request->input('login_password');
 
         if ($existing && !$passwordInput) {
-            return [$loginEmail, null, $existing->login_password_plain];
+            return [$loginEmail, $existing->login_password, $existing->login_password_plain, false];
         }
 
         $plain = $passwordInput ?: 'password123';
-        $hashed = bcrypt($plain);
+        $hashed = Hash::make($plain);
 
-        return [$loginEmail, $hashed, $plain];
+        return [$loginEmail, $hashed, $plain, true];
     }
 
-    private function syncUserAccount(Subscriber $subscriber, ?string $loginEmail, ?string $plainPassword): void
+    private function syncUserAccount(Subscriber $subscriber, ?string $loginEmail, ?string $hashedPassword): void
     {
-        if (!$loginEmail || !$plainPassword) {
+        if (!$loginEmail || !$hashedPassword) {
             return;
         }
 
         $role = Role::firstOrCreate(['name' => 'مدير النظام', 'guard_name' => 'admin-web']);
+        [$branch, $warehouse] = SubscriberProvisioner::ensureDefaults($subscriber);
 
         $user = User::updateOrCreate(
             ['email' => $loginEmail],
             [
                 'name' => $subscriber->responsible_person ?: $subscriber->company_name,
-                'password' => Hash::make($plainPassword),
-                'branch_id' => 1,
+                'password' => $hashedPassword,
+                'branch_id' => $branch->id,
                 'subscriber_id' => $subscriber->id,
-                'role_name' => 'مدير النظام',
+                'role_name' => $role->name,
                 'status' => 1,
                 'phone_number' => $subscriber->contact_phone ?? '0000000000',
                 'profile_pic' => '',
             ]
         );
 
-        $user->assignRole($role->name);
+        $user->syncRoles([$role->name]);
 
         if (!$subscriber->user_id || $subscriber->user_id !== $user->id) {
             $subscriber->update(['user_id' => $user->id]);
+        }
+
+        if ($warehouse && (! $warehouse->user_id || $warehouse->user_id !== $user->id)) {
+            $warehouse->update(['user_id' => $user->id]);
         }
     }
 

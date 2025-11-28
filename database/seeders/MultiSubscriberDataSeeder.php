@@ -15,7 +15,7 @@ class MultiSubscriberDataSeeder extends Seeder
 
         foreach ($subscribers as $sub) {
             $userId = DB::table('users')->where('subscriber_id',$sub->id)->value('id');
-            $branchId = DB::table('branches')->where('subscriber_id',$sub->id)->value('id') ?? 1;
+            $branchId = DB::table('branches')->where('subscriber_id',$sub->id)->value('id');
             $warehouseId = DB::table('warehouses')->where('subscriber_id',$sub->id)->value('id');
             $products = DB::table('products')->where('subscriber_id',$sub->id)->get();
 
@@ -78,7 +78,7 @@ class MultiSubscriberDataSeeder extends Seeder
             $customerId = DB::table('companies')->where('subscriber_id',$sub->id)->where('group_id',3)->value('id');
             $supplierId = DB::table('companies')->where('subscriber_id',$sub->id)->where('group_id',4)->value('id');
 
-            if(!$warehouseId || !$customerId || !$supplierId || !$products->count()){
+            if(!$branchId || !$warehouseId || !$customerId || !$supplierId || !$products->count()){
                 continue;
             }
 

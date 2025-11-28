@@ -17,8 +17,8 @@ Laravel 10 / PHP 8.1 project for multi-branch accounting, inventory, POS, and ZA
 5) App key: `php artisan key:generate`
 6) Import DB (keeps client data): `mysql -u <user> -p <db_name> < pos-ms.sql`
 7) Run migrations (only if you need schema updates after import): `php artisan migrate`
-8) Seed default admin (optional if DB already has users): `php artisan db:seed`
-   - Creates `admin@example.com` / `password` with role `مدير النظام`.
+8) Seed default accounts (optional if DB already has users): `php artisan db:seed`
+   - Creates the SaaS owner `owner@example.com` / `password` (role `system_owner`) and demo subscriber admins such as `admin@example.com` / `password` with role `مدير النظام`.
 9) Dev server: `php artisan serve` and `npm run dev` (or `npm run build` for production assets).
 
 ## Requirements Checklist

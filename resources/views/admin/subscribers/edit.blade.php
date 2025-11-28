@@ -51,7 +51,7 @@
 
                     <div class="col-md-4 mb-3">
                         <label>بريد دخول المشترك</label>
-                        <input type="email" name="login_email" class="form-control" value="{{ $subscriber->login_email }}" placeholder="email@customer.com">
+                        <input type="email" name="login_email" class="form-control" value="{{ $subscriber->login_email }}" placeholder="email@customer.com" required>
                     </div>
                     <div class="col-md-4 mb-3">
                         <label>كلمة مرور المشترك (اختياري للتغيير)</label>
