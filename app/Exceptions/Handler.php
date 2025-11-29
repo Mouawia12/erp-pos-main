@@ -3,6 +3,9 @@
 namespace App\Exceptions;
 
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Session\TokenMismatchException;
 use Throwable;
 
 class Handler extends ExceptionHandler
@@ -26,5 +29,29 @@ class Handler extends ExceptionHandler
         $this->reportable(function (Throwable $e) {
             //
         });
+    }
+
+    public function render($request, Throwable $e): JsonResponse|RedirectResponse|\Symfony\Component\HttpFoundation\Response
+    {
+        if ($e instanceof TokenMismatchException) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => __('الجلسة منتهية، يرجى تحديث الصفحة والمحاولة مرة أخرى.'),
+                ], 419);
+            }
+
+            $redirectTo = url()->previous();
+            if (empty($redirectTo) || $redirectTo === $request->fullUrl()) {
+                $redirectTo = route('admin.login');
+            }
+
+            return redirect($redirectTo)
+                ->withInput($request->except('_token'))
+                ->withErrors([
+                    'token' => __('الجلسة منتهية، يرجى إعادة المحاولة.'),
+                ]);
+        }
+
+        return parent::render($request, $e);
     }
 }

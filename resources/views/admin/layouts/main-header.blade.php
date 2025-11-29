@@ -51,7 +51,8 @@
                             <span class="badge badge-danger nav-link-badge">{{ $alertUnreadCount }}</span>
                         @endif
                     </a>
-                    <div class="dropdown-menu">
+                    <div class="dropdown-menu shadow {{ $isRtl ? '' : 'dropdown-menu-right' }}">
+                        <span class="notification-caret"></span>
                         <div class="menu-header-content bg-primary text-white">
                             <p class="menu-header-title mb-0">{{ __('main.alerts_center') }}</p>
                             <p class="menu-header-subtitle mb-0">{{ __('main.alerts_unread_count', ['count'=>$alertUnreadCount]) }}</p>

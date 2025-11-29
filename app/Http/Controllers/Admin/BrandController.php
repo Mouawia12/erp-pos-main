@@ -51,7 +51,8 @@ class BrandController extends Controller
                     Brand::create([
                         'code' => $request->code ?? '',
                         'name' => $request->name,
-                        'user_id' => Auth::user() -> id
+                        'user_id' => Auth::user() -> id,
+                        'status' => $request->status ?? 1,
                     ]);
                     return redirect()->route('brands')->with('success' , __('main.created'));
                 } catch(QueryException $ex){
@@ -106,7 +107,8 @@ class BrandController extends Controller
             try {
                 $brand -> update([ 
                     'name' => $request->name,
-                    'user_id' => Auth::user() -> id
+                    'user_id' => Auth::user() -> id,
+                    'status' => $request->status ?? $brand->status ?? 1,
                 ]);
                 return redirect()->route('brands')->with('success', __('main.updated'));
             } catch (QueryException $ex) {

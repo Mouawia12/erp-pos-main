@@ -338,7 +338,15 @@
                 </li>     
             @endcan   
             @can('عرض ترميز')
-                <li class="slide">
+                @php
+                    $basicDataActive = Request::is('*admin/units*') ||
+                        Request::is('*admin/categories*') ||
+                        Request::is('*admin/brands*') ||
+                        Request::is('*admin/currency*') ||
+                        Request::is('*admin/taxRates*') ||
+                        Request::is('*admin/clientGroups*');
+                @endphp
+                <li class="slide {{ $basicDataActive ? 'is-expanded active' : '' }}">
                     <a class="side-menu__item" data-toggle="slide" href="#">
                         <i class="fas fa-fw fa-sliders side-menu__icon"></i> 
                         <span class="side-menu__label">
@@ -346,32 +354,32 @@
                     </span><i class="angle fe fe-chevron-down"></i>
                     </a> 
                     <ul class="slide-menu">  
-                        <li>
+                        <li class="{{ Request::is('*admin/units*') ? 'active' : '' }}">
                             <a class="slide-item" href="{{route('units')}}">
                             {{__('main.units')}}
                             </a>
                         </li> 
-                        <li>
+                        <li class="{{ Request::is('*admin/categories*') ? 'active' : '' }}">
                             <a class="slide-item" href="{{route('categories')}}">
                             {{__('main.categories')}}
                             </a>
                         </li> 
-                        <li>
+                        <li class="{{ Request::is('*admin/brands*') ? 'active' : '' }}">
                             <a class="slide-item" href="{{route('brands')}}">
                             {{__('main.brands')}}
                             </a>
                         </li> 
-                        <li>
+                        <li class="{{ Request::is('*admin/currency*') ? 'active' : '' }}">
                             <a class="slide-item" href="{{route('currency')}}">
                             {{__('main.currencies')}}
                             </a>
                         </li>  
-                        <li>
+                        <li class="{{ Request::is('*admin/taxRates*') ? 'active' : '' }}">
                             <a class="slide-item" href="{{route('taxRates')}}">
                             {{__('main.tax')}}
                             </a>
                         </li> 
-                        <li>
+                        <li class="{{ Request::is('*admin/clientGroups*') ? 'active' : '' }}">
                             <a class="slide-item" href="{{route('clientGroups')}}">
                             {{__('main.c_groups')}}
                             </a>

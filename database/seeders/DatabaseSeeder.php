@@ -18,6 +18,9 @@ use Database\Seeders\UnitsTableSeeder;
 use Database\Seeders\CategoriesTableSeeder;
 use Database\Seeders\TaxRatesTableSeeder;
 use Database\Seeders\SystemSettingsTableSeeder;
+use Database\Seeders\BrandsTableSeeder;
+use Database\Seeders\CurrenciesTableSeeder;
+use Database\Seeders\CustomerGroupsTableSeeder;
 use Database\Seeders\AccountsTreeTableSeeder;
 use Database\Seeders\ExpensesTableSeeder;
 use Database\Seeders\PaymentsTableSeeder;
@@ -83,6 +86,9 @@ class DatabaseSeeder extends Seeder
             UnitsTableSeeder::class,
             CategoriesTableSeeder::class,
             TaxRatesTableSeeder::class,
+            BrandsTableSeeder::class,
+            CurrenciesTableSeeder::class,
+            CustomerGroupsTableSeeder::class,
             SystemSettingsTableSeeder::class,
             SubscribersTableSeeder::class,
             UsersTableSeeder::class,

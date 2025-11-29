@@ -41,8 +41,6 @@ class Product extends Model
       'city_tax',
       'max_order',
       'img',
-      'warehouse_id',
-      'branch_id',
       'user_id',
       'status',
       'subscriber_id',

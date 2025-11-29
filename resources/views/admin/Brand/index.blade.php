@@ -6,6 +6,12 @@
             {{ session('success') }}
         </div>
     @endif
+    @if (session('error'))
+        <div class="alert alert-danger  fade show">
+            <button class="close" data-dismiss="alert" aria-label="Close">×</button>
+            {{ session('error') }}
+        </div>
+    @endif
     @can('عرض الاعدادات')
     <!-- End Navbar -->
     <div class="container-fluid py-4">
@@ -94,14 +100,20 @@
                 <form   method="POST" action="{{ route('storeBrand') }}"
                         enctype="multipart/form-data" >
                     @csrf
-                    <input type="text"  id="id" name="id"  hidden=""/> 
+                    <input type="text"  id="id" name="id"  hidden="" value="{{ old('id',0) }}"/> 
                     <div class="row">
                         <div class="col-12 " >
                             <div class="form-group">
                                 <label>{{ __('main.name') }} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
                                 <input type="text"  id="name" name="name"
-                                       class="form-control"
-                                       placeholder="{{ __('main.name') }}"  />
+                                       class="form-control @error('name') is-invalid @enderror"
+                                       placeholder="{{ __('main.name') }}" value="{{ old('name') }}"  />
+                                @error('name')
+                                <span class="invalid-feedback" role="alert">
+                                    <strong>{{ $message }}</strong>
+                                </span>
+                                @enderror
+                                <input type="hidden" name="status" value="1">
                             </div>
                         </div>
                     </div>

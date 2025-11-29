@@ -8,7 +8,23 @@
     @endif
   
     @can('اضافة صنف') 
- 
+    @if (session('error'))
+        <div class="alert alert-danger fade show">
+            <button class="close" data-dismiss="alert" aria-label="Close">×</button>
+            {{ session('error') }}
+        </div>
+    @endif
+    @if ($errors->any())
+        <div class="alert alert-danger">
+            <button class="close" data-dismiss="alert" aria-label="Close">×</button>
+            <ul class="mb-0">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <div class="container-fluid py-4">
         <div class="row">
             <div class="col-12">
@@ -29,8 +45,8 @@
                                 <div class="col-md-3">
                                     <div class="form-group">
                                         <label>{{ __('main.Product_Type') }}<span class="text-danger">*</span> </label>
+                                        @php $defType = old('type', $settings->default_product_type ?? '1'); @endphp
                                         <select class="form-control @error('type') is-invalid @enderror" id="type" name="type">
-                                            @php $defType = $settings->default_product_type ?? '1'; @endphp
                                             <option value="1" @if($defType=='1') selected @endif>{{__('main.General')}}</option>
                                             <option value="2" @if($defType=='2') selected @endif>{{__('main.Collection')}}</option>
                                             <option value="3" @if($defType=='3') selected @endif>{{__('main.Service')}}</option>
@@ -47,7 +63,7 @@
                                          <label>{{ __('main.code') }}<span class="text-danger">*</span> </label>
                                          <input type="text"  id="code" name="code"
                                                 class="form-control @error('code') is-invalid @enderror"
-                                                placeholder="{{ __('main.code') }}"  />
+                                                placeholder="{{ __('main.code') }}" value="{{ old('code', $defaultCode ?? '') }}" required />
                                          @error('code')
                                          <span class="invalid-feedback" role="alert">
                                              <strong>{{ $message }}</strong>
@@ -60,7 +76,7 @@
                                         <label>{{ __('main.name') }}<span class="text-danger">*</span>  </label>
                                         <input type="text"  id="name" name="name"
                                                class="form-control @error('name') is-invalid @enderror"
-                                               placeholder="{{ __('main.name') }}"  />
+                                               placeholder="{{ __('main.name') }}" value="{{ old('name') }}" required />
                                         @error('name')
                                         <span class="invalid-feedback" role="alert">
                                             <strong>{{ $message }}</strong>
@@ -73,7 +89,7 @@
                                         <label>{{ __('main.brand') }}<span class="text-danger">*</span> </label>
                                         <select class="js-example-basic-single w-100 @error('brand') is-invalid @enderror" name="brand">
                                             @foreach($brands as $brand)
-                                                <option value="{{$brand->id}}">{{$brand->name}}</option>
+                                                <option value="{{$brand->id}}" @if(old('brand')==$brand->id) selected @endif>{{$brand->name}}</option>
                                             @endforeach
                                         </select>
                                         @error('brand')
@@ -88,7 +104,7 @@
                                         <label>{{ __('main.categories') }}  <span class="text-danger">*</span> </label>
                                         <select class="js-example-basic-single w-100 @error('category_id') is-invalid @enderror" name="category_id">
                                             @foreach($categories as $cat) 
-                                                <option value="{{$cat->id}}">{{$cat->name}}</option> 
+                                                <option value="{{$cat->id}}" @if(old('category_id')==$cat->id) selected @endif>{{$cat->name}}</option> 
                                             @endforeach
                                         </select>
                                         @error('category_id')
@@ -103,7 +119,7 @@
                                         <label>{{ __('main.units') }}<span class="text-danger">*</span>  </label>
                                         <select class="js-example-basic-single w-100 @error('unit') is-invalid @enderror"     name="unit" id="unit_base">
                                             @foreach($units as $unit) 
-                                                <option value="{{$unit->id}}">{{$unit->name}}</option> 
+                                                <option value="{{$unit->id}}" @if(old('unit')==$unit->id) selected @endif>{{$unit->name}}</option> 
                                             @endforeach
                                         </select>
                                         @error('unit')
@@ -118,7 +134,7 @@
                                         <label>{{ __('main.Product_Tax') }}  <span class="text-danger">*</span></label>
                                         <select id="tax_rate" name="tax_rate" class="form-control @error('tax_rate') is-invalid @enderror" >
                                             @foreach($taxRages as $tax)
-                                                <option value="{{$tax->id}}">{{$tax->rate}}</option>
+                                                <option value="{{$tax->id}}" @if(old('tax_rate')==$tax->id) selected @endif>{{$tax->rate}}</option>
                                             @endforeach
                                         </select>
                                         <input type="hidden"  id="tax" name="tax"/>
@@ -132,20 +148,21 @@
                                 <div class="col-md-3">
                                     <div class="form-group">
                                         <label>{{ __('main.additional_taxes') }}</label>
+                                        @php $selectedTaxes = old('tax_rates_multi', []); @endphp
                                         <select class="js-example-basic-multiple w-100" name="tax_rates_multi[]" multiple>
                                             @foreach($taxRages as $tax)
-                                                <option value="{{$tax->id}}">{{$tax->rate}}</option>
+                                                <option value="{{$tax->id}}" @if(in_array($tax->id,$selectedTaxes)) selected @endif>{{$tax->rate}}</option>
                                             @endforeach
                                         </select>
                                     </div>
                                 </div>
-                            
+                                
                                 <div class="col-md-3">
                                     <div class="form-group">
                                         <label>{{ __('main.Product_Tax_Type') }}<span class="text-danger">*</span>  </label>
                                         <select class="form-control @error('tax_method') is-invalid @enderror" name="tax_method">
                                             @foreach($taxTypes as $taxType)
-                                                <option value="{{$taxType['id']}}">{{$taxType['name']}}</option>
+                                                <option value="{{$taxType['id']}}" @if(old('tax_method')==$taxType['id']) selected @endif>{{$taxType['name']}}</option>
                                             @endforeach
                                         </select>
                                         @error('tax_method')
@@ -160,7 +177,7 @@
                                         <label>{{ __('main.Cost') }} <span class="text-danger">*</span>  </label>
                                         <input type="number"  id="cost" name="cost"
                                                class="form-control @error('cost') is-invalid @enderror" step="0.01"
-                                               placeholder="{{ __('main.Cost') }}"  />
+                                               placeholder="{{ __('main.Cost') }}" value="{{ old('cost') }}" required  />
                                         @error('cost')
                                         <span class="invalid-feedback" role="alert">
                                             <strong>{{ $message }}</strong>
@@ -173,7 +190,7 @@
                                         <label>{{ __('main.Sale_Price') }} <span class="text-danger">*</span>  </label>
                                         <input type="number"  id="price" name="price"
                                                class="form-control @error('price') is-invalid @enderror" step="0.01"
-                                               placeholder="{{ __('main.Sale_Price') }}"  />
+                                               placeholder="{{ __('main.Sale_Price') }}" value="{{ old('price') }}" required  />
                                         @error('price')
                                         <span class="invalid-feedback" role="alert">
                                             <strong>{{ $message }}</strong>
@@ -186,15 +203,16 @@
                                         <label>{{ __('main.profit_margin') }} %</label>
                                         <input type="number"  id="profit_margin" name="profit_margin"
                                                class="form-control" step="0.01"
-                                               placeholder="{{ __('main.profit_margin') }}"  />
+                                               placeholder="{{ __('main.profit_margin') }}" value="{{ old('profit_margin') }}"  />
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-group">
                                         <label>{{ __('main.price_includes_tax') }}</label>
+                                        @php $priceIncludes = old('price_includes_tax', '0'); @endphp
                                         <select class="form-control" name="price_includes_tax">
-                                            <option value="0">{{ __('main.false_val') }}</option>
-                                            <option value="1">{{ __('main.true_val') }}</option>
+                                            <option value="0" @if($priceIncludes==='0') selected @endif>{{ __('main.false_val') }}</option>
+                                            <option value="1" @if($priceIncludes==='1') selected @endif>{{ __('main.true_val') }}</option>
                                         </select>
                                     </div>
                                 </div>
@@ -204,7 +222,7 @@
                                         <div class="row">
                                             @for($i=1;$i<=6;$i++)
                                                 <div class="col-md-2 mb-2">
-                                                    <input type="number" step="0.01" class="form-control" name="price_level_{{$i}}" placeholder="Level {{$i}}">
+                                                    <input type="number" step="0.01" class="form-control" name="price_level_{{$i}}" placeholder="Level {{$i}}" value="{{ old('price_level_'.$i) }}">
                                                 </div>
                                             @endfor
                                         </div>
@@ -215,7 +233,7 @@
                                         <label>{{ __('main.additional_taxes') }}</label>
                                         <select class="js-example-basic-multiple w-100" name="tax_rates_multi[]" multiple>
                                             @foreach($taxRages as $tax)
-                                                <option value="{{$tax->id}}">{{$tax->rate}}</option>
+                                                <option value="{{$tax->id}}" @if(in_array($tax->id,$selectedTaxes)) selected @endif>{{$tax->rate}}</option>
                                             @endforeach
                                         </select>
                                     </div>
@@ -225,7 +243,7 @@
                                         <label>{{ __('main.Slug') }}  <span class="text-danger">*</span> </label>
                                         <input type="text"  id="slug" name="slug"
                                                class="form-control @error('slug') is-invalid @enderror"
-                                               placeholder="{{ __('main.Slug') }}"  />
+                                               placeholder="{{ __('main.Slug') }}" value="{{ old('slug', $defaultCode ?? '') }}" required />
                                         @error('slug')
                                         <span class="invalid-feedback" role="alert">
                                             <strong>{{ $message }}</strong>
@@ -262,7 +280,7 @@
                                         <label>{{ __('main.Lista') }}  </label>
                                         <input type="number"  id="lista" name="lista"
                                                class="form-control" step="0.01"
-                                               placeholder="{{ __('main.Lista') }}"  />
+                                               placeholder="{{ __('main.Lista') }}" value="{{ old('lista') }}"  />
                                     </div>
                                 </div> 
 
@@ -271,16 +289,17 @@
                                         <label>{{ __('main.Max_Order') }}</label>
                                         <input type="number"  id="max_order" name="max_order"
                                                class="form-control" step="0.01"
-                                               placeholder="{{ __('main.Max_Order') }}"  />
+                                               placeholder="{{ __('main.Max_Order') }}" value="{{ old('max_order') }}"  />
                                     </div>
                                 </div>  
                                 <div class="col-md-3">
                                     <div class="form-group">
                                         <label>{{ __('main.Track_Quantity') }}</label>
+                                        @php $trackQuantity = old('track_quantity', '1'); @endphp
                                         <select id="track_quantity" name="track_quantity"
                                                class="form-control" >
-                                            <option value="1">{{__('main.status1')}}</option>
-                                            <option value="0">{{__('main.status2')}}</option>
+                                            <option value="1" @if($trackQuantity=='1') selected @endif>{{__('main.status1')}}</option>
+                                            <option value="0" @if($trackQuantity=='0') selected @endif>{{__('main.status2')}}</option>
                                         </select>
                                     </div>
                                 </div>  
@@ -289,7 +308,7 @@
                                         <label>{{ __('main.Alert_Quantity') }}</label>
                                         <input type="number"  id="alert_quantity" name="alert_quantity"
                                                class="form-control" step="0.01"
-                                               placeholder="{{ __('main.Alert_Quantity') }}"  />
+                                               placeholder="{{ __('main.Alert_Quantity') }}" value="{{ old('alert_quantity') }}"  />
                                     </div>
                                 </div> 
                                 <div class="col-md-12">

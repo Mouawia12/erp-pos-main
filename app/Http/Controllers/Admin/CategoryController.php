@@ -54,15 +54,25 @@ class CategoryController extends Controller
     public function store(Request $request)
     {
        if($request -> id == 0){
+           $validated = $request->validate([
+               'name' => 'required|string|max:191',
+               'parent_id' => 'nullable|integer',
+               'tax_excise' => 'nullable|numeric',
+               'slug' => 'nullable|string|max:191',
+               'description' => 'nullable|string',
+               'image_url' => 'nullable|image|max:2048',
+           ]);
+
            if($request -> image_url){
                $imageName = time().'.'.$request->image_url->extension();
                $request->image_url->move(('uploads/images/Category'), $imageName);
            } else {
                $imageName = '' ;
            }
-           $validated = $request->validate([ 
-               'name' => 'required',
-           ]);
+
+           $parentId = $request->parent_id === null || $request->parent_id === '' ? 0 : (int)$request->parent_id;
+           $branchId = Auth::user()->branch_id ?? 0;
+           $status = $request->status ?? 1;
            try {
                Category::create([
                    'name' => $request -> name ,
@@ -70,9 +80,11 @@ class CategoryController extends Controller
                    'slug' => $request -> slug ?? '' ,
                    'description' => $request -> description ?? '',
                    'image_url' => $imageName ,
-                   'parent_id' => $request -> parent_id,
+                   'parent_id' => $parentId,
                    'tax_excise' => $request->tax_excise ?? 0,
-                   'user_id' => Auth::user() -> id
+                   'branch_id' => $branchId,
+                   'user_id' => Auth::user() -> id,
+                   'status' => $status,
                ]);
                return redirect()->route('categories')->with('success' , __('main.created'));
            } catch (QueryException $ex){
@@ -129,15 +141,24 @@ class CategoryController extends Controller
     {
         $category = Category::find($request -> id);
         if($category){
+            $validated = $request->validate([
+                'name' => 'required|string|max:191',
+                'parent_id' => 'nullable|integer',
+                'tax_excise' => 'nullable|numeric',
+                'slug' => 'nullable|string|max:191',
+                'description' => 'nullable|string',
+                'image_url' => 'nullable|image|max:2048',
+            ]);
+
             if($request -> image_url){
                 $imageName = time().'.'.$request->image_url->extension();
                 $request->image_url->move(('uploads/images/Category'), $imageName);
             } else {
                 $imageName = $category ->  image_url;
             }
-            $validated = $request->validate([ 
-                'name' => 'required',
-            ]);
+            $parentId = $request->parent_id === null || $request->parent_id === '' ? 0 : (int)$request->parent_id;
+            $branchId = Auth::user()->branch_id ?? $category->branch_id ?? 0;
+            $status = $request->status ?? $category->status ?? 1;
 
             try {
                 $category -> update([
@@ -146,9 +167,11 @@ class CategoryController extends Controller
                     'slug' => $request -> slug ?? '' ,
                     'description' => $request -> description ?? '',
                     'image_url' => $imageName ?? '' ,
-                    'parent_id' => $request -> parent_id,
+                    'parent_id' => $parentId,
                     'tax_excise' => $request->tax_excise ?? 0,
-                    'user_id' => Auth::user() -> id
+                    'branch_id' => $branchId,
+                    'user_id' => Auth::user() -> id,
+                    'status' => $status,
                 ]);
                 return redirect()->route('categories')->with('success' , __('main.updated'));
             } catch (QueryException $ex){

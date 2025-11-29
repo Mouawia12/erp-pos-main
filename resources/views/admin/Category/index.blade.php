@@ -6,6 +6,22 @@
             {{ session('success') }}
         </div>
     @endif
+    @if (session('error'))
+        <div class="alert alert-danger  fade show">
+            <button class="close" data-dismiss="alert" aria-label="Close">×</button>
+            {{ session('error') }}
+        </div>
+    @endif
+    @if ($errors->any())
+        <div class="alert alert-danger  fade show">
+            <button class="close" data-dismiss="alert" aria-label="Close">×</button>
+            <ul class="mb-0">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
     @can('عرض ترميز')
     <!-- End Navbar -->
     <div class="container-fluid py-4">
@@ -102,29 +118,35 @@
                     @csrf
                     <input type="text"  id="id" name="id"
                                        class="form-control"
-                                       placeholder="{{ __('main.code') }}"  hidden=""/>
+                                       placeholder="{{ __('main.code') }}"  hidden="" value="{{ old('id',0) }}"/>
 
                     <div class="row">
                         <div class="col-md-6" >
                             <div class="form-group">
                                 <label>{{ __('main.name') }} <span class="text-danger">*</span> </label>
                                 <input type="text"  id="name" name="name"
-                                       class="form-control"
-                                       placeholder="{{ __('main.name') }}"  />
+                                       class="form-control @error('name') is-invalid @enderror"
+                                       placeholder="{{ __('main.name') }}" value="{{ old('name') }}" />
+                                @error('name')
+                                <span class="invalid-feedback" role="alert">
+                                    <strong>{{ $message }}</strong>
+                                </span>
+                                @enderror
                             </div>
                         </div>
                         <div class="col-md-6" >
                             <div class="form-group">
                                 <label>{{ __('main.parent') }} <span class="text-danger">*</span> </label>
+                                @php $selectedParent = old('parent_id','0'); @endphp
                                 <select class="form-control"
                                         name="parent_id" id="parent_id">
-                                    <option value="">حدد الاختيار</option>
-                                    <option value ="0">رئيسي</option>
+                                    <option value ="0" @if($selectedParent === '0' || $selectedParent === 0) selected @endif>رئيسي</option>
                                     @php
-                                        $renderOptions = function($nodes, $depth = 0) use (&$renderOptions) {
+                                        $renderOptions = function($nodes, $depth = 0) use (&$renderOptions, $selectedParent) {
                                             foreach($nodes as $node){
                                                 $pad = str_repeat('-- ', $depth);
-                                                echo '<option value="'.$node['id'].'">'.$pad.$node['name'].'</option>';
+                                                $selected = ($selectedParent == $node['id']) ? ' selected' : '';
+                                                echo '<option value="'.$node['id'].'"'.$selected.'>'.$pad.$node['name'].'</option>';
                                                 if(!empty($node['children'])){
                                                     $renderOptions($node['children'], $depth+1);
                                                 }
@@ -141,9 +163,10 @@
                             <div class="form-group">
                                 <label>الضريبية الانتقائية<span class="text-danger">*</span> </label>
                                 <select  id="tax_excise" name="tax_excise" class="js-example-basic-single w-100 @error('tax_excise') is-invalid @enderror" required>
-                                    <option value="0">بدون ضريبة انتقائية</option>
+                                    @php $selectedTaxExcise = old('tax_excise','0'); @endphp
+                                    <option value="0" @if($selectedTaxExcise=='0') selected @endif>بدون ضريبة انتقائية</option>
                                     @foreach($tax_excises as $tax_excise)
-                                        <option value="{{$tax_excise->rate}}">{{$tax_excise->name .' => % '.$tax_excise->rate  }}</option>
+                                        <option value="{{$tax_excise->rate}}" @if($selectedTaxExcise==$tax_excise->rate) selected @endif>{{$tax_excise->name .' => % '.$tax_excise->rate  }}</option>
                                     @endforeach
                                 </select> 
                             </div>
@@ -153,7 +176,7 @@
                         <div class="col-md-8" >
                             <div class="form-group">
                                 <label>{{ __('main.description') }} <span class="text-danger">*</span> </label>
-                                <textarea type="text"  id="description" name="description" class="form-control" placeholder="{{ __('main.description') }}"></textarea>
+                                <textarea type="text"  id="description" name="description" class="form-control" placeholder="{{ __('main.description') }}">{{ old('description') }}</textarea>
                             </div>
                         </div>
                         <div class="col-md-4">
@@ -161,7 +184,7 @@
                                 <label>slug <span class="text-danger">*</span> </label>
                                 <input type="text"  id="slug" name="slug"
                                        class="form-control"
-                                       placeholder="slug"  />
+                                       placeholder="slug" value="{{ old('slug') }}" />
                             </div>
                         </div>
                     </div>
@@ -177,6 +200,7 @@
                             <img src="../assets/img/photo.png" id="profile-img-tag" width="150px" height="150px" class="profile-img"/>
                         </div>
                     </div>
+                    <input type="hidden" name="status" value="{{ old('status',1) }}">
 
                     <div class="row">
                         <div class="col-md-6" style="display: block; margin: 20px auto; text-align: center;">
@@ -223,6 +247,13 @@
 @endcan 
 @endsection 
 @section('js')
+@if ($errors->any())
+    <script>
+        $(function(){
+            $('#createModal').modal('show');
+        });
+    </script>
+@endif
 <script type="text/javascript">
     function readURL(input) {
         if (input.files && input.files[0]) {

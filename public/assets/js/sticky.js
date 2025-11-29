@@ -1,39 +1,36 @@
-$(document).ready(function(){
+$(document).ready(function () {
+  var stickyElement = $(".sticky");
+  if (!stickyElement.length) {
+    return;
+  }
 
-  var stickyElement = $(".sticky"),
-      stickyClass = "sticky-pin",
-      stickyPos = stickyElement.offset().top, //Distance from the top of the window.
-      stickyHeight;
+  var stickyClass = "sticky-pin",
+    stickyPos = stickyElement.offset().top,
+    stickyHeight;
 
-  
-
-  ///Create a negative margin to prevent content 'jumps':
   stickyElement.after('<div class="jumps-prevent"></div>');
   function jumpsPrevent() {
     stickyHeight = stickyElement.innerHeight();
-    stickyElement.css({"margin-bottom":"-" + stickyHeight + "px"});
-    stickyElement.next().css({"padding-top": + stickyHeight + "px"}); 
-  };
-  jumpsPrevent(); //Run.
+    stickyElement.css({ "margin-bottom": "-" + stickyHeight + "px" });
+    stickyElement.next().css({ "padding-top": +stickyHeight + "px" });
+  }
+  jumpsPrevent();
 
-  //Function trigger:
-  $(window).resize(function(){
+  $(window).resize(function () {
     jumpsPrevent();
   });
 
-  //Sticker function:
   function stickerFn() {
     var winTop = $(this).scrollTop();
-    //Check element position:
-    winTop >= stickyPos ?
-      stickyElement.addClass(stickyClass):
-      stickyElement.removeClass(stickyClass) //Boolean class switcher.
-  };
-  stickerFn(); //Run.
+    if (winTop >= stickyPos) {
+      stickyElement.addClass(stickyClass);
+    } else {
+      stickyElement.removeClass(stickyClass);
+    }
+  }
+  stickerFn();
 
-  //Function trigger:
-  $(window).scroll(function(){
+  $(window).scroll(function () {
     stickerFn();
   });
-
 });

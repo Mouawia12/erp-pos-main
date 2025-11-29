@@ -30,6 +30,11 @@
                                             <h5 class="alert alert-primary text-center mb-4">
                                                 تسجيل الدخول
                                             </h5>
+                                            @if ($errors->has('token'))
+                                                <div class="alert alert-warning">
+                                                    {{ $errors->first('token') }}
+                                                </div>
+                                            @endif
                                             <form method="POST" action="{{ route('admin.login') }}">
                                                 @csrf
                                                 <div class="form-group">

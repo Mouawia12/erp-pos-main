@@ -45,10 +45,6 @@
             font-family: 'Almarai' !important;
         }
 
-        .dropdown-menu.dropdown-menu-right.show {
-            width: 200px !important;
-        }
-
         body, html {
             font-family: 'Almarai' !important;
             font-size: 14px !important;
@@ -100,9 +96,56 @@
         body.rtl .main-content {
             direction: rtl;
         }
-        .dropdown-menu.show{
-            right: 0!important;
-            left: auto!important;
+        .main-header-notification{
+            position: relative;
+        }
+        .main-header-notification .nav-link{
+            padding-inline: 0 15px;
+            position: relative;
+        }
+        .main-header-notification .dropdown-menu{
+            margin-top:0;
+            min-width:320px;
+            border:0;
+            transform:none !important;
+            top: calc(100% + 12px) !important;
+        }
+        .main-header-notification .notification-caret{
+            position:absolute;
+            top:-12px;
+            width:0;
+            height:0;
+            border-style:solid;
+            border-width:10px 8px 0 8px;
+            border-color:#fff transparent transparent transparent;
+        }
+        body.rtl .main-header-notification .dropdown-menu{
+            left:0 !important;
+            right:auto !important;
+        }
+        body.rtl .main-header-notification .notification-caret{
+            left:20px;
+            right:auto;
+        }
+        body.ltr .main-header-notification .dropdown-menu{
+            right:0 !important;
+            left:auto !important;
+        }
+        body.ltr .main-header-notification .notification-caret{
+            right:20px;
+            left:auto;
+        }
+        body.rtl .main-header-notification .nav-link .nav-link-badge{
+            left:-6px;
+            right:auto;
+        }
+        body.ltr .main-header-notification .nav-link .nav-link-badge{
+            right:-6px;
+            left:auto;
+        }
+        .main-header-notification .nav-link .nav-link-badge{
+            position:absolute;
+            top:-6px;
         }
         .side-menu__icon {
             font-size: 14px !important;
@@ -127,12 +170,19 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #444!important;
         }
-        table.display.w-100.text-nowrap.table-bordered.dataTable.dtr-inline {
+        body.rtl table.display.w-100.text-nowrap.table-bordered.dataTable.dtr-inline {
             direction: rtl;
             text-align:center;
         }
-        body{
+        body.ltr table.display.w-100.text-nowrap.table-bordered.dataTable.dtr-inline {
+            direction: ltr;
+            text-align:center;
+        }
+        body.rtl{
             direction: rtl; 
+        }
+        body.ltr{
+            direction: ltr;
         }
         table#example1 tr td {
             padding: 5px !important;

@@ -85,8 +85,9 @@ class ProductController extends Controller
         $taxRages = $systemController->getAllTaxRates();
         $taxTypes = $systemController->getAllTaxTypes();
         $settings = SystemSettings::first();
+        $defaultCode = $this->getItemCode();
 
-        return view('admin.products.create',compact('brands','categories','taxRages','taxTypes','units','settings'));
+        return view('admin.products.create',compact('brands','categories','taxRages','taxTypes','units','settings','defaultCode'));
     }
 
     /**
@@ -99,43 +100,15 @@ class ProductController extends Controller
     {
         $request['code'] =  $request->code ? $request->code : $this->getItemCode();
 
-        $validated = $request->validate([
-            'code' => 'required|unique:products',
-            'name' => 'required|unique:products',
-            'unit' => 'required',
-            'cost' => 'required',
-            'price' => 'required',
-            'price_level_1' => 'nullable|numeric',
-            'price_level_2' => 'nullable|numeric',
-            'price_level_3' => 'nullable|numeric',
-            'price_level_4' => 'nullable|numeric',
-            'price_level_5' => 'nullable|numeric',
-            'price_level_6' => 'nullable|numeric',
-            'category_id' => 'required',
-            'tax_rate' => 'required',
-            'tax_rates_multi' => 'nullable|array',
-            'tax_rates_multi.*' => 'integer|exists:tax_rates,id',
-            'tax_method' => 'required',
-            'price_includes_tax' => 'nullable|boolean',
-            'profit_margin' => 'nullable|numeric',
-            'type' => 'required',
-            'brand' => 'required',
-            //'slug' => 'required',
-            'product_variants' => 'nullable|array',
-            'product_variants.*.sku' => 'nullable|string|max:191',
-            'product_variants.*.color' => 'nullable|string|max:191',
-            'product_variants.*.size' => 'nullable|string|max:191',
-            'product_variants.*.barcode' => 'nullable|string|max:191',
-            'product_variants.*.price' => 'nullable|numeric',
-            'product_variants.*.quantity' => 'nullable|numeric',
-        ]);
+        $validated = $request->validate(
+            $this->productValidationRules(),
+            $this->productValidationMessages(),
+            $this->productValidationAttributes()
+        );
         $siteController = new SystemController();
         $tax_excise = $siteController->getCategoryById($request->category_id)->tax_excise;
 
-        if($request->has('img')) {
-            if($request->file('img')->getSize() / 1000 > 2000) {
-                return redirect()->route('items')->with('error', __('main.img_big'));
-            }
+        if($request->hasFile('img')) {
             $imageName = time() . '.' . $request->img->extension();
             $request->img->move(('uploads/items/images'), $imageName);
         } else {
@@ -175,7 +148,6 @@ class ProductController extends Controller
                 'city_tax' => $request->city_tax ?? 0,
                 'max_order' => $request->max_order ?? 0,
                 'img' => $imageName,
-                'branch_id' => $request -> branch_id ?? 1,
                 'user_id' => Auth::user() -> id,
                 'status' => $request->status ?? 1,
             ]);
@@ -321,44 +293,16 @@ class ProductController extends Controller
  
         $product = Product::find($id);
         if($product){
-            $validated = $request->validate([
-                'code' => ['required' , Rule::unique('products')->ignore($id)],
-                'name' => ['required' , Rule::unique('products')->ignore($id)],
-                'unit' => 'required',
-                'cost' => 'required',
-                'price' => 'required',
-                'price_level_1' => 'nullable|numeric',
-                'price_level_2' => 'nullable|numeric',
-                'price_level_3' => 'nullable|numeric',
-                'price_level_4' => 'nullable|numeric',
-                'price_level_5' => 'nullable|numeric',
-                'price_level_6' => 'nullable|numeric',
-                'category_id' => 'required',
-                'tax_rate' => 'required',
-                'tax_rates_multi' => 'nullable|array',
-                'tax_rates_multi.*' => 'integer|exists:tax_rates,id',
-                'tax_method' => 'required',
-                'price_includes_tax' => 'nullable|boolean',
-                'profit_margin' => 'nullable|numeric',
-                'type' => 'required',
-                'brand' => 'required', 
-                'img' => 'max:2000',
-                'product_variants' => 'nullable|array',
-                'product_variants.*.sku' => 'nullable|string|max:191',
-                'product_variants.*.color' => 'nullable|string|max:191',
-                'product_variants.*.size' => 'nullable|string|max:191',
-                'product_variants.*.barcode' => 'nullable|string|max:191',
-                'product_variants.*.price' => 'nullable|numeric',
-                'product_variants.*.quantity' => 'nullable|numeric',
-            ]);
+            $validated = $request->validate(
+                $this->productValidationRules($product->id),
+                $this->productValidationMessages(),
+                $this->productValidationAttributes()
+            );
 
             $siteController = new SystemController();
             $tax_excise = $siteController->getCategoryById($request->category_id)->tax_excise;
 
-            if($request->has('img')) {
-                if($request->file('img')->getSize() / 1000 > 2000) {
-                    return redirect()->route('items')->with('error', __('main.img_big'));
-                }
+            if($request->hasFile('img')) {
                 $imageName = time() . '.' . $request->img->extension();
                 $request->img->move(('uploads/items/images'), $imageName);
             } else {
@@ -396,7 +340,6 @@ class ProductController extends Controller
                     'city_tax' => $request->city_tax ?? 0,
                     'max_order' => $request->max_order ?? 0,
                     'img' => $imageName,
-                    'branch_id' => $request -> branch_id ?? 1,
                     'user_id' => Auth::user() -> id,
                     'status' => $request->status ?? 1
 
@@ -447,6 +390,147 @@ class ProductController extends Controller
                 return redirect()->route('products')->with('error' ,  $ex->getMessage());
             } 
         } 
+    }
+
+    private function productValidationRules(int $productId = null): array
+    {
+        $codeRule = Rule::unique('products', 'code');
+        $nameRule = Rule::unique('products', 'name');
+        if ($productId) {
+            $codeRule = $codeRule->ignore($productId);
+            $nameRule = $nameRule->ignore($productId);
+        }
+
+        $rules = [
+            'code' => ['required', 'regex:/^\d+$/', 'digits_between:4,20', $codeRule],
+            'name' => ['required', 'string', 'max:191', $nameRule],
+            'unit' => ['required', 'exists:units,id'],
+            'brand' => ['required', 'exists:brands,id'],
+            'category_id' => ['required', 'exists:categories,id'],
+            'subcategory_id' => ['nullable', 'exists:categories,id'],
+            'cost' => ['required', 'numeric', 'min:0'],
+            'price' => ['required', 'numeric', 'min:0'],
+            'quantity' => ['nullable', 'numeric', 'min:0'],
+            'tax' => ['nullable', 'numeric', 'min:0'],
+            'tax_rate' => ['required', 'exists:tax_rates,id'],
+            'tax_rates_multi' => ['nullable', 'array'],
+            'tax_rates_multi.*' => ['integer', 'exists:tax_rates,id'],
+            'tax_method' => ['required', 'in:1,2'],
+            'price_includes_tax' => ['nullable', 'in:0,1'],
+            'profit_margin' => ['nullable', 'numeric', 'min:0'],
+            'type' => ['required', 'in:1,2,3'],
+            'lista' => ['nullable', 'numeric', 'min:0'],
+            'alert_quantity' => ['nullable', 'numeric', 'min:0'],
+            'max_order' => ['nullable', 'numeric', 'min:0'],
+            'track_quantity' => ['nullable', 'in:0,1'],
+            'tax_excise' => ['nullable', 'numeric', 'min:0'],
+            'slug' => ['required', 'string', 'max:191'],
+            'featured' => ['nullable', 'in:0,1'],
+            'city_tax' => ['nullable', 'numeric', 'min:0'],
+            'status' => ['nullable', 'in:0,1'],
+            'img' => ['nullable', 'image', 'max:2048'],
+            'product_variants' => ['nullable', 'array'],
+            'product_variants.*.sku' => ['nullable', 'string', 'max:191'],
+            'product_variants.*.color' => ['nullable', 'string', 'max:191'],
+            'product_variants.*.size' => ['nullable', 'string', 'max:191'],
+            'product_variants.*.barcode' => ['nullable', 'string', 'max:191'],
+            'product_variants.*.price' => ['nullable', 'numeric', 'min:0'],
+            'product_variants.*.quantity' => ['nullable', 'numeric', 'min:0'],
+            'product_units' => ['nullable', 'array'],
+            'product_units.*.unit' => ['nullable', 'exists:units,id'],
+            'product_units.*.price' => ['nullable', 'numeric', 'min:0'],
+            'product_units.*.conversion_factor' => ['nullable', 'numeric', 'min:0.0001'],
+            'product_units.*.barcode' => ['nullable', 'string', 'max:191'],
+        ];
+
+        for ($i = 1; $i <= 6; $i++) {
+            $rules['price_level_' . $i] = ['nullable', 'numeric', 'min:0'];
+        }
+
+        return $rules;
+    }
+
+    private function productValidationMessages(): array
+    {
+        $messages = [
+            'code.required' => 'يرجى إدخال كود الصنف.',
+            'code.regex' => 'كود الصنف يجب أن يحتوي على أرقام فقط.',
+            'code.digits_between' => 'كود الصنف يجب ألا يقل عن :min أرقام ولا يزيد عن :max.',
+            'code.unique' => 'كود الصنف مستخدم مسبقاً.',
+            'name.required' => 'يرجى إدخال اسم الصنف.',
+            'name.unique' => 'اسم الصنف مستخدم مسبقاً.',
+            'unit.exists' => 'الوحدة الأساسية المختارة غير صحيحة.',
+            'brand.exists' => 'الماركة المحددة غير صالحة.',
+            'category_id.exists' => 'التصنيف المختار غير صحيح.',
+            'cost.numeric' => 'قيمة التكلفة يجب أن تكون رقمية.',
+            'cost.min' => 'قيمة التكلفة يجب ألا تكون أقل من صفر.',
+            'price.numeric' => 'سعر البيع يجب أن يكون رقمياً.',
+            'price.min' => 'سعر البيع يجب ألا يكون سالباً.',
+            'tax_rate.exists' => 'الضريبة المحددة غير متاحة.',
+            'tax_method.in' => 'نوع الضريبة المحدد غير صحيح.',
+            'type.in' => 'نوع الصنف المحدد غير صحيح.',
+            'slug.required' => 'يرجى إدخال الاسم المختصر للصنف.',
+            'img.image' => 'ملف الصورة يجب أن يكون من نوع صورة (JPG, PNG ...).',
+            'img.max' => 'حجم الصورة يجب ألا يتجاوز 2 ميغابايت.',
+            'tax_rates_multi.*.exists' => 'إحدى الضرائب الإضافية المختارة غير متاحة.',
+            'product_units.*.price.numeric' => 'سعر الوحدة الإضافية يجب أن يكون رقمياً.',
+            'product_units.*.conversion_factor.min' => 'معامل التحويل للوحدة الإضافية يجب أن يكون أكبر من صفر.',
+            'product_units.*.unit.exists' => 'الوحدة الإضافية المختارة غير صحيحة.',
+            'product_variants.*.price.numeric' => 'سعر المتغير يجب أن يكون رقمياً.',
+            'product_variants.*.quantity.numeric' => 'كمية المتغير يجب أن تكون رقمية.',
+        ];
+
+        for ($i = 1; $i <= 6; $i++) {
+            $messages['price_level_' . $i . '.numeric'] = 'سعر المستوى ' . $i . ' يجب أن يكون رقمياً.';
+        }
+
+        return $messages;
+    }
+
+    private function productValidationAttributes(): array
+    {
+        $attributes = [
+            'code' => 'كود الصنف',
+            'name' => 'اسم الصنف',
+            'unit' => 'الوحدة الأساسية',
+            'brand' => 'الماركة',
+            'category_id' => 'التصنيف الرئيسي',
+            'subcategory_id' => 'التصنيف الفرعي',
+            'cost' => 'التكلفة',
+            'price' => 'سعر البيع',
+            'quantity' => 'الكمية',
+            'tax' => 'نسبة الضريبة',
+            'tax_rate' => 'ضريبة المنتج',
+            'tax_method' => 'نوع الضريبة',
+            'price_includes_tax' => 'سعر يشمل الضريبة',
+            'profit_margin' => 'هامش الربح',
+            'type' => 'نوع الصنف',
+            'lista' => 'ليستا',
+            'alert_quantity' => 'الكمية الحرجة',
+            'max_order' => 'الحد الأعلى للطلب',
+            'track_quantity' => 'متابعة الكمية',
+            'slug' => 'الاسم المختصر',
+            'city_tax' => 'ضريبة المدينة',
+            'img' => 'صورة الصنف',
+            'tax_rates_multi' => 'الضرائب الإضافية',
+            'tax_rates_multi.*' => 'الضرائب الإضافية',
+            'product_units.*.unit' => 'الوحدة الإضافية',
+            'product_units.*.price' => 'سعر الوحدة الإضافية',
+            'product_units.*.conversion_factor' => 'معامل التحويل للوحدة الإضافية',
+            'product_units.*.barcode' => 'باركود الوحدة الإضافية',
+            'product_variants.*.sku' => 'SKU المتغير',
+            'product_variants.*.color' => 'لون المتغير',
+            'product_variants.*.size' => 'مقاس المتغير',
+            'product_variants.*.barcode' => 'باركود المتغير',
+            'product_variants.*.price' => 'سعر المتغير',
+            'product_variants.*.quantity' => 'كمية المتغير',
+        ];
+
+        for ($i = 1; $i <= 6; $i++) {
+            $attributes['price_level_' . $i] = 'سعر المستوى ' . $i;
+        }
+
+        return $attributes;
     }
 
     /**
