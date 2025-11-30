@@ -10,46 +10,64 @@ class ExpensesTableSeeder extends Seeder
 {
     public function run(): void
     {
-        $subId = DB::table('subscribers')->value('id');
-        $branchId = DB::table('branches')->value('id');
-        $userId = DB::table('users')->value('id');
+        $subscribers = DB::table('subscribers')
+            ->select('id', 'company_name')
+            ->get();
 
-        $expenses = [
-            [
-                'branch_id' => $branchId,
-                'from_account' => 0,
-                'to_account' => 0,
-                'client' => 'مصروف كهرباء',
-                'amount' => 250,
-                'tax_amount' => 0,
-                'notes' => 'فاتورة كهرباء شهرية',
-                'date' => Carbon::today()->subDays(2),
-                'docNumber' => 'EXP-001',
-                'payment_type' => 0,
-                'user_id' => $userId,
-                'subscriber_id' => $subId,
-            ],
-            [
-                'branch_id' => $branchId,
-                'from_account' => 0,
-                'to_account' => 0,
-                'client' => 'مصروف صيانة',
-                'amount' => 150,
-                'tax_amount' => 0,
-                'notes' => 'صيانة أجهزة',
-                'date' => Carbon::today()->subDay(),
-                'docNumber' => 'EXP-002',
-                'payment_type' => 0,
-                'user_id' => $userId,
-                'subscriber_id' => $subId,
-            ],
-        ];
+        if ($subscribers->isEmpty()) {
+            $subscribers = collect([(object) ['id' => null, 'company_name' => 'مشترك افتراضي']]);
+        }
 
-        foreach ($expenses as $exp) {
-            DB::table('expenses')->updateOrInsert(
-                ['docNumber' => $exp['docNumber']],
-                $exp
-            );
+        foreach ($subscribers as $subscriber) {
+            $branchId = DB::table('branches')
+                ->where('subscriber_id', $subscriber->id)
+                ->value('id') ?? DB::table('branches')->value('id');
+            $userId = DB::table('users')
+                ->where('subscriber_id', $subscriber->id)
+                ->value('id') ?? DB::table('users')->value('id');
+
+            if (! $branchId || ! $userId) {
+                continue;
+            }
+
+            $expenses = [
+                [
+                    'client' => 'مصروف كهرباء ' . ($subscriber->company_name ?? ''),
+                    'amount' => 250,
+                    'notes' => 'فاتورة كهرباء شهرية',
+                    'days_ago' => 2,
+                ],
+                [
+                    'client' => 'مصروف صيانة ' . ($subscriber->company_name ?? ''),
+                    'amount' => 150,
+                    'notes' => 'صيانة أجهزة',
+                    'days_ago' => 1,
+                ],
+            ];
+
+            foreach ($expenses as $index => $exp) {
+                $docNumber = sprintf('EXP-%02d-%03d', $subscriber->id ?? 0, $index + 1);
+                DB::table('expenses')->updateOrInsert(
+                    [
+                        'subscriber_id' => $subscriber->id,
+                        'docNumber' => $docNumber,
+                    ],
+                    [
+                        'branch_id' => $branchId,
+                        'from_account' => 0,
+                        'to_account' => 0,
+                        'client' => $exp['client'],
+                        'amount' => $exp['amount'],
+                        'tax_amount' => 0,
+                        'notes' => $exp['notes'],
+                        'date' => Carbon::today()->subDays($exp['days_ago']),
+                        'docNumber' => $docNumber,
+                        'payment_type' => 0,
+                        'user_id' => $userId,
+                        'subscriber_id' => $subscriber->id,
+                    ]
+                );
+            }
         }
     }
 }

@@ -29,6 +29,7 @@ use App\Models\Expenses;
 use Database\Factories\JournalFactory;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class SystemController extends Controller
 {
@@ -157,6 +158,19 @@ class SystemController extends Controller
 
     public function getProductById($id){
         return Product::find($id);
+    }
+
+    public function allowSellingWithoutStock(): bool
+    {
+        $query = SystemSettings::query();
+        $user = Auth::user();
+        if ($user && Schema::hasColumn('system_settings', 'subscriber_id')) {
+            $query->where('subscriber_id', $user->subscriber_id);
+        }
+
+        $settings = $query->first() ?? SystemSettings::first();
+
+        return (int) optional($settings)->sell_without_stock === 2;
     }
 
     public function syncQnt($items=null,$oldItems=null,$isMinus = true){

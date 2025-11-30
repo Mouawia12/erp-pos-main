@@ -310,6 +310,7 @@ return [
     'supplier_bill_number' => 'Supplier Invoice Number',
     'supplier_invoice_copy' => 'Supplier Invoice Copy',
     'invoice_type' => 'Invoice Type',
+    'general_error' => 'Unexpected error, please try again later.',
     'invoice_type_tax' => 'Tax Invoice',
     'invoice_type_simplified' => 'Simplified Tax Invoice',
     'invoice_type_nontax' => 'Non-tax Invoice',
@@ -634,6 +635,7 @@ return [
     'cost' => 'Cost',
     'last_sale_price' => 'Last Sale Price',
     'duplicate_item_warning' => 'Item already exists in this invoice; quantity updated.',
+    'insufficient_stock' => 'Insufficient stock for :item in this warehouse.',
 
     'alerts_center' => 'Alerts Center',
     'alerts_refresh_now' => 'Refresh alerts',

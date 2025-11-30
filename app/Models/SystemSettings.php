@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToSubscriber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class SystemSettings extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToSubscriber;
     protected $table = "system_settings";
     protected $fillable = [
         'company_name', //
@@ -78,11 +79,12 @@ class SystemSettings extends Model
         'created_at', 
         'updated_at', 
         'enable_inventory',
-         'valid_to', 
+        'valid_to', 
          'contact_phone',
           'enable_accounting',
            'max_users', 
-           'max_branches'
+           'max_branches',
+           'subscriber_id'
 
 
     ];

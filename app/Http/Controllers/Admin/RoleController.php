@@ -4,11 +4,12 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller; 
 use Illuminate\Http\Request; 
-use Spatie\Permission\Models\Role;
+use App\Models\Role;
 use Spatie\Permission\Models\Permission;
 use App\Models\User; 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class RoleController extends Controller
 {
@@ -22,10 +23,15 @@ class RoleController extends Controller
 
     public function index(Request $request)
     {
-        $roles = Role::orderBy('id', 'ASC')->where('guard_name','Admin-web')->get();
-        if(Auth::user()->subscriber_id){
-            $roles = $roles->where('name','!=','system_owner');
+        $roles = Role::query()
+            ->where('guard_name', 'admin-web')
+            ->orderBy('id', 'ASC')
+            ->get();
+
+        if (Auth::user()->subscriber_id) {
+            $roles = $roles->where('name', '!=', 'system_owner');
         }
+
         return view('admin.roles.index', compact('roles'));
     }
 
@@ -40,8 +46,19 @@ class RoleController extends Controller
 
     public function store(Request $request)
     {
+        $subscriberId = Auth::user()->subscriber_id;
+
         $this->validate($request, [
-            'name' => 'required|unique:roles,name',
+            'name' => [
+                'required',
+                Rule::unique('roles', 'name')->where(function ($query) use ($subscriberId) {
+                    if ($subscriberId) {
+                        $query->where('subscriber_id', $subscriberId);
+                    } else {
+                        $query->whereNull('subscriber_id');
+                    }
+                }),
+            ],
             'guard_name' => 'required',
             'permission' => 'required',
         ]);
@@ -49,9 +66,10 @@ class RoleController extends Controller
         if(Auth::user()->subscriber_id && $request->name === 'system_owner'){
             return redirect()->back()->with('error','غير مسموح بإنشاء هذا الدور');
         }
-        $role = Role::create([
+        $role = Role::query()->create([
             'name' => $request->input('name'),
-            'guard_name' => $request->input('guard_name')
+            'guard_name' => $request->input('guard_name'),
+            'subscriber_id' => $subscriberId,
         ]);
         $request['permission'] = collect($request['permission'])->map(fn($val)=>(int)$val);
         $role->syncPermissions($request->input('permission'));
@@ -62,7 +80,16 @@ class RoleController extends Controller
 
     public function show($id)
     {
-        $role = Role::findOrFail($id);
+        $subscriberId = Auth::user()->subscriber_id;
+        $role = Role::query()
+            ->where('guard_name', 'admin-web')
+            ->when($subscriberId, function ($query) use ($subscriberId) {
+                $query->where(function ($q) use ($subscriberId) {
+                    $q->where('subscriber_id', $subscriberId)
+                        ->orWhereNull('subscriber_id');
+                });
+            })
+            ->findOrFail($id);
         $rolePermissions = Permission::join("role_has_permissions", "role_has_permissions.permission_id", "=", "permissions.id")
             ->where("role_has_permissions.role_id", $id)
             ->get();
@@ -82,11 +109,35 @@ class RoleController extends Controller
 
     public function update(Request $request, $id)
     {
+        $subscriberId = Auth::user()->subscriber_id;
         $this->validate($request, [
-            'name' => 'required',
+            'name' => [
+                'required',
+                Rule::unique('roles', 'name')->ignore($id)->where(function ($query) use ($subscriberId) {
+                    if ($subscriberId) {
+                        $query->where('subscriber_id', $subscriberId);
+                    } else {
+                        $query->whereNull('subscriber_id');
+                    }
+                }),
+            ],
             'permission' => 'required',
         ]);
-        $role = Role::findOrFail($id);
+
+        $role = Role::query()
+            ->where('guard_name', 'admin-web')
+            ->when($subscriberId, function ($query) use ($subscriberId) {
+                $query->where(function ($q) use ($subscriberId) {
+                    $q->where('subscriber_id', $subscriberId)
+                        ->orWhereNull('subscriber_id');
+                });
+            })
+            ->findOrFail($id);
+
+        if ($subscriberId && $role->subscriber_id === null) {
+            return redirect()->route('admin.roles.index')
+                ->with('error', 'غير مسموح بتعديل هذا الدور.');
+        }
         $role->name = $request->input('name');
         $role->save();
         $request['permission'] = collect($request['permission'])->map(fn($val)=>(int)$val);
@@ -102,7 +153,23 @@ class RoleController extends Controller
 
     public function destroy(Request $request)
     {
-        DB::table("roles")->where('id', $request->role_id)->delete();
+        $subscriberId = Auth::user()->subscriber_id;
+        $role = Role::query()
+            ->where('guard_name', 'admin-web')
+            ->when($subscriberId, function ($query) use ($subscriberId) {
+                $query->where(function ($q) use ($subscriberId) {
+                    $q->where('subscriber_id', $subscriberId)
+                        ->orWhereNull('subscriber_id');
+                });
+            })
+            ->findOrFail($request->role_id);
+
+        if ($subscriberId && $role->subscriber_id === null) {
+            return redirect()->route('admin.roles.index')
+                ->with('error', 'غير مسموح بحذف هذا الدور.');
+        }
+
+        DB::table('roles')->where('id', $role->id)->delete();
         return redirect()->route('admin.roles.index')
             ->with('success', 'تم حذف الصلاحية بنجاح');
     }

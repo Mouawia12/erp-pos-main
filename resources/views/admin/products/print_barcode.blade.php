@@ -227,92 +227,69 @@
 
             if(paper_size != "0") {
                 
-                var product_name = [];
-                var code = [];
-                var price = [];
-                var promo_price = [];
-                var qty = [];
-                var barcode_image = [];
-                var currency = [];
-                var currency_position = []; 
                 var company_name = "{{ optional($company)->name_ar }}";
-                var currency_label = "{{ optional($company)->currency_label }}";
-                var item_id = row_id; 
- 
-                var htmltext = '<table class="barcodelist" style="width:378px;" cellpadding="5px" cellspacing="10px">';
-                /*$.each(qty, function(index){
-                    i = 0;
-                    while(i < qty[index]){
-                        if(i % 2 == 0)
-                            htmltext +='<tr>';
-                        htmltext +='<td style="width:164px;height:88%;padding-top:7px;vertical-align:middle;text-align:center">';
-                        htmltext += product_name[index] + '<br>';
-                        htmltext += '<img style="max-width:150px;" src="data:image/png;base64,'+barcode_image[index]+'" alt="barcode" /><br>';
-                        htmltext += '<strong>'+code[index]+'</strong><br>';
-                        htmltext += 'price: '+price[index];
-                        htmltext +='</td>';
-                        if(i % 2 != 0)
-                            htmltext +='</tr>';
-                        i++;
-                    }
-                });*/ 
-                var barcode_image_src= 'https://barcode.tec-it.com/barcode.ashx?data='+sItems[item_id].code+'&code=Code128';
-                product_name.push(sItems[item_id].name); 
-                code.push(sItems[item_id].code);
-                barcode_image.push('https://barcode.tec-it.com/barcode.ashx?data='+sItems[item_id].code+'&code=Code128');
-                qty.push($('.qty').val());  
-                price.push(sItems[item_id].price);
-                promo_price.push(sItems[item_id].promo_price);
-                currency.push(currency_label);
-                currency_position.push('');
+                var currency_label = "{{ optional($company)->currency_label ?? 'ر.س' }}";
+                var items = Object.values(sItems);
 
-                $.each(qty, function(index){
-                    i = 0;
-                    while(i < qty[index]) {
-                        if(i % 2 == 0)
-                            htmltext +='<tr>';
-                        // 36mm
+                if(items.length === 0){
+                    alert('{{ __("main.no_product_selected") }}');
+                    return;
+                }
+
+                var htmltext = '<table class="barcodelist" style="width:378px;" cellpadding="5px" cellspacing="10px">';
+                var cellCounter = 0;
+
+                items.forEach(function(item){
+                    var qty = item.qty ? parseFloat(item.qty) : 1;
+                    qty = isNaN(qty) || qty < 1 ? 1 : qty;
+
+                    for(var i = 0; i < qty; i++){
+                        if(cellCounter % 2 === 0){
+                            htmltext += '<tr>';
+                        }
+
                         if(paper_size == 36)
                             htmltext +='<td style="width:164px;height:88%;padding-top:7px;vertical-align:middle;text-align:center">';
-                        //24mm
                         else if(paper_size == 24)
                             htmltext +='<td style="width:164px;height:100%;font-size:12px;text-align:center">';
-                        //18mm
-                        else if(paper_size == 18)
+                        else
                             htmltext +='<td style="width:164px;height:100%;font-size:10px;text-align:center">';
 
                         if($('input[name="company_name"]').is(":checked"))
-                            htmltext += company_name + '<br>';
+                            htmltext += (company_name || '') + '<br>';
 
                         if($('input[name="product_name"]').is(":checked"))
-                            htmltext += product_name[index] + '<br>';
+                            htmltext += item.name + '<br>';
 
+                        var barcodeSrc = 'https://barcode.tec-it.com/barcode.ashx?data='+item.code+'&code=Code128';
                         if(paper_size == 18)
-                            htmltext += '<img style="width: 22mm; height: 10mm;" src="'+barcode_image[index]+'" alt="barcode" /><br>';
+                            htmltext += '<img style="width: 22mm; height: 10mm;" src="'+barcodeSrc+'" alt="barcode" /><br>';
                         else
-                            htmltext += '<img style="width: 25mm; height: 12mm;" src="'+barcode_image[index]+'" alt="barcode" /><br>';
+                            htmltext += '<img style="width: 25mm; height: 12mm;" src="'+barcodeSrc+'" alt="barcode" /><br>';
 
                         if($('input[name="include_code"]').is(":checked"))
-                            htmltext += '<strong>'+code[index]+'</strong><br>';
-                        if($('input[name="promo_price"]').is(":checked")) {
-                            if(currency_position[index] == 'prefix')
-                                htmltext += 'السعر: '+currency[index]+'<span style="text-decoration: line-through;"> '+price[index]+'</span> '+promo_price[index]+'<br>';
-                            else
-                                htmltext += 'السعر: <span style="text-decoration: line-through;">'+price[index]+'</span> '+promo_price[index]+' '+currency[index]+'<br>';
-                        }
-                        else if($('input[name="sale_Price"]').is(":checked")) {
+                            htmltext += '<strong>'+item.code+'</strong><br>';
+
+                        if($('input[name="sale_Price"]').is(":checked")) {
                             if($('input[name="currencies"]').is(":checked")) 
-                                htmltext += 'السعر: '+price[index]+' '+currency[index];
+                                htmltext += 'السعر: '+item.price+' '+currency_label;
                             else
-                                htmltext += 'السعر: '+price[index];
+                                htmltext += 'السعر: '+item.price;
                         }
                         htmltext +='</td>';
-                        if(i % 2 != 0)
+
+                        if(cellCounter % 2 === 1){
                             htmltext +='</tr>';
-                        i++;
+                        }
+                        cellCounter++;
                     }
                 });
-                htmltext += '</table">';
+
+                if(cellCounter % 2 === 1){
+                    htmltext +='<td></td></tr>';
+                }
+
+                htmltext += '</table>';
                 $('#label-content').html(htmltext);
                 $('#print-barcode').modal('show');
             }
@@ -446,9 +423,9 @@
             key = 'v'+item.selected_variant.id;
         }
 
-        if(sItems[key]){
+        if(sItems[key])
             sItems[key].qty = sItems[key].qty +1;
-        }else{
+        else{
             item.qty = item.quantity > 0 ? item.quantity : 1;
             sItems[key] = item; 
             sItems[key].id = key;

@@ -279,7 +279,8 @@ span strong {font-size:12px;}
                                 <div class="col-md-6" >
                                     <div class="form-group">
                                         <label> {{__('main.discount')}} </label>
-                                        <input type="number" step="any" class="form-control" id="discount" name="discount" placeholder="0">
+                                        <input type="hidden" id="discount_amount" name="discount" value="0">
+                                        <input type="number" step="any" class="form-control" id="discount_input" placeholder="0">
                                     </div>
                                 </div>
                                 <div class="col-12">
@@ -434,7 +435,7 @@ span strong {font-size:12px;}
             var defaultDiscount = $(this).find(':selected').data('default-discount') || 0;
             var repId = $(this).find(':selected').data('representative') || '';
             if(defaultDiscount > 0){
-                $('#discount').val(defaultDiscount);
+                $('#discount_input').val(defaultDiscount);
                 NetAfterDiscount();
             }
             if(repId){
@@ -553,7 +554,8 @@ span strong {font-size:12px;}
             document.getElementById('tax_total').value = 0;
             document.getElementById('discount_total').value = 0; 
             document.getElementById('net_sales').value = 0; 
-            document.getElementById('discount').value = 0; 
+            document.getElementById('discount_input').value = 0; 
+            document.getElementById('discount_amount').value = 0; 
             document.getElementById('net_after_discount').value = 0;   
             suggestionItems = {};
             sItems = {};
@@ -572,13 +574,15 @@ span strong {font-size:12px;}
             NetAfterDiscount(); 
         });
 
-        $(document).on('change', '#discount', function () {
+        $(document).on('change', '#discount_input', function () {
             NetAfterDiscount(); 
         });
 
-        $(document).on('keyup', '#discount', function () {
+        $(document).on('keyup', '#discount_input', function () {
             NetAfterDiscount(); 
         });
+
+        NetAfterDiscount();
 
     });
 
@@ -912,16 +916,13 @@ span strong {font-size:12px;}
         let discount_total = $("#discount_total").val();
 
         if( discount_total > 0 ){ 
-            $('#discount').attr({readOnly:true});
-            $('#discount').val(0)    
+            $('#discount_input').attr({readOnly:true});
+            $('#discount_input').val(0);
         }else{
-            $('#discount').attr({readOnly:false});    
-
-            var discount = $('#discount').val();
-            if(discount>0){
-                NetAfterDiscount();
-            } 
+            $('#discount_input').attr({readOnly:false});    
         }
+
+        NetAfterDiscount();
     }
 
     function addPayments(remain) {  
@@ -936,16 +937,14 @@ span strong {font-size:12px;}
 
     function NetAfterDiscount(){
 
-        var net = $('#net_sales').val(); 
+        var net = parseFloat($('#net_sales').val()) || 0; 
         var discount_type = $('#discount_type').val();  
-        var discount = $('#discount').val(); 
-
-        if(discount_type == 1){
-            var net_after_discount = Number(net) - Number(discount);
-        } else {
-            var net_after_discount = Number(net) - Number(net * (discount/100));
-        } 
+        var discountInput = parseFloat($('#discount_input').val()) || 0; 
+        var discountAmount = discount_type == 2 ? (net * (discountInput/100)) : discountInput;
+        discountAmount = Math.min(discountAmount, net);
+        var net_after_discount = net - discountAmount;
  
+        $("#discount_amount").val(discountAmount.toFixed(2));
         $("#net_after_discount").val(net_after_discount.toFixed(2)); 
 
     } 

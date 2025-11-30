@@ -228,14 +228,6 @@
                         </div>
                         <div class="col-4" >
                             <div class="form-group">
-                                <label>{{ __('main.tax_number') ?? 'Tax Number' }}</label>
-                                <input type="text"  id="tax_number" name="tax_number"
-                                       class="form-control"
-                                       placeholder="{{ __('main.tax_number') ?? 'Tax Number' }}"  />
-                            </div>
-                        </div>
-                        <div class="col-4" >
-                            <div class="form-group">
                                 <label>{{ __('main.opening_balance') }} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
                                 <input type="number" step="any"  id="opening_balance" name="opening_balance"
                                        class="form-control"
@@ -456,7 +448,6 @@
                             $(".modal-body #account_id").val( response.account_id ).trigger("change");
                             $(".modal-body #vat_no").val( response.vat_no );
                             $(".modal-body #cr_number").val( response.cr_number );
-                            $(".modal-body #tax_number").val( response.tax_number );
                             $(".modal-body #parent_company_id").val( response.parent_company_id ).trigger('change');
                             $(".modal-body #price_level_id").val( response.price_level_id ).trigger('change');
                             $(".modal-body #default_discount").val( response.default_discount );

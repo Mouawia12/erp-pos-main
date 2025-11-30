@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Subscriber;
 use App\Models\SubscriberDocument;
 use App\Models\SubscriberRenewal;
+use App\Models\SystemSettings;
 use App\Models\User;
 use App\Services\SubscriberProvisioner;
 use Carbon\Carbon;
@@ -142,6 +143,48 @@ class SubscriberController extends Controller
         $this->refreshStatus($subscriber);
 
         return redirect()->route('owner.subscribers.index')->with('success', __('main.saved_successfully') ?? 'تم التجديد');
+    }
+
+    public function permissions(Subscriber $subscriber)
+    {
+        $settings = SystemSettings::firstOrCreate(
+            ['subscriber_id' => $subscriber->id],
+            [
+                'company_name' => $subscriber->company_name,
+                'email' => $subscriber->contact_email,
+                'client_group_id' => 0,
+                'nom_of_days_to_edit_bill' => 0,
+                'branch_id' => 0,
+                'cashier_id' => 0,
+            ]
+        );
+
+        return view('admin.subscribers.permissions', compact('subscriber', 'settings'));
+    }
+
+    public function updatePermissions(Request $request, Subscriber $subscriber)
+    {
+        $data = $request->validate([
+            'max_branches' => 'nullable|integer|min:0',
+        ]);
+
+        $settings = SystemSettings::firstOrCreate(
+            ['subscriber_id' => $subscriber->id],
+            [
+                'company_name' => $subscriber->company_name,
+                'email' => $subscriber->contact_email,
+                'client_group_id' => 0,
+                'nom_of_days_to_edit_bill' => 0,
+                'branch_id' => 0,
+                'cashier_id' => 0,
+            ]
+        );
+
+        $settings->update($data);
+
+        return redirect()
+            ->route('owner.subscribers.index')
+            ->with('success', 'تم تحديث صلاحيات المشترك بنجاح');
     }
 
     public function deleteDocument(SubscriberDocument $document)

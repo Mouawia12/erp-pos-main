@@ -259,6 +259,7 @@ return [
     'supplier_invoice_no' => 'رقم فاتورة المورد',
     'supplier_invoice_copy' => 'نسخة فاتورة المورد',
     'invoice_type' => 'نوع الفاتورة',
+    'general_error' => 'حدث خطأ غير متوقع، يرجى المحاولة لاحقاً.',
     'invoice_type_tax' => 'فاتورة ضريبية',
     'invoice_type_simplified' => 'فاتورة ضريبية مبسطة',
     'invoice_type_nontax' => 'فاتورة غير ضريبية',
@@ -646,6 +647,7 @@ return [
     'cost' => 'التكلفة',
     'last_sale_price' => 'آخر سعر بيع',
     'duplicate_item_warning' => 'تمت إضافة الصنف بالفعل، تم تحديث الكمية الحالية.',
+    'insufficient_stock' => 'لا توجد كمية كافية من :item في هذا المخزن.',
 
     'alerts_center' => 'مركز التنبيهات',
     'alerts_refresh_now' => 'تحديث التنبيهات',

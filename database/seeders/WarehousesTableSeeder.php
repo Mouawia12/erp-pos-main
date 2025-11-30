@@ -13,7 +13,10 @@ class WarehousesTableSeeder extends Seeder
         $branches = Branch::all();
         foreach ($branches as $branch) {
             Warehouse::updateOrCreate(
-                ['name' => 'مخزن ' . $branch->branch_name],
+                [
+                    'subscriber_id' => $branch->subscriber_id,
+                    'name' => 'مخزن ' . $branch->branch_name,
+                ],
                 [
                     'code' => 'WH-' . $branch->id,
                     'name' => 'مخزن ' . $branch->branch_name,

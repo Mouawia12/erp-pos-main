@@ -8,6 +8,7 @@ use App\Models\User;
 use Maatwebsite\Excel\Facades\Excel;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 
@@ -27,7 +28,16 @@ class AdminController extends Controller
             'password' => 'same:confirm-password'
         ]);
 
-        $input = $request->all();
+        $input = $request->only([
+            'name',
+            'email',
+            'password',
+            'role_name',
+            'branch_id',
+            'phone_number',
+            'status',
+            'default_invoice_type',
+        ]);
         if (!empty($input['password'])) {
             $input['password'] = Hash::make($input['password']);
         } else {
@@ -62,8 +72,11 @@ class AdminController extends Controller
 
     public function create()
     {
-        $roles = Role::where('guard_name', 'admin-web')
-            ->get()->pluck('name', 'name');
+        $rolesQuery = Role::where('guard_name', 'admin-web');
+        if (! Auth::user()->hasRole('system_owner')) {
+            $rolesQuery->where('name', '!=', 'system_owner');
+        }
+        $roles = $rolesQuery->pluck('name', 'name');
         $branches = Branch::all();
         return view('admin.admins.create', compact('roles','branches'));
 
@@ -72,27 +85,41 @@ class AdminController extends Controller
     public function store(Request $request)
     {
 
-        $this->validate($request, [
-            'name' => 'required',
-            'email' => 'required|email',
-            'password' => 'required|same:confirm-password',
-            'role_name' => 'required'
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email',
+            'password' => 'required|same:confirm-password|min:6',
+            'role_name' => 'required|string|max:255',
+            'phone_number' => 'required|string|max:20',
+            'branch_id' => ['required','integer','exists:branches,id'],
+            'status' => 'nullable|in:0,1',
         ]);
 
+        $subscriberId = Auth::user()->subscriber_id ?? null;
         $usersCount = DB::table('users')
-            ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+            ->when($subscriberId,function($q,$sub){
                 $q->where('subscriber_id',$sub);
             })
             ->count();
-        $maxUsers = DB::table('system_settings')->select('max_users')->first()->max_users;
+        $maxUsersQuery = DB::table('system_settings')->select('max_users');
+        if ($subscriberId) {
+            $maxUsersQuery->where('subscriber_id', $subscriberId);
+        }
+        $maxUsers = optional($maxUsersQuery->first())->max_users;
 
-        if($usersCount >= $maxUsers){
+        if($maxUsers !== null && $usersCount >= $maxUsers){
             return redirect()->back()->with('error',__('main.Max Users Reached'));
         }
 
-        $input = $request->all();
-        $input['subscriber_id'] = Auth::user()->subscriber_id ?? null;
+        if (! Auth::user()->hasRole('system_owner') && $request->role_name === 'system_owner') {
+            return redirect()->back()->with('error', 'غير مسموح للمشترك بإضافة مستخدم بصلاحية مالك النظام.');
+        }
+
+        $input = $validated;
+        $input['subscriber_id'] = $subscriberId;
         $input['password'] = Hash::make($input['password']);
+        $input['profile_pic'] = '';
+        $input['status'] = $request->input('status', 1);
         $Admin = User::create($input);
         $Admin->assignRole($request->input('role_name')); 
 		$permissions=$Admin->getPermissionsViaRoles();
@@ -112,8 +139,11 @@ class AdminController extends Controller
     public function edit($id)
     {
         $admin = User::findOrFail($id);
-        $roles = Role::where('guard_name', 'admin-web')
-            ->get()->pluck('name', 'name'); 
+        $rolesQuery = Role::where('guard_name', 'admin-web');
+        if (! Auth::user()->hasRole('system_owner')) {
+            $rolesQuery->where('name', '!=', 'system_owner');
+        }
+        $roles = $rolesQuery->pluck('name', 'name'); 
         $adminsRole = $admin->roles->pluck('name', 'name')->first();
         $branches = Branch::all();
         return view('admin.admins.edit', compact('admin', 'roles','branches', 'adminsRole'));
@@ -121,20 +151,28 @@ class AdminController extends Controller
 
     public function update(Request $request, $id)
     {
-        $this->validate($request, [
-            'name' => 'required',
-            'email' => 'required|email',
-            'password' => 'same:confirm-password',
-            'role_name' => 'required'
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email,'.$id,
+            'password' => 'nullable|same:confirm-password|min:6',
+            'role_name' => 'required|string|max:255',
+            'phone_number' => 'required|string|max:20',
+            'branch_id' => ['required','integer','exists:branches,id'],
+            'status' => 'nullable|in:0,1',
         ]);
-        $input = $request->all();
+        $input = $validated;
         if (!empty($input['password'])) {
             $input['password'] = Hash::make($input['password']);
         } else {
             $input = array_except($input, array('password'));
         }
         $Admin = User::findOrFail($id);
+        $input['profile_pic'] = $Admin->profile_pic ?? '';
         $Admin->update($input);
+        if (! Auth::user()->hasRole('system_owner') && $request->role_name === 'system_owner') {
+            return redirect()->back()->with('error', 'غير مسموح للمشترك بإضافة مستخدم بصلاحية مالك النظام.');
+        }
+
         DB::table('model_has_roles')->where('model_id', $id)->delete();
         $Admin->assignRole($request->input('role_name'));
 		

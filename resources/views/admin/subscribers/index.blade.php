@@ -118,6 +118,9 @@
                                         @method('DELETE')
                                         <button class="btn btn-sm btn-danger mb-1" type="submit">حذف</button>
                                     </form>
+                                    <a href="{{ route('owner.subscribers.permissions', $subscriber) }}" class="btn btn-sm btn-secondary mb-1">
+                                        تعديل الصلاحيات
+                                    </a>
                                     <form action="{{ route('owner.subscribers.renew', $subscriber) }}" method="POST" class="d-flex flex-column gap-1" style="min-width:180px">
                                         @csrf
                                         <div class="d-flex gap-1">

@@ -44,6 +44,12 @@
                                        type="email">
                             </div>
 
+                            <div class="parsley-input col-md-4" id="phoneWrapper">
+                                <label> رقم الهاتف <span class="text-danger"> </span></label>
+                                <input class="form-control mg-b-20" name="phone_number"
+                                       value="{{ old('phone_number') }}" type="text">
+                            </div>
+
                             <div class="parsley-input col-md-4 mg-t-20 mg-md-t-0" id="lnWrapper">
                                 <label class="form-label"> الصلاحية </label>
                                 <select data-live-search="true" data-style="btn-dark" title="اختر الصلاحية"
@@ -120,19 +126,6 @@
             } else {
                 $("#confirm-password").attr("type", "password");
                 $(".showPassword2").find('i.fa').toggleClass('fa-eye fa-eye-slash');
-            }
-        });
-        $('#role_name').on('change',function () {
-            let role_name = $(this).val();
-            if(role_name == "مدير النظام"){
-                $('.branch').hide();
-                $('#branch_id').val('').selectpicker('refresh');
-                $('#branch_id').attr('required',false);
-            }
-            else{
-                $('.branch').show();
-                $('#branch_id').val('').selectpicker('refresh');
-                $('#branch_id').attr('required',true);
             }
         });
     </script>

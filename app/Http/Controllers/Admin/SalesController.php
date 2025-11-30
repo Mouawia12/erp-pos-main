@@ -281,6 +281,7 @@ class SalesController extends Controller
         $billDate = now()->format('Y-m-d H:i:s');
 
         $siteController = new SystemController();
+        $allowNegativeStock = $siteController->allowSellingWithoutStock();
         $customer = Company::find($request->customer_id);
         $customerPriceLevel = $customer->price_level_id ?? null;
         $total = 0;
@@ -306,6 +307,20 @@ class SalesController extends Controller
                     $basePrice = $productDetails->$col;
                 }
             }
+            if (! $allowNegativeStock) {
+                $availableQty = WarehouseProductModel::query()
+                    ->where('warehouse_id', $request->warehouse_id)
+                    ->where('product_id', $id)
+                    ->value('quantity');
+                $availableQty = $availableQty ?? 0;
+                $requiredQty = $request->qnt[$index] * $unitFactor;
+                if ($availableQty < $requiredQty) {
+                    return redirect()->back()
+                        ->withInput()
+                        ->with('error', __('main.insufficient_stock', ['item' => $productDetails->name]));
+                }
+            }
+
             $promoDiscount = $this->resolvePromotionDiscount(
                 $id,
                 $request->variant_id[$index] ?? null,

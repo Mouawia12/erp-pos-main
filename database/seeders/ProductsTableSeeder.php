@@ -15,7 +15,10 @@ class ProductsTableSeeder extends Seeder
         foreach ($warehouses as $warehouse) {
             for ($i = 1; $i <= 3; $i++) {
                 Product::updateOrCreate(
-                    ['code' => 'P-' . $counter],
+                    [
+                        'code' => 'P-' . $counter,
+                        'subscriber_id' => $warehouse->subscriber_id,
+                    ],
                     [
                         'name' => 'صنف ' . $counter,
                         'unit' => 1,

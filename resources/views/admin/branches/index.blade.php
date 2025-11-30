@@ -29,6 +29,12 @@
             {{ session('success') }}
         </div>
     @endif
+    @if (session('error'))
+        <div class="alert alert-danger fade show">
+            <button class="close" data-dismiss="alert" aria-label="Close">×</button>
+            {{ session('error') }}
+        </div>
+    @endif
     @can('عرض فرع') 
     <!-- row opened -->
     <div class="row row-sm">

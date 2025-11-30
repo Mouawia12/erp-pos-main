@@ -13,6 +13,7 @@ use App\Models\Representative;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Http\Request;
 
 class CompanyController extends Controller
@@ -24,23 +25,43 @@ class CompanyController extends Controller
      */
     public function index($type)
     {
-        $companies = Company::with('group') -> get();
-        $groups = CustomerGroup::all(); 
-        $settings = SystemSettings::all()-> first();
-        $parentCompanies = Company::where('group_id',$type)->get();
-        $representatives = Representative::all();
-        
-        if($type == 3){ 
-            $accounts = AccountsTree::where('parent_code',1107)->get();
-            return view('admin.company.clients' , ['type' => $type , 'companies' =>
-            $companies , 'groups' => $groups , 'accounts' => $accounts , 'settings' => $settings,'parentCompanies'=>$parentCompanies,'representatives'=>$representatives] );
-        }else{
-            $accounts = AccountsTree::where('parent_code',2101)->get();
-            return view('admin.company.supplier' , ['type' => $type , 'companies' =>
-            $companies , 'groups' => $groups , 'accounts' => $accounts , 'settings' => $settings,'parentCompanies'=>$parentCompanies,'representatives'=>$representatives] );
+        $subscriberId = Auth::user()->subscriber_id;
 
+        $companies = Company::with('group')
+            ->where('group_id', $type)
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->get();
+
+        $groups = CustomerGroup::query()
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->get();
+
+        $parentCompanies = Company::query()
+            ->where('group_id', $type)
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->get();
+
+        $representatives = Representative::query()
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->get();
+
+        $parentCode = $type == 3 ? 1107 : 2101;
+        $accounts = AccountsTree::query()
+            ->where('parent_code', $parentCode)
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->get();
+
+        $settingsQuery = SystemSettings::query();
+        if ($subscriberId && Schema::hasColumn('system_settings', 'subscriber_id')) {
+            $settingsQuery->where('subscriber_id', $subscriberId);
         }
+        $settings = $settingsQuery->first() ?? SystemSettings::first();
 
+        $viewData = compact('type', 'companies', 'groups', 'accounts', 'settings', 'parentCompanies', 'representatives');
+
+        return $type == 3
+            ? view('admin.company.clients', $viewData)
+            : view('admin.company.supplier', $viewData);
     }
 
     /**
@@ -61,8 +82,8 @@ class CompanyController extends Controller
      */
     public function store(Request $request)
     {
-   
-    
+        $subscriberId = Auth::user()->subscriber_id;
+
         if ($request -> id == 0){
             $validated = $request->validate([
                 'company' => 'required', 
@@ -70,7 +91,11 @@ class CompanyController extends Controller
                 'type' => 'required'
             ]);
             try {
-                if (Company::where('company', $request->company)->doesntExist()) {
+                $exists = Company::query()
+                    ->where('company', $request->company)
+                    ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId));
+
+                if ($exists->doesntExist()) {
                    
                     $company = Company::create([
                         'group_id' => $request -> type,
@@ -102,6 +127,7 @@ class CompanyController extends Controller
                         'account_id' => 0,
                         'user_id' => Auth::user() -> id,
                         'representative_id_' => $request->representative_id_ ?? 0,
+                        'subscriber_id' => $subscriberId,
                     ]);
     
                     $code = $this->get_account_code_no($company);
@@ -123,7 +149,7 @@ class CompanyController extends Controller
                                 'level' => 4,
                                 'list' => 2,
                                 'department' => 1,
-                                'side' => 2
+                                'side' => 2,
                             ])->id; 
     
                             $company->account_id = $id;
@@ -147,14 +173,16 @@ class CompanyController extends Controller
                                 'level' => 4,
                                 'list' => 1,
                                 'department' => 1,
-                                'side' => 1
+                                'side' => 1,
                             ])->id; 
     
                             $company->account_id = $id;
                             $company->save(); 
                         } 
                     }
-                   
+                } else {
+                    return redirect()->route('clients' , $request -> type)
+                        ->with('error' , __('validation.unique', ['attribute' => __('main.company')]));
                 }
                 
                 return redirect()->route('clients' , $request -> type)->with('success' , __('main.created'));
@@ -201,7 +229,10 @@ class CompanyController extends Controller
      */
     public function update(Request  $request)
     {
-        $company = Company::find($request -> id);
+        $subscriberId = Auth::user()->subscriber_id;
+        $company = Company::query()
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->findOrFail($request -> id);
         if($company){
             $validated = $request->validate([
                 'company' => 'required',
@@ -267,10 +298,13 @@ class CompanyController extends Controller
      */
     public function destroy( $id)
     {
-        $company = Company::find($id);
+        $subscriberId = Auth::user()->subscriber_id;
+        $company = Company::query()
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->findOrFail($id);
         if($company){
             $company -> delete();
-            return redirect()->route('clients' , $request -> type)->with('success' , __('main.deleted'));
+            return redirect()->route('clients' , $company->group_id)->with('success' , __('main.deleted'));
         }
     }
 

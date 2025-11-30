@@ -159,7 +159,8 @@ label.total {
                 enctype="multipart/form-data" autocomplete="off">
             @csrf
             <input type="hidden" id="POS" name="POS" value="1"/> 
-            <input type="hidden" id="discount" name="discount"  value="0">
+            <input type="hidden" id="discount_amount" name="discount" value="0">
+            <input type="hidden" id="net_sales" value="0">
             <input hidden type="datetime-local" id="bill_date" name="bill_date" /> 
             <input type="hidden" id="invoice_no" name="invoice_no" /> 
 
@@ -251,6 +252,21 @@ label.total {
                                 </div>
                                 <div class="col-lg-12 mb-2">
                                     <textarea class="form-control" name="notes" rows="2" placeholder="{{__('main.notes')}}"></textarea>
+                                </div>
+                                <div class="col-lg-6 mb-2">
+                                    <label>{{ __('main.discount_type') }}</label>
+                                    <select class="form-control" name="discount_type" id="discount_type">
+                                        <option value="1">{{ __('main.discount_amount') }}</option>
+                                        <option value="2">{{ __('main.discount_percent') }}</option>
+                                    </select>
+                                </div>
+                                <div class="col-lg-6 mb-2">
+                                    <label>{{ __('main.discount') }}</label>
+                                    <input type="number" step="any" class="form-control" id="discount_input" value="0">
+                                </div>
+                                <div class="col-lg-12 mb-2">
+                                    <label>{{ __('main.invoice.total') }}</label>
+                                    <input type="text" class="form-control" id="net_after_discount" readonly value="0">
                                 </div>
                             </div>  
                             <div class="row" > 
@@ -418,6 +434,11 @@ label.total {
         document.getElementById('total').innerHTML = 0;
         document.getElementById('total_with_tax').innerHTML = 0;
         document.getElementById('totalBig').innerHTML = 0;
+        document.getElementById('net_sales').value = 0;
+        document.getElementById('net_after_discount').value = 0;
+        $('#discount_input').val(0);
+        $('#discount_amount').val(0);
+        updatePosDiscountSummary();
         sItems = {};
         count = 1;
         Bill = null ;
@@ -473,6 +494,11 @@ label.total {
             $('#items_count').empty(); 
             $('#total_with_tax').empty();  
             $('#totalBig').empty();  
+            $('#net_sales').val(0);
+            $('#net_after_discount').val(0);
+            $('#discount_input').val(0);
+            $('#discount_amount').val(0);
+            updatePosDiscountSummary();
             suggestionItems = {};
             sItems = {};
             count = 1; 
@@ -527,9 +553,11 @@ label.total {
                 $('#representative_id').val(repId).trigger('change');
             }
             if(defaultDiscount > 0){
-                $('#discount').val(defaultDiscount);
-                NetAfterDiscount();
+                $('#discount_input').val(defaultDiscount);
+            } else {
+                $('#discount_input').val(0);
             }
+            updatePosDiscountSummary();
         });
        
         $('input[name=add_item]').change(function() {
@@ -539,6 +567,16 @@ label.total {
         $('#add_item').on('input',function(e){
             searchProduct($('#add_item').val());
         });
+
+        $('#discount_type').on('change', function(){
+            updatePosDiscountSummary();
+        });
+
+        $('#discount_input').on('keyup change', function(){
+            updatePosDiscountSummary();
+        });
+
+        updatePosDiscountSummary();
 
         $(document).on('click' , '.modal-close-btn' , function (event) {
             $('#paymentsPosModal').modal("hide");
@@ -1021,7 +1059,19 @@ label.total {
         document.getElementById('items_count').innerHTML = qnts ; 
         document.getElementById('total_with_tax').innerHTML = net.toFixed(2) ;
         document.getElementById('totalBig').innerHTML = net.toFixed(2) ;
+        document.getElementById('net_sales').value = net.toFixed(2);
+        updatePosDiscountSummary();
 
+    }
+
+    function updatePosDiscountSummary(){
+        var net = parseFloat($('#net_sales').val()) || 0;
+        var discountType = $('#discount_type').val();
+        var discountValue = parseFloat($('#discount_input').val()) || 0;
+        var discountAmount = discountType == '2' ? net * (discountValue / 100) : discountValue;
+        discountAmount = Math.min(discountAmount, net);
+        $('#discount_amount').val(discountAmount.toFixed(2));
+        $('#net_after_discount').val((net - discountAmount).toFixed(2));
     }
 
     function populateProduct(data) {

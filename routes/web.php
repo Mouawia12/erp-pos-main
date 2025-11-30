@@ -158,9 +158,11 @@ Route::group(
     ])->except(['show','create','edit']);
 
     // Owner / Subscribers dashboard (SaaS control panel)
-    Route::group(['prefix' => 'owner', 'as' => 'owner.', 'middleware' => ['role:system_owner']], function () {
+    Route::group(['prefix' => 'owner', 'as' => 'owner.', 'middleware' => ['role:system_owner,admin-web']], function () {
         Route::resource('subscribers', SubscriberController::class)->except(['show']);
         Route::post('subscribers/{subscriber}/renew', [SubscriberController::class, 'renew'])->name('subscribers.renew');
+        Route::get('subscribers/{subscriber}/permissions', [SubscriberController::class, 'permissions'])->name('subscribers.permissions');
+        Route::post('subscribers/{subscriber}/permissions', [SubscriberController::class, 'updatePermissions'])->name('subscribers.permissions.update');
         Route::delete('documents/{document}', [SubscriberController::class, 'deleteDocument'])->name('documents.destroy');
         Route::post('documents/{document}/archive', [SubscriberController::class, 'archiveDocument'])->name('documents.archive');
     });
@@ -228,7 +230,7 @@ Route::group(
     
     Route::get('/system_settings', [SystemSettingsController::class, 'index'])->name('system_settings');
     Route::post('storeSettings', [SystemSettingsController::class, 'store'])->name('storeSettings');
-    Route::post('updateSettings', [SystemSettingsController::class, 'update'])->name('updateSettings');
+    Route::put('updateSettings', [SystemSettingsController::class, 'update'])->name('updateSettings');
     
     Route::get('/pos_settings', [PosSettingsController::class, 'index'])->name('pos_settings');
     Route::post('storePosSettings', [PosSettingsController::class, 'store'])->name('storePosSettings');

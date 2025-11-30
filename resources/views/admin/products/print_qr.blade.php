@@ -191,94 +191,68 @@
 
             if(paper_size != "0") {
                 
-                var product_name = [];
-                var code = [];
-                var price = [];
-                var promo_price = [];
-                var qty = [];
-                var barcode_image = [];
-                var currency = [];
-                var currency_position = []; 
                 var company_name = "{{ optional($company)->name_ar }}";
-                var currency_label = "{{ optional($company)->currency_label }}";
-                var item_id = row_id;  
- 
+                var currency_label = "{{ optional($company)->currency_label ?? 'ر.س' }}";
+                var items = Object.values(sItems);
+
+                if(items.length === 0){
+                    alert('{{ __("main.no_product_selected") }}');
+                    return;
+                }
+
                 var htmltext = '<table class="barcodelist" style="width:378px;" cellpadding="5px" cellspacing="10px">';
-                /*$.each(qty, function(index){
-                    i = 0;
-                    while(i < qty[index]){
-                        if(i % 2 == 0)
-                            htmltext +='<tr>';
-                        htmltext +='<td style="width:164px;height:88%;padding-top:7px;vertical-align:middle;text-align:center">';
-                        htmltext += product_name[index] + '<br>';
-                        htmltext += '<img style="max-width:150px;" src="data:image/png;base64,'+barcode_image[index]+'" alt="barcode" /><br>';
-                        htmltext += '<strong>'+code[index]+'</strong><br>';
-                        htmltext += 'price: '+price[index];
-                        htmltext +='</td>';
-                        if(i % 2 != 0)
-                            htmltext +='</tr>';
-                        i++;
-                    }
-                });*/ 
+                var cellCounter = 0;
 
-                var barcode_image_src= 'https://api.qrserver.com/v1/create-qr-code/?data='+sItems[item_id].data+'&amp;size=100x100';
-                product_name.push(sItems[item_id].name); 
-                code.push(sItems[item_id].code);
-                barcode_image.push('https://api.qrserver.com/v1/create-qr-code/?data='+sItems[item_id].data+'&amp;size=100x100');
-                qty.push($('.qty').val());  
+                items.forEach(function(item){
+                    var qty = item.qty ? parseFloat(item.qty) : 1;
+                    qty = isNaN(qty) || qty < 1 ? 1 : qty;
 
-                price.push(sItems[item_id].price);
-                promo_price.push(sItems[item_id].promo_price);
-                currency.push(currency_label);
-                currency_position.push('');
+                    for(var i = 0; i < qty; i++){
+                        if(cellCounter % 2 === 0){
+                            htmltext += '<tr>';
+                        }
 
-                $.each(qty, function(index){
-                    i = 0;
-                    while(i < qty[index]) {
-                        if(i % 2 == 0)
-                            htmltext +='<tr>';
-                        // 36mm
                         if(paper_size == 40)
                             htmltext +='<td style="width:164px;height:88%;padding-top:7px;vertical-align:middle;text-align:center">';
-                        //24mm
                         else if(paper_size == 30)
                             htmltext +='<td style="width:164px;height:100%;font-size:12px;text-align:center">';
-                        //18mm
-                        else if(paper_size == 20)
+                        else
                             htmltext +='<td style="width:164px;height:100%;font-size:10px;text-align:center">';
 
-                        var text = code[index]+ "\n";
+                        var text = item.code + "\n";
 
                         if($('input[name="company_name"]').is(":checked"))
-                            text += company_name + "\n";
+                            text += (company_name || '') + "\n";
 
                         if($('input[name="product_name"]').is(":checked"))
-                            text += product_name[index] + "\n"; 
+                            text += item.name + "\n"; 
 
                         if($('input[name="sale_Price"]').is(":checked")) {
                             if($('input[name="currencies"]').is(":checked")) 
-                                text += 'السعر: '+price[index]+' '+currency[index];
+                                text += 'السعر: '+item.price+' '+currency_label;
                             else
-                                text += 'السعر: '+price[index];
+                                text += 'السعر: '+item.price;
                         }
 
+                        var qrSrc = 'https://api.qrserver.com/v1/create-qr-code/?data='+encodeURIComponent(text)+'&size=100x100';
                         if(paper_size == 20){
-                            htmltext += '<img style="width: 20mm; height: 20mm;" src="https://api.qrserver.com/v1/create-qr-code/?data='+text+'&amp;size=100x100" alt="barcode" title="'+product_name[index] +'" /><br>';
+                            htmltext += '<img style="width: 20mm; height: 20mm;" src="'+qrSrc+'" alt="barcode" title="'+item.name +'" /><br>';
                         } else if(paper_size == 30){
-                            htmltext += '<img style="width: 30mm; height: 30mm;" src="https://api.qrserver.com/v1/create-qr-code/?data='+text+'&amp;size=100x100" alt="barcode" title="'+product_name[index] +'" /><br>';
+                            htmltext += '<img style="width: 30mm; height: 30mm;" src="'+qrSrc+'" alt="barcode" title="'+item.name +'" /><br>';
                         }else{
-                            htmltext += '<img style="width: 40mm; height: 40mm;" src="https://api.qrserver.com/v1/create-qr-code/?data='+text+'&amp;size=100x100" alt="barcode" title="'+product_name[index] +'" /><br>';
+                            htmltext += '<img style="width: 40mm; height: 40mm;" src="'+qrSrc+'" alt="barcode" title="'+item.name +'" /><br>';
                         }   
                             
-
-   
                         htmltext +='</td>';
-                        if(i % 2 != 0)
+                        if(cellCounter % 2 === 1)
                             htmltext +='</tr>';
-                        i++;
+                        cellCounter++;
                     }
                 });
-                htmltext += '</table">';
+                if(cellCounter % 2 === 1){
+                    htmltext +='<td></td></tr>';
+                }
+                htmltext += '</table>';
                 $('#label-content').html(htmltext);
                 $('#print-barcode').modal('show');
             }

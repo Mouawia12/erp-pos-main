@@ -12,46 +12,97 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Log;
 
 class BranchController extends Controller
 {
     public function index()
     {
-        $data = Branch::all();
+        $subscriberId = Auth::user()->subscriber_id;
+        $data = Branch::query()
+            ->when($subscriberId, fn ($q) => $q->where('subscriber_id', $subscriberId))
+            ->orderByDesc('id')
+            ->get();
+
         return view('admin.branches.index', compact('data'));
     }
 
     public function create()
     {
-        $defaultInvoiceType = optional(SystemSettings::first())->default_invoice_type ?? 'simplified_tax_invoice';
-        return view('admin.branches.create', compact('defaultInvoiceType'));
+        $subscriberId = Auth::user()->subscriber_id;
+        $settingsQuery = SystemSettings::query();
+        if ($subscriberId) {
+            $settingsQuery->where('subscriber_id', $subscriberId);
+        }
+        $defaultInvoiceType = optional($settingsQuery->first())->default_invoice_type ?? 'simplified_tax_invoice';
 
+        return view('admin.branches.create', compact('defaultInvoiceType'));
     }
 
     public function store(Request $request)
     {
+        $subscriberId = Auth::user()->subscriber_id;
+
+        $subscriberId = Auth::user()->subscriber_id;
+
         $this->validate($request, [
-            'branch_name' => 'required',
-            'branch_phone' => 'required',
+            'branch_name' => [
+                'required',
+                Rule::unique('branches', 'branch_name')
+                    ->when($subscriberId, fn ($rule) => $rule->where('subscriber_id', $subscriberId)),
+            ],
+            'branch_phone' => [
+                'required',
+                Rule::unique('branches', 'branch_phone')
+                    ->when($subscriberId, fn ($rule) => $rule->where('subscriber_id', $subscriberId)),
+            ],
             'branch_address' => 'required',
             'tax_number' => 'nullable',
             'cr_number' => 'nullable',
             'default_invoice_type' => ['nullable', Rule::in(['tax_invoice','simplified_tax_invoice','non_tax_invoice'])],
         ]);
 
-        $branchesCount = Branch::count();
-        $settings = DB::table('system_settings')->select('max_branches')->first();
+        $branchesCount = Branch::query()
+            ->when($subscriberId, fn ($q) => $q->where('subscriber_id', $subscriberId))
+            ->count();
+
+        $settingsQuery = SystemSettings::query();
+        if ($subscriberId) {
+            $settingsQuery->where('subscriber_id', $subscriberId);
+        }
+        $settings = $settingsQuery->select('max_branches')->first();
         $maxBranchs = $settings->max_branches ?? null;
 
-        if($maxBranchs !== null && $branchesCount >= $maxBranchs){
-            return redirect()->back()->with('error',__('main.max_warehouse'));
+        if ($maxBranchs !== null && $branchesCount >= $maxBranchs) {
+            return redirect()->back()->with('error', __('main.max_warehouse'));
         }
 
-        $input = $request->all();
-        $branch = Branch::create($input);
-        $this->getAccountSetting($branch->id);
-        $this->getAccountSetting_private($branch->id);
-        
+        DB::beginTransaction();
+        try {
+            $branch = Branch::create([
+                'branch_name' => $request->branch_name,
+                'cr_number' => $request->cr_number,
+                'tax_number' => $request->tax_number,
+                'branch_phone' => $request->branch_phone,
+                'branch_address' => $request->branch_address,
+                'manager_name' => $request->manager_name,
+                'contact_email' => $request->contact_email,
+                'default_invoice_type' => $request->default_invoice_type ?? 'simplified_tax_invoice',
+                'status' => (int) $request->input('status', 1),
+                'subscriber_id' => $subscriberId,
+            ]);
+
+            $this->getAccountSetting($branch->id);
+            $this->getAccountSetting_private($branch->id);
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Failed to create branch', ['error' => $e->getMessage()]);
+
+            return redirect()->back()->withInput()->with('error', $e->getMessage());
+        }
+
         return redirect()->route('admin.branches.index')
             ->with('success', 'تم اضافة فرع بنجاح');
     }
@@ -64,16 +115,35 @@ class BranchController extends Controller
 
     public function edit($id)
     {
-        $branch = Branch::findOrFail($id);
-        $defaultInvoiceType = optional(SystemSettings::first())->default_invoice_type ?? 'simplified_tax_invoice';
+        $subscriberId = Auth::user()->subscriber_id;
+        $branch = Branch::query()
+            ->when($subscriberId, fn ($q) => $q->where('subscriber_id', $subscriberId))
+            ->findOrFail($id);
+
+        $settingsQuery = SystemSettings::query();
+        if ($subscriberId) {
+            $settingsQuery->where('subscriber_id', $subscriberId);
+        }
+        $defaultInvoiceType = optional($settingsQuery->first())->default_invoice_type ?? 'simplified_tax_invoice';
+
         return view('admin.branches.edit', compact('branch','defaultInvoiceType'));
     }
 
     public function update(Request $request, $id)
     {
         $this->validate($request, [
-            'branch_name' => 'required',
-            'branch_phone' => 'required',
+            'branch_name' => [
+                'required',
+                Rule::unique('branches', 'branch_name')
+                    ->ignore($id)
+                    ->when($subscriberId, fn ($rule) => $rule->where('subscriber_id', $subscriberId)),
+            ],
+            'branch_phone' => [
+                'required',
+                Rule::unique('branches', 'branch_phone')
+                    ->ignore($id)
+                    ->when($subscriberId, fn ($rule) => $rule->where('subscriber_id', $subscriberId)),
+            ],
             'branch_address' => 'required',
             'tax_number' => 'nullable',
             'cr_number' => 'nullable',
@@ -83,7 +153,10 @@ class BranchController extends Controller
         if(!isset($input['status'])){
             $input['status'] = 0;
         }
-        $branch = Branch::findOrFail($id);
+        $subscriberId = Auth::user()->subscriber_id;
+        $branch = Branch::query()
+            ->when($subscriberId, fn ($q) => $q->where('subscriber_id', $subscriberId))
+            ->findOrFail($id);
         $branch->update($input);
         return redirect()->route('admin.branches.index')
             ->with('success', 'تم تعديل بيانات الفرع بنجاح');
@@ -123,9 +196,21 @@ class BranchController extends Controller
     public function getAccountSetting($branche_id)
     {
         try {
+            $setting = AccountSetting::latest('id')->first();
+            $setting_const = AccountSetting::select(
+                'warehouse_id',
+                'sales_tax_account',
+                'purchase_tax_account',
+                'profit_account',
+                'reverse_profit_account',
+                'sales_tax_excise_account'
+            )->first();
+
+            if (! $setting || ! $setting_const) {
+                return;
+            }
+
             $account_setting = $this->getTableColumns('account_settings');
-            $setting = AccountSetting::latest('id')-> first();
-            $setting_const = AccountSetting::select('warehouse_id','sales_tax_account','purchase_tax_account','profit_account','reverse_profit_account','sales_tax_excise_account')-> first();
           
             $account_setting_branch = AccountSetting::create([ 
                 'safe_account' => 0,
@@ -236,8 +321,13 @@ class BranchController extends Controller
 
     public function getAccountSetting_private($branche_id)
     {
-        $setting = AccountSetting::where('branch_id',$branche_id)->first();
-        $account_tree = AccountsTree::where('parent_code',52)->latest('id')-> first();
+        $setting = AccountSetting::where('branch_id', $branche_id)->first();
+        $account_tree = AccountsTree::where('parent_code', 52)->latest('id')->first();
+
+        if (! $setting || ! $account_tree) {
+            return;
+        }
+
         $account_tree_subs = AccountsTree::where('parent_code','like','%'. $account_tree->code .'%')-> get();
         $name = str_replace('الرئيسي', '', $account_tree->name);
         $name = preg_replace('/[0-9]+/', '', $name);
@@ -289,7 +379,7 @@ class BranchController extends Controller
             }
             $j++;
 
-            if($child){
+            if(isset($child)){
                 $setting->cost_account = $child->id;
                 $setting->save();
             }

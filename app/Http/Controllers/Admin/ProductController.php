@@ -394,15 +394,23 @@ class ProductController extends Controller
 
     private function productValidationRules(int $productId = null): array
     {
+        $subscriberId = Auth::user()->subscriber_id;
+
         $codeRule = Rule::unique('products', 'code');
         $nameRule = Rule::unique('products', 'name');
+
+        if ($subscriberId) {
+            $codeRule = $codeRule->where(fn ($q) => $q->where('subscriber_id', $subscriberId));
+            $nameRule = $nameRule->where(fn ($q) => $q->where('subscriber_id', $subscriberId));
+        }
+
         if ($productId) {
             $codeRule = $codeRule->ignore($productId);
             $nameRule = $nameRule->ignore($productId);
         }
 
         $rules = [
-            'code' => ['required', 'regex:/^\d+$/', 'digits_between:4,20', $codeRule],
+            'code' => ['required', 'string', 'max:191', $codeRule],
             'name' => ['required', 'string', 'max:191', $nameRule],
             'unit' => ['required', 'exists:units,id'],
             'brand' => ['required', 'exists:brands,id'],
@@ -454,8 +462,6 @@ class ProductController extends Controller
     {
         $messages = [
             'code.required' => 'يرجى إدخال كود الصنف.',
-            'code.regex' => 'كود الصنف يجب أن يحتوي على أرقام فقط.',
-            'code.digits_between' => 'كود الصنف يجب ألا يقل عن :min أرقام ولا يزيد عن :max.',
             'code.unique' => 'كود الصنف مستخدم مسبقاً.',
             'name.required' => 'يرجى إدخال اسم الصنف.',
             'name.unique' => 'اسم الصنف مستخدم مسبقاً.',
@@ -701,49 +707,80 @@ class ProductController extends Controller
 
     public function get_product_warehouse($warehouse_id,$code)
     {
-        $single = $this->getSingleProductWarehouse($warehouse_id,$code);
+        $results = $this->searchWarehouseProducts($warehouse_id, $code, true);
 
-        if($single){ 
-            echo json_encode([ $this->appendProductMeta($single) ]);
-            exit;
-        }else{ 
-            $product = Product::with('units')
-                ->Join('warehouse_products','products.id','=','warehouse_products.product_id')
-                ->select('products.*' , 'warehouse_products.quantity as qty')
-                ->where('products.code' , 'like' , '%'.$code.'%')
-                ->where('warehouse_products.warehouse_id',$warehouse_id) 
-                ->where('products.status', 1) 
-                ->orWhere(function($query)use ($code,$warehouse_id) {
-                    $query->where('products.name', 'like', '%' . $code . '%')
-                          ->where('warehouse_products.warehouse_id', $warehouse_id);
-                }) 
-                ->limit(5)
-                ->get()
-                ->map(function($product){
-                    return $this->appendProductMeta($product);
-                });
-
-            echo json_encode ($product);
-            exit;
+        if ($results->isEmpty()) {
+            $results = $this->searchWarehouseProducts($warehouse_id, $code, false, 5);
         }
 
+        echo json_encode($results->values());
+        exit;
     }
 
-    private function getSingleProductWarehouse($warehouse_id,$code){
-        
-        $product = Product::with('units')
-            ->Join('warehouse_products','products.id','=','warehouse_products.product_id')  
-            ->select('products.*' , 'warehouse_products.quantity as qty')
-            ->where('products.code', '=', $code)
-            ->where('warehouse_products.warehouse_id',$warehouse_id) 
-            ->where('products.status', 1) 
-            ->orWhere(function($query)use ($warehouse_id,$code) {
-                $query->where('products.name', '=', $code)
-                ->where('warehouse_products.warehouse_id', $warehouse_id);
-            }) 
-            ->first();
+    private function searchWarehouseProducts($warehouseId, $code, bool $exact = true, ?int $limit = null)
+    {
+        $query = Product::with('units')
+            ->join('warehouse_products', 'products.id', '=', 'warehouse_products.product_id')
+            ->select('products.*', 'warehouse_products.quantity as qty')
+            ->where('warehouse_products.warehouse_id', $warehouseId)
+            ->where('products.status', 1);
 
-        return $this->appendProductMeta($product);
+        $this->applyProductSearchFilters($query, $code, $exact);
+
+        if ($limit) {
+            $query->limit($limit);
+        }
+
+        return $query->get()->map(function ($product) {
+            return $this->appendProductMeta($product);
+        })->filter();
+    }
+
+    private function applyProductSearchFilters($query, $code, bool $exact): void
+    {
+        $value = $exact ? $code : '%' . $code . '%';
+
+        $query->where(function ($q) use ($value, $exact, $code) {
+            if ($exact) {
+                $q->where('products.code', '=', $value)
+                    ->orWhere('products.name', '=', $value);
+            } else {
+                $q->where('products.code', 'like', $value)
+                    ->orWhere('products.name', 'like', $value);
+            }
+
+            $q->orWhereExists(function ($sub) use ($value, $exact) {
+                $sub->select(DB::raw(1))
+                    ->from('product_units')
+                    ->whereColumn('product_units.product_id', 'products.id');
+
+                if ($exact) {
+                    $sub->where('product_units.barcode', '=', $value);
+                } else {
+                    $sub->where('product_units.barcode', 'like', $value);
+                }
+            })
+            ->orWhereExists(function ($sub) use ($value, $exact) {
+                $sub->select(DB::raw(1))
+                    ->from('product_variants')
+                    ->whereColumn('product_variants.product_id', 'products.id')
+                    ->where(function ($inner) use ($value, $exact) {
+                        if ($exact) {
+                            $inner->where('product_variants.barcode', '=', $value)
+                                  ->orWhere('product_variants.sku', '=', $value);
+                        } else {
+                            $inner->where('product_variants.barcode', 'like', $value)
+                                  ->orWhere('product_variants.sku', 'like', $value);
+                        }
+                    });
+            })
+            ->orWhereExists(function ($sub) use ($code) {
+                $sub->select(DB::raw(1))
+                    ->from('promotion_items')
+                    ->whereColumn('promotion_items.product_id', 'products.id')
+                    ->where('promotion_items.special_barcode', '=', $code);
+            });
+        });
     }
 
     public function print_barcode(){
@@ -754,24 +791,34 @@ class ProductController extends Controller
     public function do_print_barcode(Request $request){
 
         $data = [];
-        foreach ($request->product_id as $index=>$id){
-            $product = Product::find($id);
-            $settings = SystemSettings::get()->first();
-            $qnt = $request->qnt[$index];
+        $settings = SystemSettings::query()->first();
+        $company = CompanyInfo::first();
+        $currencyLabel = optional($settings)->currency_label ?? 'ر.س';
+        $companyName = optional($settings)->company_name ?? '';
+
+        foreach ((array) $request->product_id as $index => $identifier){
+            $product = $this->resolvePrintableProduct($identifier);
+            if (! $product) {
+                continue;
+            }
+
+            $quantity = max(1, (int) ($request->qnt[$index] ?? 1));
+            $barcodeValue = $this->resolveBarcodeValue($product, $identifier);
+
             $item = [
-                'quantity' => $qnt,
-                'site' => $request->company_name == 1 ? $settings == null ? '' : $settings->company_name : false,
+                'quantity' => $quantity,
+                'site' => $request->company_name == 1 ? $companyName : false,
                 'name' => $request->product_name == 1 ? $product->name : false,
                 'price' => $request->sale_Price == 1 ? $product->price : false,
-                'currency' => $request->currencies == 1 ? 'ر.س' : false,
-                'include_tax' => $request->include_tax == 1 ? true : false,
-                'barcode' => $product->code,
+                'currency' => $request->currencies == 1 ? $currencyLabel : false,
+                'include_tax' => (bool) ($request->include_tax ?? false),
+                'barcode' => $barcodeValue,
             ];
 
             $data[] = $item;
         }
 
-        return view('admin.products.print_barcode',compact('data'));
+        return view('admin.products.print_barcode',compact('data','company'));
     }
 
 
@@ -783,26 +830,78 @@ class ProductController extends Controller
     public function do_print_qr(Request $request){
 
         $data = [];
-        foreach ($request->product_id as $index=>$id){
-            $product = Product::find($id);
-            $settings = SystemSettings::get()->first();
-            $qnt = $request->qnt[$index];
+        $settings = SystemSettings::query()->first();
+        $company = CompanyInfo::first();
+        $companyName = optional($settings)->company_name ?? '';
+        $currencyLabel = optional($settings)->currency_label ?? 'ر.س';
 
-            $text = $request->company_name == 1 ? $settings == null ? '' : $settings->company_name."\n" : '';
-            $text.= $request->company_name == 1 ? $product->name."\n" : '';
-            $text.= $request->sale_Price == 1 ? $product->price."\n" : '';
-            $text.= $product->code;
+        foreach ((array) $request->product_id as $index => $identifier){
+            $product = $this->resolvePrintableProduct($identifier);
+            if (! $product) {
+                continue;
+            }
+
+            $quantity = max(1, (int) ($request->qnt[$index] ?? 1));
+            $codeValue = $this->resolveBarcodeValue($product, $identifier);
+
+            $text = $codeValue . "\n";
+            if ($request->company_name == 1 && $companyName) {
+                $text .= $companyName . "\n";
+            }
+            if ($request->product_name == 1) {
+                $text .= $product->name . "\n";
+            }
+            if ($request->sale_Price == 1) {
+                $text .= $request->currencies == 1
+                    ? 'السعر: ' . $product->price . ' ' . $currencyLabel
+                    : 'السعر: ' . $product->price;
+            }
 
             $item = [
-                'quantity' => $qnt,
-                'data' => $text,
-                'name' => $product->name
+                'quantity' => $quantity,
+                'data' => trim($text),
+                'name' => $product->name,
+                'code' => $codeValue,
+                'price' => $product->price,
+                'currency' => $currencyLabel,
             ];
 
             $data[] = $item;
         }
 
-        return view('admin.products.print_qr',compact('data'));
+        return view('admin.products.print_qr',compact('data','company'));
+    }
+
+    private function resolvePrintableProduct($identifier): ?Product
+    {
+        if ($identifier === null || $identifier === '') {
+            return null;
+        }
+
+        $product = Product::find($identifier);
+
+        if (! $product) {
+            $product = Product::where('code', $identifier)->first();
+        }
+
+        if ($product) {
+            return $product;
+        }
+
+        $variant = ProductVariant::where('barcode', $identifier)
+            ->orWhere('sku', $identifier)
+            ->first();
+
+        return $variant ? Product::find($variant->product_id) : null;
+    }
+
+    private function resolveBarcodeValue(Product $product, $identifier): string
+    {
+        if ($identifier !== null && $identifier !== '' && (string) $product->code !== (string) $identifier) {
+            return (string) $identifier;
+        }
+
+        return (string) $product->code;
     }
 
     public function getItemCode()

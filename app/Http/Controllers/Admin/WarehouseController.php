@@ -73,9 +73,19 @@ class WarehouseController extends Controller
 
         if($request -> id == 0){
 
-            $request['code'] = Warehouse::count() + 1;
+            $nextCode = Warehouse::query()
+                ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+                ->count() + 1;
+
+            $request['code'] = $request->code ?? $nextCode;
+
+            $codeRule = Rule::unique('warehouses', 'code');
+            if ($subscriberId) {
+                $codeRule = $codeRule->where(fn ($q) => $q->where('subscriber_id', $subscriberId));
+            }
+
             $validated = $request->validate([
-                'code' => 'required|unique:warehouses',
+                'code' => ['required', $codeRule],
                 'name' => 'required',
                 'branch_id' => 'required|integer'
             ]);

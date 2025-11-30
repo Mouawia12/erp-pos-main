@@ -33,9 +33,12 @@
                     </div>
 
                     <div class="card-body text-right">
-                        <form method="POST" action="{{ route('storeSettings') }}"
+                        <form method="POST" action="{{ $setting ? route('updateSettings') : route('storeSettings') }}"
                               enctype="multipart/form-data" id="myform">
                             @csrf
+                            @if($setting)
+                                @method('PUT')
+                            @endif
                             <ul class="nav nav-tabs">
                                 <li class="nav-item"><a class="nav-link active" aria-controls="tab_site_settings" href="#tab_site_settings" data-toggle="tab">{{__('main.site_settings')}}</a></li>
                                 <li class="nav-item"><a class="nav-link" aria-controls="tab_items_settings" href="#tab_items_settings" data-toggle="tab">{{__('main.items_settings')}}</a></li> 
