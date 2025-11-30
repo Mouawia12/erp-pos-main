@@ -1,6 +1,12 @@
- <!-- main-sidebar -->
+<!-- main-sidebar -->
 <div class="app-sidebar__overlay" data-toggle="sidebar"></div>
-@php $isRtl = app()->getLocale() === 'ar'; @endphp
+@php
+    $user = Auth::user();
+    $isRtl = app()->getLocale() === 'ar';
+    $subscriberId = optional($user)->subscriber_id;
+    $isSubscriberContext = (bool) $subscriberId;
+    $isSystemOwner = $user && ! $subscriberId && $user->hasRole('system_owner');
+@endphp
 <aside class="app-sidebar sidebar-scroll" style="{{ $isRtl ? '' : 'direction:ltr;text-align:left;' }}">
     <style type="text/css">
         ::-webkit-scrollbar {width: 7px !important;}
@@ -56,7 +62,7 @@
                     <span class="side-menu__label">{{ __('main.alerts_center') }}</span>
                 </a>
             </li>
-            @if(Auth::user() && Auth::user()->hasRole('system_owner'))
+            @if($isSystemOwner)
             <li class="slide {{ Request::is('admin/owner/subscribers*') ? 'active' : '' }}">
                 <a class="side-menu__item" href="{{ route('owner.subscribers.index') }}">
                     <i class="fa fa-building-user side-menu__icon"></i>
@@ -64,6 +70,7 @@
                 </a>
                 </li>
             @endif
+            @if($isSubscriberContext)
             @can(['عرض صنف','اضافة صنف'])                
                 <li class="slide">
                     <a class="side-menu__item" data-toggle="slide" href="#">
@@ -472,6 +479,7 @@
                     </ul>
                 </li>
             @endcan
+            @endif
         </ul>
     </div>
 </aside>

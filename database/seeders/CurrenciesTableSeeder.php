@@ -15,11 +15,21 @@ class CurrenciesTableSeeder extends Seeder
             ['code' => 'EUR', 'name' => 'اليورو', 'symbol' => '€'],
         ];
 
-        foreach ($currencies as $index => $currency) {
-            DB::table('currencies')->updateOrInsert(
-                ['id' => $index + 1],
-                $currency
-            );
+        $subscribers = DB::table('subscribers')->pluck('id');
+        if ($subscribers->isEmpty()) {
+            $subscribers = collect([null]);
+        }
+
+        foreach ($subscribers as $subscriberId) {
+            foreach ($currencies as $currency) {
+                DB::table('currencies')->updateOrInsert(
+                    [
+                        'subscriber_id' => $subscriberId,
+                        'code' => $currency['code'],
+                    ],
+                    array_merge($currency, ['subscriber_id' => $subscriberId])
+                );
+            }
         }
     }
 }

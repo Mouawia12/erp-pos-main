@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToSubscriber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class VendorMovement extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToSubscriber;
 
     protected $fillable = [
         'vendor_id','paid','credit','debit','date','invoice_type','invoice_id',

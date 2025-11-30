@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToSubscriber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class CompanyInfo extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToSubscriber;
     protected $table = "company_infos";
     protected $fillable = [
         'name_ar',

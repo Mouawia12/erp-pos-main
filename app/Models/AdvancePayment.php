@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToSubscriber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class AdvancePayment extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToSubscriber;
 
     protected $fillable = ['employer_id','date','amount','advance_amount','remain','user_id'];
 

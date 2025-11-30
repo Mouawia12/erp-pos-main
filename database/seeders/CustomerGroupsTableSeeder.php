@@ -11,13 +11,13 @@ class CustomerGroupsTableSeeder extends Seeder
     {
         $groups = [
             [
-                'name' => 'عملاء التجزئة',
+                'name' => 'تجزئة',
                 'discount_percentage' => 0,
                 'sell_with_cost' => false,
                 'enable_discount' => false,
             ],
             [
-                'name' => 'عملاء الجملة',
+                'name' => 'جملة',
                 'discount_percentage' => 5,
                 'sell_with_cost' => false,
                 'enable_discount' => true,
@@ -30,11 +30,21 @@ class CustomerGroupsTableSeeder extends Seeder
             ],
         ];
 
-        foreach ($groups as $index => $group) {
-            DB::table('customer_groups')->updateOrInsert(
-                ['id' => $index + 1],
-                $group
-            );
+        $subscribers = DB::table('subscribers')->pluck('id');
+        if ($subscribers->isEmpty()) {
+            $subscribers = collect([null]);
+        }
+
+        foreach ($subscribers as $subscriberId) {
+            foreach ($groups as $group) {
+                DB::table('customer_groups')->updateOrInsert(
+                    [
+                        'subscriber_id' => $subscriberId,
+                        'name' => $group['name'],
+                    ],
+                    array_merge($group, ['subscriber_id' => $subscriberId])
+                );
+            }
         }
     }
 }

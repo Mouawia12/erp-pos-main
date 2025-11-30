@@ -81,19 +81,19 @@ class DatabaseSeeder extends Seeder
             $ownerUser->assignRole($ownerRole->name);
         }
 
-        // عينات بيانات للمشتركين وباقي الجداول الأساسية
+        // عينات بيانات للمشتركين وباقي الجداول الأساسية (ترتيب يحترم الاعتمادية)
         $this->call([
-            UnitsTableSeeder::class,
-            CategoriesTableSeeder::class,
-            TaxRatesTableSeeder::class,
-            BrandsTableSeeder::class,
-            CurrenciesTableSeeder::class,
-            CustomerGroupsTableSeeder::class,
-            SystemSettingsTableSeeder::class,
             SubscribersTableSeeder::class,
             UsersTableSeeder::class,
             BranchesTableSeeder::class,
             WarehousesTableSeeder::class,
+            UnitsTableSeeder::class,
+            CustomerGroupsTableSeeder::class,
+            CurrenciesTableSeeder::class,
+            TaxRatesTableSeeder::class,
+            BrandsTableSeeder::class,
+            CategoriesTableSeeder::class,
+            SystemSettingsTableSeeder::class,
             CompaniesTableSeeder::class,
             ProductsTableSeeder::class,
             AccountsTreeTableSeeder::class,

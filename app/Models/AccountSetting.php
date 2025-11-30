@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToSubscriber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class AccountSetting extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToSubscriber;
     protected $fillable = [
         'warehouse_id','safe_account','sales_account','purchase_account'
         ,'return_sales_account','return_purchase_account',

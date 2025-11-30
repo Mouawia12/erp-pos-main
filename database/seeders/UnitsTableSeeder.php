@@ -15,8 +15,24 @@ class UnitsTableSeeder extends Seeder
             ['code' => 'CTN', 'name' => 'كرتون'],
         ];
 
-        foreach ($units as $unit) {
-            DB::table('units')->updateOrInsert(['code' => $unit['code']], $unit);
+        $subscribers = DB::table('subscribers')->pluck('id');
+        if ($subscribers->isEmpty()) {
+            $subscribers = collect([null]);
+        }
+
+        foreach ($subscribers as $subscriberId) {
+            foreach ($units as $unit) {
+                DB::table('units')->updateOrInsert(
+                    [
+                        'subscriber_id' => $subscriberId,
+                        'code' => $unit['code'],
+                    ],
+                    [
+                        'name' => $unit['name'],
+                        'subscriber_id' => $subscriberId,
+                    ]
+                );
+            }
         }
     }
 }

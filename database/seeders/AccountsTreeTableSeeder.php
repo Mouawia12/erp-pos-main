@@ -10,7 +10,6 @@ class AccountsTreeTableSeeder extends Seeder
 {
     public function run(): void
     {
-        $subscriberId = Subscriber::first()->id ?? null;
         $accounts = [
             ['code' => '1000', 'name' => 'الأصول', 'type' => 0, 'parent_id' => 0, 'parent_code' => '0', 'level' => 1, 'list' => 1, 'department' => 1, 'side' => 1],
             ['code' => '2000', 'name' => 'الخصوم', 'type' => 0, 'parent_id' => 0, 'parent_code' => '0', 'level' => 1, 'list' => 1, 'department' => 2, 'side' => 2],
@@ -18,9 +17,22 @@ class AccountsTreeTableSeeder extends Seeder
             ['code' => '5000', 'name' => 'المصروفات', 'type' => 0, 'parent_id' => 0, 'parent_code' => '0', 'level' => 1, 'list' => 1, 'department' => 4, 'side' => 1],
         ];
 
-        foreach ($accounts as $acc) {
-            $acc['subscriber_id'] = $subscriberId;
-            AccountsTree::updateOrCreate(['code' => $acc['code']], $acc);
+        $subscriberIds = Subscriber::pluck('id');
+        if ($subscriberIds->isEmpty()) {
+            $subscriberIds = collect([null]);
+        }
+
+        foreach ($subscriberIds as $subscriberId) {
+            foreach ($accounts as $acc) {
+                $acc['subscriber_id'] = $subscriberId;
+                AccountsTree::updateOrCreate(
+                    [
+                        'code' => $acc['code'],
+                        'subscriber_id' => $subscriberId,
+                    ],
+                    $acc
+                );
+            }
         }
     }
 }
