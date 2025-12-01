@@ -65,7 +65,7 @@ Route::get('hash',function(){
 Route::group(
     [
         'prefix' => LaravelLocalization::setLocale(),
-        'middleware' => ['localeSessionRedirect', 'localizationRedirect', 'localeViewPath']
+        'middleware' => ['localeSessionRedirect', 'localizationRedirect', 'localeViewPath', 'persist.locale']
     ], function () {
     Route::get('/', function () {
         return view('admin.auth.login');

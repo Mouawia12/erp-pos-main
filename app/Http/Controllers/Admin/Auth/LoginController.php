@@ -93,6 +93,10 @@ class LoginController extends Controller
             $user->session_id = $request->session()->getId();
             $user->save();
         }
+
+        $locale = $user->preferred_locale ?? config('app.locale');
+        $request->session()->put('locale', $locale);
+        app()->setLocale($locale);
     }
 
     public function logout(Request $request)
