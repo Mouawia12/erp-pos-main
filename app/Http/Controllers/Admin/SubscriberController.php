@@ -27,7 +27,7 @@ class SubscriberController extends Controller
             ->orderByDesc('id')
             ->get()
             ->map(function (Subscriber $subscriber) {
-                $this->refreshStatus($subscriber);
+                $subscriber->refreshLifecycleStatus();
                 return $subscriber;
             });
 
@@ -49,6 +49,8 @@ class SubscriberController extends Controller
     public function store(Request $request)
     {
         $data = $this->validateRequest($request);
+        $data['is_trial'] = $request->boolean('is_trial');
+        $data = $this->applyTrialDefaults($data);
         $data['created_by'] = Auth::id();
 
         [$loginEmail, $loginPassword, $loginPlain, $passwordChanged] = $this->prepareCredentials($request);
@@ -58,7 +60,8 @@ class SubscriberController extends Controller
 
         $subscriber = Subscriber::create($data);
         $this->syncUserAccount($subscriber, $loginEmail, $loginPassword);
-        $this->refreshStatus($subscriber);
+        $this->syncSystemSettings($subscriber);
+        $subscriber->refreshLifecycleStatus();
 
         $this->storeDocuments($request, $subscriber->id);
 
@@ -74,6 +77,8 @@ class SubscriberController extends Controller
     public function update(Request $request, Subscriber $subscriber)
     {
         $data = $this->validateRequest($request, $subscriber);
+        $data['is_trial'] = $request->boolean('is_trial');
+        $data = $this->applyTrialDefaults($data, $subscriber);
         [$loginEmail, $loginPassword, $loginPlain, $passwordChanged] = $this->prepareCredentials($request, $subscriber);
         $data['login_email'] = $loginEmail;
         if ($passwordChanged) {
@@ -83,7 +88,8 @@ class SubscriberController extends Controller
 
         $subscriber->update($data);
         $this->syncUserAccount($subscriber, $loginEmail, $loginPassword);
-        $this->refreshStatus($subscriber);
+        $this->syncSystemSettings($subscriber);
+        $subscriber->refreshLifecycleStatus();
 
         $this->storeDocuments($request, $subscriber->id);
 
@@ -140,7 +146,7 @@ class SubscriberController extends Controller
             'renewed_by' => Auth::id(),
         ]);
 
-        $this->refreshStatus($subscriber);
+        $subscriber->refreshLifecycleStatus();
 
         return redirect()->route('owner.subscribers.index')->with('success', __('main.saved_successfully') ?? 'تم التجديد');
     }
@@ -227,6 +233,9 @@ class SubscriberController extends Controller
             'users_limit' => 'nullable|integer|min:1',
             'subscription_start' => 'nullable|date',
             'subscription_end' => 'nullable|date|after_or_equal:subscription_start',
+            'is_trial' => 'nullable|boolean',
+            'trial_starts_at' => 'nullable|date',
+            'trial_ends_at' => 'nullable|date|after_or_equal:trial_starts_at',
             'status' => 'nullable|in:active,near_expiry,expired',
             'notes' => 'nullable|string',
             'documents.*' => 'nullable|file|max:2048',
@@ -283,25 +292,49 @@ class SubscriberController extends Controller
         }
     }
 
-    private function refreshStatus(Subscriber $subscriber): void
+    private function applyTrialDefaults(array $data, ?Subscriber $existing = null): array
     {
-        if (!$subscriber->subscription_end) {
-            return;
+        if (! ($data['is_trial'] ?? false)) {
+            $data['trial_starts_at'] = null;
+            $data['trial_ends_at'] = null;
+            return $data;
         }
 
-        $today = now()->startOfDay();
-        $end = Carbon::parse($subscriber->subscription_end)->startOfDay();
+        $startInput = $data['trial_starts_at']
+            ?? $data['subscription_start']
+            ?? ($existing?->trial_starts_at ? $existing->trial_starts_at->format('Y-m-d') : now()->format('Y-m-d'));
+        $start = Carbon::parse($startInput)->startOfDay();
+        $endInput = $data['trial_ends_at']
+            ?? ($existing?->trial_ends_at ? $existing->trial_ends_at->format('Y-m-d') : null);
+        $end = $endInput ? Carbon::parse($endInput)->startOfDay() : $start->copy()->addDays(30);
 
-        $newStatus = 'active';
-        if ($end->lt($today)) {
-            $newStatus = 'expired';
-        } elseif ($end->diffInDays($today) <= 30) {
-            $newStatus = 'near_expiry';
-        }
+        $data['trial_starts_at'] = $start->format('Y-m-d');
+        $data['trial_ends_at'] = $end->format('Y-m-d');
+        $data['subscription_start'] = $data['subscription_start'] ?? $start->format('Y-m-d');
+        $data['subscription_end'] = $end->format('Y-m-d');
 
-        if ($subscriber->status !== $newStatus) {
-            $subscriber->update(['status' => $newStatus]);
-        }
+        return $data;
+    }
+
+    private function syncSystemSettings(Subscriber $subscriber): void
+    {
+        $settings = SystemSettings::firstOrCreate(
+            ['subscriber_id' => $subscriber->id],
+            [
+                'company_name' => $subscriber->company_name,
+                'email' => $subscriber->contact_email,
+                'client_group_id' => 0,
+                'nom_of_days_to_edit_bill' => 0,
+                'branch_id' => 0,
+                'cashier_id' => 0,
+            ]
+        );
+
+        $settings->fill([
+            'company_name' => $subscriber->company_name,
+            'email' => $subscriber->contact_email,
+            'tax_number' => $subscriber->tax_number,
+        ])->save();
     }
 
     private function storeDocuments(Request $request, int $subscriberId): void

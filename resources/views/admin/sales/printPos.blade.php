@@ -6,6 +6,12 @@
         $typeLabel = __('main.invoice_type_simplified');
         if($data->invoice_type == 'tax_invoice') $typeLabel = __('main.invoice_type_tax');
         if($data->invoice_type == 'non_tax_invoice') $typeLabel = __('main.invoice_type_nontax');
+        $serviceLabels = [
+            'dine_in' => __('main.service_mode_dine_in'),
+            'takeaway' => __('main.service_mode_takeaway'),
+            'delivery' => __('main.service_mode_delivery'),
+        ];
+        $serviceLabel = $serviceLabels[$data->service_mode ?? 'dine_in'] ?? __('main.service_mode_dine_in');
     @endphp
     {{$typeLabel}} {{$data->id}}
     </title>
@@ -51,6 +57,20 @@
             text-align: center;
             width: 100% !important;
             margin-top: 10px !important;
+        }
+        .trial-watermark {
+            border: 1px dashed #f39c12;
+            padding: 6px;
+            margin: 6px 0;
+            text-align: center;
+            font-size: 14px;
+            color: #c0392b !important;
+        }
+        .tax-empty {
+            display: inline-block;
+            min-width: 120px;
+            border-bottom: 1px solid #000;
+            height: 18px;
         }
     </style>
     <style type="text/css" media="print">
@@ -101,7 +121,12 @@
             page-break-after: avoid;
             page-break-inside: avoid;" class="text-center">        
     <div class="pos_details  justify-content-center text-center"> 
-        <div class="text-center"> 
+        <div class="text-center">
+            @if($trialMode ?? false)
+                <div class="trial-watermark">
+                    نسخة تجريبية - لن يتم طباعة بيانات ضريبية حقيقية
+                </div>
+            @endif
             <h2 class="text-center mt-1" style="font-weight: bold;">
                 {{$typeLabel}}
                 <br>
@@ -130,6 +155,17 @@
             <h6 class="text-center mt-1" style="font-weight: bold;">
                 {{$data->branch_address}}
             </h6> 
+            <h6 class="text-center mt-1" style="font-weight: bold;">
+                {{ __('main.service_mode') }} : {{$serviceLabel}}
+            </h6>
+            <h6 class="text-center mt-1" style="font-weight: bold;">
+                {{ __('main.session_location') }} : {{$data->session_location ?? '-'}}
+            </h6>
+            @if(!empty($data->session_type))
+                <h6 class="text-center mt-1" style="font-weight: bold;">
+                    {{ __('main.session_type') }} : {{$data->session_type}}
+                </h6>
+            @endif
             @if(!empty($data->branch_phone))
             <h6 class="text-center mt-1" style="font-weight: bold;">
                 هاتف الفرع / Branch Phone : {{$data->branch_phone}}
@@ -140,11 +176,14 @@
                 السجل التجاري / CR : {{$data->cr_number}}
             </h6>
             @endif
-            @if(!empty($data->branch_tax_number))
             <h6 class="text-center mt-1" style="font-weight: bold;">
-                الرقم الضريبي / VAT : {{$data->branch_tax_number}}
+                الرقم الضريبي / VAT :
+                @if(!empty($resolvedTaxNumber))
+                    {{$resolvedTaxNumber}}
+                @else
+                    <span class="tax-empty"></span>
+                @endif
             </h6>
-            @endif
             <div class="clearfix"></div> 
             <h6 class="text-center mt-1" style="font-weight: bold;">
                 التاريخ / Date :
@@ -152,9 +191,11 @@
                     {{\Carbon\Carbon::parse($data->created_at)->format('Y-m-d H:i') }} 
                 </span>
             </h6> 
-            <h6 class="text-center mt-1" style="font-weight: bold;">
-                الرقم الضريبى / VAT : {{$company->taxNumber}}
-            </h6> 
+            @if(empty($resolvedTaxNumber) && !empty($company->taxNumber))
+                <h6 class="text-center mt-1" style="font-weight: bold;">
+                    الرقم الضريبى / VAT : {{$company->taxNumber}}
+                </h6>
+            @endif 
             @if(!empty($company->registrationNumber))
             <h6 class="text-center mt-1" style="font-weight: bold;">
                 السجل التجاري / CR : {{$company->registrationNumber}}
@@ -287,25 +328,11 @@
                     <div>{{optional($vendor)->invoice_footer ?? $company->faild_ar}}</div>
                 </div>
             @endif
-            <div class="visible-print text-center mt-1">
-                <?php
-                use Salla\ZATCA\GenerateQrCode;
-                use Salla\ZATCA\Tags\InvoiceDate;
-                use Salla\ZATCA\Tags\InvoiceTaxAmount;
-                use Salla\ZATCA\Tags\InvoiceTotalAmount;
-                use Salla\ZATCA\Tags\Seller;
-                use Salla\ZATCA\Tags\TaxNumber;
-                $displayQRCodeAsBase64 = GenerateQrCode::fromArray([
-                    new Seller($company->name_ar), // seller name
-                    new TaxNumber($company->taxNumber), // seller tax number
-                    new InvoiceDate($data->created_at), // invoice date as Zulu ISO8601 @see https://en.wikipedia.org/wiki/ISO_8601
-                    new InvoiceTotalAmount($data->net), // invoice total amount
-                    new InvoiceTaxAmount($data -> tax) // invoice tax amount
-                    // TODO :: Support others tags
-                ])->render();
-                ?>
-                <img src="{{$displayQRCodeAsBase64}}" style="width: 150px; height: 150px;" alt="QR Code"/>
-            </div>
+            @if(!empty($qrCodeImage))
+                <div class="visible-print text-center mt-1">
+                    <img src="{{$qrCodeImage}}" style="width: 150px; height: 150px;" alt="QR Code"/>
+                </div>
+            @endif
             <hr style="border-top: 1px solid #000;">
             <div class="row" style="direction:rtl">
                 <div class="col-12 text-right">

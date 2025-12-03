@@ -36,6 +36,7 @@ use App\Http\Controllers\Admin\RewardController;
 use App\Http\Controllers\Admin\AdvancePaymentController;
 use App\Http\Controllers\Admin\SalaryDocController;
 use App\Http\Controllers\Admin\InventoryController;
+use App\Http\Controllers\Admin\ManufacturingController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\AlertController;
 use App\Http\Controllers\Admin\ReportAccountController;
@@ -89,7 +90,7 @@ Route::group(
 });
 
 Route::group(
-    ['middleware' => ['auth:admin-web','single.device'],
+    ['middleware' => ['auth:admin-web','single.device','subscription.active'],
         'prefix' => 'admin',
         'namespace' => 'Admin'
     ], function () {
@@ -180,6 +181,10 @@ Route::group(
     Route::post('/updateProduct', [InventoryController::class, 'update_weight_item' ] )->name('admin.inventory.update');
     Route::post('/add-item', [InventoryController::class, 'inventory_weight_item' ] )->name('admin.inventory.add');
     Route::get('/getItemInventory/{code}', [InventoryController::class, 'getProduct'])->name('getItems');
+
+    Route::get('manufacturing', [ManufacturingController::class, 'index'])->name('admin.manufacturing.index');
+    Route::post('manufacturing/recipes', [ManufacturingController::class, 'storeRecipe'])->name('admin.manufacturing.recipes.store');
+    Route::post('manufacturing/assemble', [ManufacturingController::class, 'assemble'])->name('admin.manufacturing.assemble');
 
     Route::get('/brands', [BrandController::class, 'index'])->name('brands');
     Route::post('storeBrand', [BrandController::class, 'store'])->name('storeBrand');

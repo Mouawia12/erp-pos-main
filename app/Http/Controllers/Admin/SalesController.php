@@ -21,11 +21,18 @@ use App\Models\Unit;
 use App\Models\Representative;
 use App\Models\Promotion;
 use App\Models\PromotionItem;
+use App\Models\Subscriber;
 use App\Services\DocumentNumberService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use DataTables;
+use Salla\ZATCA\GenerateQrCode;
+use Salla\ZATCA\Tags\InvoiceDate;
+use Salla\ZATCA\Tags\InvoiceTaxAmount;
+use Salla\ZATCA\Tags\InvoiceTotalAmount;
+use Salla\ZATCA\Tags\Seller;
+use Salla\ZATCA\Tags\TaxNumber;
 
 class SalesController extends Controller
 {
@@ -280,6 +287,13 @@ class SalesController extends Controller
 
         $billDate = now()->format('Y-m-d H:i:s');
 
+        $parentSale = Sales::find($id);
+        $serviceDefaults = [
+            'service_mode' => $parentSale->service_mode ?? null,
+            'session_location' => $parentSale->session_location ?? null,
+            'session_type' => $parentSale->session_type ?? null,
+        ];
+
         $siteController = new SystemController();
         $allowNegativeStock = $siteController->allowSellingWithoutStock();
         $customer = Company::find($request->customer_id);
@@ -387,7 +401,7 @@ class SalesController extends Controller
         $net += $request -> additional_service ?? 0 ;
         $net -= $request->discount;
  
-        $sale = Sales::create([
+        $saleData = [
             'date' => $billDate,
             'invoice_no' => $request-> invoice_no,
             'invoice_type' => $request->invoice_type ?? 'tax_invoice',
@@ -415,7 +429,9 @@ class SalesController extends Controller
             'branch_id'=> $request->branch_id ?? $siteController->getWarehouseById($request->warehouse_id)->branch_id,
             'status'=> 1,
             'user_id'=> Auth::user()->id
-        ]);
+        ];
+
+        $sale = Sales::create(array_merge($saleData, $this->resolveServiceMeta($request, $serviceDefaults)));
 
         foreach ($products as $product){
             $product['sale_id'] = $sale->id;
@@ -553,49 +569,15 @@ class SalesController extends Controller
 
     public function show($id)
     {
-        $datas = DB::table('sales')
-            ->join('warehouses','sales.warehouse_id','=','warehouses.id')
-            ->join('companies','sales.customer_id','=','companies.id')
-            ->join('branches','sales.branch_id','=','branches.id')
-            ->select('sales.*','warehouses.name as warehouse_name','companies.name as customer_name'
-                     ,'branches.branch_name','branches.branch_phone','branches.branch_address','branches.cr_number','branches.tax_number as branch_tax_number','branches.manager_name as branch_manager','branches.contact_email as branch_email' )
-            ->where('sales.id' , '=' , $id)
-            ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
-                $q->where('sales.subscriber_id',$sub);
-            })
-            ->get();
+        $payload = $this->getPrintPayload((int) $id);
 
-        if(count($datas)){
-            $data = $datas[0];
-
-            $details = DB::table('sale_details')
-                ->join('products' , 'sale_details.product_id' , '=' , 'products.id')
-                ->select('sale_details.*' , 'products.code' , 'products.name')
-                ->where('sale_details.sale_id' , '=' , $id)
-                ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
-                    $q->where('sale_details.subscriber_id',$sub);
-                })
-                ->get();
-
-            $payments = Payment::with('user') -> where('sale_id',$id)
-                            ->where('sale_id','<>',null)
-                            ->get();
-
-
-            $vendor = Company::find($data->customer_id);
-            $cashier = Cashier::first();
-            $company = CompanyInfo::first();
-            $settings = SystemSettings::first();
-
-            if($datas[0]->pos == 1){   
-                return view('admin.sales.printPos',compact('data' , 'details','vendor','cashier' , 'payments','company','settings' ))->render();
-            } else {
-                return view('admin.sales.print',compact('data' , 'details','vendor','cashier' , 'payments','company','settings' ))->render();
-            }
-
-            //return view('admin.sales.view',compact('data' , 'details','vendor','cashier' , 'payments','company' ))->render();
+        if (! $payload) {
+            abort(404);
         }
 
+        $view = $payload['data']->pos == 1 ? 'admin.sales.printPos' : 'admin.sales.print';
+
+        return view($view, $payload)->render();
     }
 
     /**
@@ -684,7 +666,7 @@ class SalesController extends Controller
         $taxForInvoice = $tax_excise > 0 ? ($tax - $tax_excise) : $tax;
         $net = $total + $taxForInvoice + $tax_excise;
 
-        $sale = Sales::create([
+        $saleData = [
             'sale_id' => $id,
             'date' => $billDate,
             'invoice_no' => $request-> invoice_no,
@@ -706,7 +688,9 @@ class SalesController extends Controller
             'profit'=> $profit * -1,
             'branch_id'=> $request->branch_id ?? $siteController->getWarehouseById($request->warehouse_id)->branch_id,
             'user_id'=> Auth::user()->id
-        ]);
+        ];
+
+        $sale = Sales::create(array_merge($saleData, $this->resolveServiceMeta($request)));
 
         foreach ($products as $product){
             $product['sale_id'] = $sale->id;
@@ -807,43 +791,23 @@ class SalesController extends Controller
 
     public function print(Request $request, $id)
     {
-        $datas = DB::table('sales')
-            ->join('warehouses','sales.warehouse_id','=','warehouses.id')
-            ->join('companies','sales.customer_id','=','companies.id')
-            ->join('branches','sales.branch_id','=','branches.id')
-            ->select('sales.*','warehouses.name as warehouse_name','companies.name as customer_name'
-                     ,'branches.branch_name','branches.branch_phone','branches.branch_address' )
-            ->where('sales.id' , '=' , $id)
-            ->get();
+        $payload = $this->getPrintPayload((int) $id);
 
-        if(count($datas)){
-            $data = $datas[0];
-
-            $details = DB::table('sale_details')
-                ->join('products','sale_details.product_id','=','products.id')
-                ->select('sale_details.*', 'products.code','products.name','products.tax as taxRate','products.tax_excise as taxExciseRate')
-                ->where('sale_details.sale_id','=', $id)
-                ->get();
-
-            $payments = Payment::with('user') -> where('sale_id',$id)
-                ->where('sale_id','<>',null)
-                ->get();
-
-            $vendor = Company::find($data->customer_id);
-            $cashier = Cashier::first();
-            $company = CompanyInfo::first();
-            $settings = SystemSettings::first();
-
-            if($datas[0]->pos == 1){ 
-                return view('admin.sales.printPos',compact('data','details','vendor','cashier','payments','company','settings'))->render();
-            } elseif($request->get('format') === 'a5'){
-                return view('admin.sales.printA5',compact('data','details','vendor','cashier','payments','company','settings'))->render();
-            } else {
-                return view('admin.sales.print',compact('data','details','vendor','cashier','payments','company','settings'))->render();
-            }
-           
+        if (! $payload) {
+            abort(404);
         }
 
+        $format = $request->get('format');
+
+        if ($format === 'a5') {
+            return view('admin.sales.printA5', $payload)->render();
+        }
+
+        if ($payload['data']->pos == 1) {
+            return view('admin.sales.printPos', $payload)->render();
+        }
+
+        return view('admin.sales.print', $payload)->render();
     }
 
     public function get_sales($code)
@@ -886,4 +850,121 @@ class SalesController extends Controller
         }
  
     }   
+
+    private function getPrintPayload(int $id): ?array
+    {
+        $data = DB::table('sales')
+            ->join('warehouses','sales.warehouse_id','=','warehouses.id')
+            ->join('companies','sales.customer_id','=','companies.id')
+            ->join('branches','sales.branch_id','=','branches.id')
+            ->select(
+                'sales.*',
+                'warehouses.name as warehouse_name',
+                'companies.name as customer_name',
+                'branches.branch_name',
+                'branches.branch_phone',
+                'branches.branch_address',
+                'branches.cr_number',
+                'branches.tax_number as branch_tax_number',
+                'branches.manager_name as branch_manager',
+                'branches.contact_email as branch_email'
+            )
+            ->where('sales.id' , '=' , $id)
+            ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                $q->where('sales.subscriber_id',$sub);
+            })
+            ->first();
+
+        if (! $data) {
+            return null;
+        }
+
+        $details = DB::table('sale_details')
+            ->join('products','sale_details.product_id','=','products.id')
+            ->select('sale_details.*', 'products.code','products.name','products.tax as taxRate','products.tax_excise as taxExciseRate')
+            ->where('sale_details.sale_id','=', $id)
+            ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
+                $q->where('sale_details.subscriber_id',$sub);
+            })
+            ->get();
+
+        $payments = Payment::with('user')
+            ->where('sale_id',$id)
+            ->where('sale_id','<>',null)
+            ->get();
+
+        $vendor = Company::find($data->customer_id);
+        $cashier = Cashier::first();
+        $company = CompanyInfo::first();
+        $settings = SystemSettings::where('subscriber_id', $data->subscriber_id)->first() ?? SystemSettings::first();
+        $subscriber = $data->subscriber_id ? Subscriber::find($data->subscriber_id) : null;
+        $trialMode = $subscriber?->isTrialActive() ?? false;
+        $resolvedTaxNumber = $this->resolveTaxNumber($data, $subscriber, $company, $settings);
+        $qrCodeImage = $this->buildInvoiceQr($data, $company, $resolvedTaxNumber, $trialMode);
+
+        return compact('data','details','vendor','cashier','payments','company','settings','subscriber','trialMode','resolvedTaxNumber','qrCodeImage');
+    }
+
+    private function resolveTaxNumber($sale, ?Subscriber $subscriber, ?CompanyInfo $company, ?SystemSettings $settings): ?string
+    {
+        return $sale->branch_tax_number
+            ?? optional($subscriber)->tax_number
+            ?? optional($settings)->tax_number
+            ?? optional($company)->taxNumber;
+    }
+
+    private function buildInvoiceQr($sale, ?CompanyInfo $company, ?string $taxNumber, bool $trialMode): ?string
+    {
+        try {
+            if ($trialMode) {
+                return GenerateQrCode::fromArray([
+                    new Seller('TRIAL VERSION'),
+                    new TaxNumber('000000000000000'),
+                    new InvoiceDate(now()->toIso8601String()),
+                    new InvoiceTotalAmount(0),
+                    new InvoiceTaxAmount(0),
+                ])->render();
+            }
+
+            $sellerName = $sale->branch_name
+                ?? optional($company)->name_ar
+                ?? optional($company)->name_en
+                ?? 'Company';
+
+            $taxValue = $taxNumber ?: '000000000000000';
+
+            return GenerateQrCode::fromArray([
+                new Seller($sellerName),
+                new TaxNumber($taxValue),
+                new InvoiceDate($sale->date),
+                new InvoiceTotalAmount($sale->net),
+                new InvoiceTaxAmount($sale->tax),
+            ])->render();
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    private function resolveServiceMeta(Request $request, array $defaults = []): array
+    {
+        $mode = $request->input('service_mode', $defaults['service_mode'] ?? 'dine_in');
+        $allowedModes = ['dine_in', 'takeaway', 'delivery'];
+        if (! in_array($mode, $allowedModes, true)) {
+            $mode = 'dine_in';
+        }
+
+        $sessionLocation = null;
+        $sessionType = null;
+
+        if ($mode === 'dine_in') {
+            $sessionLocation = trim((string) ($request->input('session_location') ?? $defaults['session_location'] ?? '')) ?: null;
+            $sessionType = trim((string) ($request->input('session_type') ?? $defaults['session_type'] ?? '')) ?: null;
+        }
+
+        return [
+            'service_mode' => $mode,
+            'session_location' => $sessionLocation,
+            'session_type' => $sessionType,
+        ];
+    }
 }

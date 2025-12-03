@@ -3,13 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller; 
-use App\Models\Brand;
 use App\Models\Unit;
 use App\Http\Requests\StoreUnitRequest;
 use App\Http\Requests\UpdateUnitRequest;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class UnitController extends Controller
 {
@@ -43,9 +44,17 @@ class UnitController extends Controller
     public function store(Request $request)
     {
         if($request -> id == 0){
-            $request['code'] = Unit::count() + 1;
+            $subscriberId = Auth::user()->subscriber_id ?? null;
+            $code = $request->input('code') ?: $this->nextUnitCode($subscriberId);
+            $request->merge(['code' => $code]);
+
+            $codeRule = Rule::unique('units', 'code');
+            if ($subscriberId) {
+                $codeRule = $codeRule->where(fn($query) => $query->where('subscriber_id', $subscriberId));
+            }
+
             $validated = $request->validate([
-                'code' => 'required|unique:brands',
+                'code' => ['required', 'string', $codeRule],
                 'name' => 'required',
             ]);
             try {
@@ -126,5 +135,17 @@ class UnitController extends Controller
             $unit -> delete();
             return redirect()->route('units' , $unit -> isGold)->with('success', __('main.deleted'));
         }
+    }
+
+    private function nextUnitCode(?int $subscriberId): int
+    {
+        $query = Unit::query();
+        if ($subscriberId) {
+            $query->where('subscriber_id', $subscriberId);
+        }
+
+        $maxCode = $query->max(DB::raw('CAST(code AS UNSIGNED)'));
+
+        return ((int) $maxCode) + 1;
     }
 }

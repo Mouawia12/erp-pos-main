@@ -184,9 +184,76 @@ $("#btnFullScreen").click(function () {
       $(this).attr('value', 'Exit Fullscreen');
     }
     */
-  });
+ });
  
 			
         });
 
+</script>
+<script>
+    (function () {
+        const KEY_ACTIONS = {
+            F2: 'add',
+            F3: 'edit',
+            F4: 'delete',
+            F5: 'refresh',
+            F6: 'save',
+            F9: 'print'
+        };
+
+        const ACTION_SELECTORS = {
+            add: ['[data-shortcut="add"]', '#createButton', '.btn-add', '.btn-primary[data-action="add"]'],
+            edit: ['[data-shortcut="edit"]', '.btn-edit', '.editBtn', '.btn-info[data-action="edit"]'],
+            delete: ['[data-shortcut="delete"]', '.deleteBtn', '.btn-delete', 'button[data-action="delete"]'],
+            refresh: ['[data-shortcut="refresh"]', '.btn-refresh', '.fa-rotate'],
+            save: ['[data-shortcut="save"]', 'form button[type="submit"]'],
+            print: ['[data-shortcut="print"]', 'button[onclick*="print"]', '.btn-print']
+        };
+
+        function isVisible(el) {
+            return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length) && !el.disabled;
+        }
+
+        function findTarget(action) {
+            const selectors = ACTION_SELECTORS[action] || [];
+            for (const selector of selectors) {
+                const el = document.querySelector(selector);
+                if (el && isVisible(el)) {
+                    return el;
+                }
+            }
+            return null;
+        }
+
+        function trigger(el) {
+            if (el.tagName === 'A' || el.tagName === 'BUTTON') {
+                el.click();
+            } else {
+                el.dispatchEvent(new Event('click', { bubbles: true }));
+            }
+        }
+
+        document.addEventListener('keydown', function (event) {
+            const action = KEY_ACTIONS[event.key];
+            if (!action) {
+                return;
+            }
+
+            const target = findTarget(action);
+
+            if (target) {
+                event.preventDefault();
+                trigger(target);
+                return;
+            }
+
+            if (action === 'refresh') {
+                event.preventDefault();
+                window.location.reload();
+            } else if (action === 'print') {
+                event.preventDefault();
+                window.print();
+            }
+        });
+    })();
 </script>

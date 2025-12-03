@@ -52,6 +52,28 @@ span strong {font-size:12px;}
                         </div>
                         <div class="col-md-2">
                             <div class="form-group">
+                                <label>{{ __('main.service_mode') }}</label>
+                                <select class="form-control" name="service_mode" id="sale_service_mode">
+                                    <option value="dine_in">{{ __('main.service_mode_dine_in') }}</option>
+                                    <option value="takeaway">{{ __('main.service_mode_takeaway') }}</option>
+                                    <option value="delivery">{{ __('main.service_mode_delivery') }}</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2 service-meta-input d-none">
+                            <div class="form-group">
+                                <label>{{ __('main.session_location') }}</label>
+                                <input type="text" class="form-control" name="session_location" id="sale_session_location" placeholder="{{ __('main.session_location') }}">
+                            </div>
+                        </div>
+                        <div class="col-md-2 service-meta-input d-none">
+                            <div class="form-group">
+                                <label>{{ __('main.session_type') }}</label>
+                                <input type="text" class="form-control" name="session_type" id="sale_session_type" placeholder="{{ __('main.session_type') }}">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
                                 <label>{{ __('main.tax_mode') }}</label>
                                 <select class="form-control" name="tax_mode" id="tax_mode">
                                     <option value="inclusive">{{__('main.tax_mode_inclusive')}}</option>
@@ -411,6 +433,18 @@ span strong {font-size:12px;}
                 $('#walk_in_name, #walk_in_phone').val('');
             }
         });
+
+        function toggleServiceMeta(){
+            const mode = $('#sale_service_mode').val();
+            const showFields = mode === 'dine_in';
+            $('.service-meta-input').toggleClass('d-none', !showFields);
+            if(!showFields){
+                $('#sale_session_location, #sale_session_type').val('');
+            }
+        }
+
+        $('#sale_service_mode').on('change', toggleServiceMeta);
+        toggleServiceMeta();
 
         getBillNo();
         $('#warehouse_id').change(function (){

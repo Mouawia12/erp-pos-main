@@ -261,6 +261,11 @@
                                {{ __('main.inventory_list') }}
                             </a>
                         </li>  
+                        <li>
+                            <a class="slide-item" href="{{ route('admin.manufacturing.index') }}">
+                                {{ __('تصنيع وتجميع الأصناف') }}
+                            </a>
+                        </li>
                                                               
                     </ul>
                 </li> 

@@ -61,12 +61,24 @@ class LoginController extends Controller
         ]);
     }
 
-    public function showLoginForm() {
-        if (Auth::guard('admin-web')->check()) {
-            return view('admin.home');
-        }else{
-            return view('admin.auth.login');
+    public function showLoginForm(Request $request) {
+        $guard = Auth::guard('admin-web');
+
+        if ($guard->check()) {
+            if ($request->boolean('switch')) {
+                $guard->logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                return view('admin.auth.login')->with('status', __('تم تسجيل الخروج، يمكنك الآن تسجيل الدخول بحساب آخر.'));
+            }
+
+            return view('admin.auth.switch-account', [
+                'user' => $guard->user(),
+            ]);
         }
+
+        return view('admin.auth.login');
     }
 
     public function authenticate(Request $request)

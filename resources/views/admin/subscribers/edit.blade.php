@@ -82,6 +82,21 @@
                         <label>نهاية الاشتراك</label>
                         <input type="date" name="subscription_end" class="form-control" value="{{ optional($subscriber->subscription_end)->format('Y-m-d') }}">
                     </div>
+                    <div class="col-12 mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="is_trial" name="is_trial" value="1" @if($subscriber->is_trial) checked @endif>
+                            <label class="form-check-label" for="is_trial">نسخة تجريبية (30 يوماً)</label>
+                        </div>
+                        <small class="text-muted">تفعيل الخيار يجعل تاريخ النهاية مطابقاً لتاريخ نهاية التجربة.</small>
+                    </div>
+                    <div class="col-md-3 mb-3 trial-meta d-none">
+                        <label>بداية التجربة</label>
+                        <input type="date" name="trial_starts_at" class="form-control" value="{{ optional($subscriber->trial_starts_at)->format('Y-m-d') ?? optional($subscriber->subscription_start)->format('Y-m-d') }}">
+                    </div>
+                    <div class="col-md-3 mb-3 trial-meta d-none">
+                        <label>نهاية التجربة</label>
+                        <input type="date" name="trial_ends_at" class="form-control" value="{{ optional($subscriber->trial_ends_at)->format('Y-m-d') }}" readonly>
+                    </div>
                     <div class="col-md-3 mb-3">
                         <label>ملاحظات</label>
                         <textarea name="notes" class="form-control" rows="1">{{ $subscriber->notes }}</textarea>
@@ -150,5 +165,48 @@
                          <input type="file" name="documents[]" class="form-control" accept="image/*,application/pdf">';
         wrapper.appendChild(div);
     }
+
+    (function(){
+        const trialToggle = document.getElementById('is_trial');
+        const trialBlocks = document.querySelectorAll('.trial-meta');
+        const startInput = document.querySelector('input[name="trial_starts_at"]');
+        const endInput = document.querySelector('input[name="trial_ends_at"]');
+        const subStartInput = document.querySelector('input[name="subscription_start"]');
+        const subEndInput = document.querySelector('input[name="subscription_end"]');
+
+        const formatDate = (date) => date.toISOString().slice(0,10);
+
+        function syncTrial(){
+            if (!trialToggle) {
+                return;
+            }
+            const enabled = trialToggle.checked;
+            trialBlocks.forEach(block => block.classList.toggle('d-none', !enabled));
+            if (enabled) {
+                const startVal = startInput.value || subStartInput.value || formatDate(new Date());
+                startInput.value = startVal;
+                const targetDate = new Date(startVal);
+                targetDate.setDate(targetDate.getDate() + 30);
+                const endVal = endInput.value || formatDate(targetDate);
+                endInput.value = endVal;
+                if (subEndInput) {
+                    subEndInput.value = endVal;
+                    subEndInput.setAttribute('readonly','readonly');
+                }
+            } else {
+                if (subEndInput) {
+                    subEndInput.removeAttribute('readonly');
+                }
+            }
+        }
+
+        if (trialToggle) {
+            trialToggle.addEventListener('change', syncTrial);
+        }
+        if (startInput) {
+            startInput.addEventListener('change', syncTrial);
+        }
+        syncTrial();
+    })();
 </script>
 @endsection

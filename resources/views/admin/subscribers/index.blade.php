@@ -68,7 +68,11 @@
                         @forelse($subscribers as $subscriber)
                             <tr>
                                 <td>
-                                    <strong>{{ $subscriber->company_name }}</strong><br>
+                                    <strong>{{ $subscriber->company_name }}</strong>
+                                    @if($subscriber->is_trial)
+                                        <span class="badge badge-info ms-1">نسخة تجريبية</span>
+                                    @endif
+                                    <br>
                                     <small>س.ت: {{ $subscriber->cr_number ?? '-' }} | ضريبة: {{ $subscriber->tax_number ?? '-' }}</small><br>
                                     <small>مسؤول: {{ $subscriber->responsible_person ?? '-' }}</small>
                                 </td>
@@ -98,8 +102,8 @@
                                     <div>من: {{ optional($subscriber->subscription_start)->format('Y-m-d') ?? '-' }}</div>
                                     <div>إلى: {{ optional($subscriber->subscription_end)->format('Y-m-d') ?? '-' }}</div>
                                     <small>المستخدمون المسموحون: {{ $subscriber->users_limit }}</small>
-                                    @if($subscriber->subscription_end)
-                                        @php $days = now()->startOfDay()->diffInDays(optional($subscriber->subscription_end)->startOfDay(), false); @endphp
+                                    @php $days = $subscriber->remainingDays(); @endphp
+                                    @if($days !== null)
                                         <div class="text-muted">متبقي: {{ $days }} يوم</div>
                                     @endif
                                 </td>

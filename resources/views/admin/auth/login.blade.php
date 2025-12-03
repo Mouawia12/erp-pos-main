@@ -30,6 +30,11 @@
                                             <h5 class="alert alert-primary text-center mb-4">
                                                 تسجيل الدخول
                                             </h5>
+                                            @if (session('status'))
+                                                <div class="alert alert-info">
+                                                    {{ session('status') }}
+                                                </div>
+                                            @endif
                                             @if ($errors->has('token'))
                                                 <div class="alert alert-warning">
                                                     {{ $errors->first('token') }}

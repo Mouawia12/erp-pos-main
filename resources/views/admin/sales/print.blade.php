@@ -6,6 +6,12 @@
         $typeLabel = __('main.invoice_type_tax');
         if($data->invoice_type == 'simplified_tax_invoice') $typeLabel = __('main.invoice_type_simplified');
         if($data->invoice_type == 'non_tax_invoice') $typeLabel = __('main.invoice_type_nontax');
+        $serviceLabels = [
+            'dine_in' => __('main.service_mode_dine_in'),
+            'takeaway' => __('main.service_mode_takeaway'),
+            'delivery' => __('main.service_mode_delivery'),
+        ];
+        $serviceLabel = $serviceLabels[$data->service_mode ?? 'dine_in'] ?? __('main.service_mode_dine_in');
     @endphp
     {{$typeLabel}} {{$data->id}}
     </title>
@@ -87,6 +93,22 @@
             display: none;
         }
     </style>
+        .trial-watermark {
+            border: 1px dashed #f39c12;
+            padding: 10px;
+            margin-bottom: 10px;
+            text-align: center;
+            font-size: 16px;
+            color: #c0392b !important;
+        }
+
+        .tax-empty {
+            display: inline-block;
+            min-width: 120px;
+            border-bottom: 1px solid #000;
+            height: 20px;
+        }
+    </style>
 </head>
 <body dir="rtl" style="background: #fff;
             page-break-before: avoid;
@@ -97,6 +119,11 @@
 </header>            
     <div class="pos_details  justify-content-center text-center">  
         <div class="above-table w-50 text-right mt-3 justify-content-right" style="margin: 10px auto!important;">
+            @if($trialMode ?? false)
+                <div class="trial-watermark">
+                    نسخة تجريبية - لا يمكن استخدام هذه الفاتورة لأغراض ضريبية رسمية
+                </div>
+            @endif
             <div class="row" id="" style="direction:rtl">
                 <div class="col-4 text-right">
                     <h6 class="text-right mt-1" style="font-weight: bold;">
@@ -121,11 +148,14 @@
                         السجل التجاري : {{$data->cr_number}}
                     </h6>
                     @endif
-                    @if(!empty($data->branch_tax_number))
                     <h6 class="text-right mt-1" style="font-weight: bold;">
-                        الرقم الضريبي : {{$data->branch_tax_number}}
+                        الرقم الضريبي :
+                        @if(!empty($resolvedTaxNumber))
+                            {{$resolvedTaxNumber}}
+                        @else
+                            <span class="tax-empty"></span>
+                        @endif
                     </h6>
-                    @endif
                     @if(!empty($data->branch_manager))
                     <h6 class="text-right mt-1" style="font-weight: bold;">
                         مدير الفرع : {{$data->branch_manager}}
@@ -145,25 +175,11 @@
                     </h4>
                 </div>
                 <div class="col-4 text-left">
-                    <div class="visible-print text-left mt-1">
-                        <?php
-                        use Salla\ZATCA\GenerateQrCode;
-                        use Salla\ZATCA\Tags\InvoiceDate;
-                        use Salla\ZATCA\Tags\InvoiceTaxAmount;
-                        use Salla\ZATCA\Tags\InvoiceTotalAmount;
-                        use Salla\ZATCA\Tags\Seller;
-                        use Salla\ZATCA\Tags\TaxNumber;
-                        $displayQRCodeAsBase64 = GenerateQrCode::fromArray([
-                            new Seller($company->name_ar), // seller name
-                            new TaxNumber($company->taxNumber), // seller tax number
-                            new InvoiceDate($data->date), // invoice date as Zulu ISO8601 @see https://en.wikipedia.org/wiki/ISO_8601
-                            new InvoiceTotalAmount($data->net), // invoice total amount
-                            new InvoiceTaxAmount($data -> tax) // invoice tax amount
-                            // TODO :: Support others tags
-                        ])->render();
-                        ?>
-                        <img src="{{$displayQRCodeAsBase64}}" style="width: 70px; height: 70px;" alt="QR Code"/>
-                    </div>
+                    @if(!empty($qrCodeImage))
+                        <div class="visible-print text-left mt-1">
+                            <img src="{{$qrCodeImage}}" style="width: 70px; height: 70px;" alt="QR Code"/>
+                        </div>
+                    @endif
                 </div>
                 <div class="clearfix"> </div> 
                 <hr>
@@ -174,6 +190,17 @@
                         <td>{{__('main.client')}} : <strong>{{$vendor->name}}</strong></td> 
                         <td>{{__('سجل ضريبي')}} : <strong>{{$vendor->vat_no}}</strong></td> 
                     </tr>  
+                    <tr>
+                        <td>{{ __('main.service_mode') }} : <strong>{{ $serviceLabel }}</strong></td>
+                        <td>{{ __('main.session_location') }} :
+                            <strong>{{ $data->session_location ?? '-' }}</strong>
+                        </td>
+                    </tr>
+                    @if(!empty($data->session_type))
+                        <tr>
+                            <td colspan="2">{{ __('main.session_type') }} : <strong>{{ $data->session_type }}</strong></td>
+                        </tr>
+                    @endif
                     <tr>
                         <td>{{__('main.tax_mode')}} : <strong>{{ $data->tax_mode === 'exclusive' ? __('main.tax_mode_exclusive') : __('main.tax_mode_inclusive') }}</strong></td>
                         <td></td>

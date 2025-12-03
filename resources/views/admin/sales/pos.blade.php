@@ -239,6 +239,28 @@ label.total {
                                         </select>
                                     </div>
                                 </div>
+                                <div class="col-lg-4">
+                                    <div class="form-group">
+                                        <label>{{ __('main.service_mode') }}</label>
+                                        <select class="form-control" name="service_mode" id="pos_service_mode">
+                                            <option value="dine_in">{{ __('main.service_mode_dine_in') }}</option>
+                                            <option value="takeaway">{{ __('main.service_mode_takeaway') }}</option>
+                                            <option value="delivery">{{ __('main.service_mode_delivery') }}</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-lg-4 pos-service-meta d-none">
+                                    <div class="form-group">
+                        <label>{{ __('main.session_location') }}</label>
+                        <input type="text" class="form-control" name="session_location" id="pos_session_location" placeholder="{{ __('main.session_location') }}">
+                                    </div>
+                                </div>
+                                <div class="col-lg-4 pos-service-meta d-none">
+                                    <div class="form-group">
+                        <label>{{ __('main.session_type') }}</label>
+                        <input type="text" class="form-control" name="session_type" id="pos_session_type" placeholder="{{ __('main.session_type') }}">
+                                    </div>
+                                </div>
                                 <div class="col-lg-12 mb-2">
                                     <input type="text" class="form-control" name="cost_center" id="cost_center" placeholder="{{__('main.cost_center')}}">
                                 </div>
@@ -379,6 +401,18 @@ label.total {
     var Bill = null ;
     var product_row_number = 3;
     var counter = 5; 
+
+    function togglePosServiceMeta(){
+        const mode = $('#pos_service_mode').val();
+        const showFields = mode === 'dine_in';
+        $('.pos-service-meta').toggleClass('d-none', !showFields);
+        if(!showFields){
+            $('#pos_session_location, #pos_session_type').val('');
+        }
+    }
+
+    $('#pos_service_mode').on('change', togglePosServiceMeta);
+    togglePosServiceMeta();
 
     $('#payment').click(function (){
         submit();

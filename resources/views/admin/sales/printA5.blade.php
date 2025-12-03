@@ -15,19 +15,58 @@
         th, td { border: 1px solid #ccc; padding: 4px; text-align: center; }
         .no-border td { border: none; }
         .totals td { text-align: left; }
+        .trial-watermark {
+            border: 1px dashed #f39c12;
+            padding: 6px;
+            margin-bottom: 6px;
+            text-align: center;
+            color: #c0392b;
+        }
+        .tax-empty {
+            display: inline-block;
+            min-width: 120px;
+            border-bottom: 1px solid #000;
+            height: 16px;
+        }
     </style>
 </head>
 <body>
     <div class="invoice">
         <div class="header">
+            @php
+                $serviceLabels = [
+                    'dine_in' => __('main.service_mode_dine_in'),
+                    'takeaway' => __('main.service_mode_takeaway'),
+                    'delivery' => __('main.service_mode_delivery'),
+                ];
+                $serviceLabel = $serviceLabels[$data->service_mode ?? 'dine_in'] ?? __('main.service_mode_dine_in');
+            @endphp
             <h3>{{ $company->name_ar ?? $data->branch_name }}</h3>
             <div>{{ $data->branch_name }} - {{ $data->branch_address }}</div>
+            @if($trialMode ?? false)
+                <div class="trial-watermark">
+                    نسخة تجريبية - البيانات الضريبية غير حقيقية
+                </div>
+            @endif
             <div>{{ __('main.invoice_type') }}: 
                 @if($data->invoice_type == 'tax_invoice') {{ __('main.invoice_type_tax') }}
                 @elseif($data->invoice_type == 'simplified_tax_invoice') {{ __('main.invoice_type_simplified') }}
                 @else {{ __('main.invoice_type_nontax') }} @endif
             </div>
             <div>{{ __('main.invoice_no') }}: {{ $data->invoice_no }} | {{ __('main.bill_date') }}: {{ $data->date }}</div>
+            <div>{{ __('main.service_mode') }}: {{ $serviceLabel }}</div>
+            <div>{{ __('main.session_location') }}: {{ $data->session_location ?? '-' }}</div>
+            @if(!empty($data->session_type))
+                <div>{{ __('main.session_type') }}: {{ $data->session_type }}</div>
+            @endif
+            <div>
+                {{ __('main.tax_number') ?? 'الرقم الضريبي' }}:
+                @if(!empty($resolvedTaxNumber))
+                    {{ $resolvedTaxNumber }}
+                @else
+                    <span class="tax-empty"></span>
+                @endif
+            </div>
         </div>
 
         <table class="no-border">
@@ -98,13 +137,18 @@
             </tr>
         </table>
 
-        @if(!empty($data->note) || (!empty($settings) && !empty($settings->invoice_terms)))
+        @if(!empty($data->note) || (!empty($settings) && !empty($settings->invoice_terms)) || !empty($qrCodeImage))
             <div class="footer">
                 @if(!empty($data->note))
                     <div><strong>{{ __('main.notes') }}:</strong> {{ $data->note }}</div>
                 @endif
                 @if(!empty($settings) && !empty($settings->invoice_terms))
                     <div><strong>{{ __('main.invoice_terms') }}:</strong> {!! nl2br(e($settings->invoice_terms)) !!}</div>
+                @endif
+                @if(!empty($qrCodeImage))
+                    <div style="margin-top:8px;">
+                        <img src="{{ $qrCodeImage }}" alt="QR" style="width:100px;height:100px;">
+                    </div>
                 @endif
             </div>
         @endif
