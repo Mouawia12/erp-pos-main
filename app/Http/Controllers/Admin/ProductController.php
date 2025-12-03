@@ -732,9 +732,13 @@ class ProductController extends Controller
             ->get();
 
         if($units->isEmpty() && $product){
+            $baseUnitName = optional($product->units)->name;
+            if(empty($baseUnitName) && $product->unit){
+                $baseUnitName = optional(\App\Models\Unit::find($product->unit))->name;
+            }
             return [[
                 'unit_id' => $product->unit,
-                'unit_name' => optional($product->units)->name,
+                'unit_name' => $baseUnitName ?: '',
                 'price' => $product->price,
                 'conversion_factor' => 1,
                 'barcode' => null
@@ -742,9 +746,13 @@ class ProductController extends Controller
         }
 
         return $units->map(function($u){
+            $unitName = $u->unit_name;
+            if(empty($unitName)){
+                $unitName = optional(\App\Models\Unit::find($u->unit_id))->name;
+            }
             return [
                 'unit_id' => $u->unit_id,
-                'unit_name' => $u->unit_name,
+                'unit_name' => $unitName ?: '',
                 'price' => $u->price,
                 'conversion_factor' => $u->conversion_factor ?? 1,
                 'barcode' => $u->barcode
