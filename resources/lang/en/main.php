@@ -375,6 +375,7 @@ return [
     'user_enter' => 'Date Entry',
     'note' => 'Note',
     'notes' => 'Notes',
+    'line_note_hint' => 'Item note (appears on the invoice instead of the product name)',
     'add_item_hint' => 'Please Add Item To System List',
     'notfound' => 'Sorry, this product is not registered in your system',
     'ok_btn' => 'Ok, I see',
@@ -544,6 +545,7 @@ return [
     'no_product_selected' => 'No Data To print',
     'print_barcode' => 'Barcode Print',
     'barcode' => 'Barcode',
+    'subcategory' => 'Subcategory',
     'print_qr' => 'QR Print',
 
     'box_expenses' => 'Expenses Receipt',

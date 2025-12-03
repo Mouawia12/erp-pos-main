@@ -178,7 +178,7 @@
                         <tbody>
                             @foreach($details as $detail)
                                 <tr>
-                                    <td>{{$detail ->name }} -- {{$detail ->code }}</td>
+                                    <td>{{ $detail->note ?: $detail->name }} -- {{$detail ->code }}</td>
                                     <td>{{$detail ->price_unit }}</td> 
                                     <td>{{$detail ->quantity }}</td>
                                     <td>{{$detail ->total }}</td>

@@ -13,6 +13,7 @@ use App\Models\PromotionItem;
 use App\Models\PurchaseDetails;
 use App\Models\SaleDetails;
 use App\Models\SystemSettings;
+use App\Models\Category;
 use App\Models\UpdateQuntityDetails;
 use App\Models\Warehouse;
 use App\Models\CompanyInfo;
@@ -38,10 +39,11 @@ class ProductController extends Controller
       
         $data = DB::table('products') 
             ->leftJoin('categories','products.category_id','=','categories.id')
+            ->leftJoin('categories as subcategories','products.subcategory_id','=','subcategories.id')
             ->leftJoin('units','products.unit','=','units.id')
             ->leftJoin('brands','products.brand','=','brands.id')  
             ->select('products.*','units.name as unitName','brands.name as brandName',
-                    'categories.name as category_name_ar') 
+                    'categories.name as category_name', 'subcategories.name as subcategory_name') 
             ->when(Auth::user()->subscriber_id ?? null, function($q,$sub){
                 $q->where('products.subscriber_id',$sub);
             })
@@ -63,6 +65,12 @@ class ProductController extends Controller
                     
                     return $btn; 
                 }) 
+                ->addColumn('category_path', function ($row) {
+                    if ($row->subcategory_name) {
+                        return $row->category_name . ' > ' . $row->subcategory_name;
+                    }
+                    return $row->category_name;
+                })
                 ->rawColumns(['action']) 
                 ->make(true);
         } 
@@ -82,12 +90,16 @@ class ProductController extends Controller
         $brands = $systemController->getAllBrands();
         $units = $systemController->getAllUnits();
         $categories = $systemController->getAllMainCategories();
+        $subCategories = Category::where('parent_id', '<>', 0)
+            ->orderBy('name')
+            ->get()
+            ->groupBy('parent_id');
         $taxRages = $systemController->getAllTaxRates();
         $taxTypes = $systemController->getAllTaxTypes();
         $settings = SystemSettings::first();
         $defaultCode = $this->getItemCode();
 
-        return view('admin.products.create',compact('brands','categories','taxRages','taxTypes','units','settings','defaultCode'));
+        return view('admin.products.create',compact('brands','categories','subCategories','taxRages','taxTypes','units','settings','defaultCode'));
     }
 
     /**
@@ -106,7 +118,17 @@ class ProductController extends Controller
             $this->productValidationAttributes()
         );
         $siteController = new SystemController();
-        $tax_excise = $siteController->getCategoryById($request->category_id)->tax_excise;
+        $category = Category::find($request->category_id);
+        $tax_excise = $category->tax_excise ?? 0;
+        if ($request->filled('subcategory_id')) {
+            $sub = Category::find($request->subcategory_id);
+            if ($sub && $sub->tax_excise !== null) {
+                $tax_excise = $sub->tax_excise;
+            }
+        }
+        if ($request->filled('tax_excise')) {
+            $tax_excise = (float) $request->tax_excise;
+        }
 
         if($request->hasFile('img')) {
             $imageName = time() . '.' . $request->img->extension();
@@ -124,6 +146,7 @@ class ProductController extends Controller
        
             $product = Product::create([
                 'code' => $request->code,
+                'barcode' => $request->barcode ? trim($request->barcode) : null,
                 'name' => $request->name,
                 'unit' => $request->unit,
                 'cost' => $request->cost,
@@ -140,7 +163,7 @@ class ProductController extends Controller
                 'tax_method' => $request->tax_method,
                 'price_includes_tax' => $request->boolean('price_includes_tax'),
                 'profit_margin' => $request->profit_margin,
-                'tax_excise' => $tax_excise > 0 ? $tax_excise:0,
+                'tax_excise' => max($tax_excise, 0),
                 'type' => $request->type,
                 'brand' => $request->brand,
                 'slug' => $request->slug ?? 0,
@@ -215,21 +238,25 @@ class ProductController extends Controller
      */
     public function edit($id)
     {
-            $product = Product::find($id);
-            if($product){
-                $systemController = new SystemController();
-                $brands = $systemController->getAllBrands();
-                $units = $systemController->getAllUnits();
-                $categories = $systemController->getAllMainCategories();
-                $taxRages = $systemController->getAllTaxRates();
-                $taxTypes = $systemController->getAllTaxTypes();
-                $productUnits = ProductUnit::where('product_id',$id)->get();
-                $productTaxes = ProductTax::where('product_id',$id)->pluck('tax_rate_id')->toArray();
-                $productVariants = ProductVariant::where('product_id',$id)->get();
+        $product = Product::find($id);
+        if($product){
+            $systemController = new SystemController();
+            $brands = $systemController->getAllBrands();
+            $units = $systemController->getAllUnits();
+            $categories = $systemController->getAllMainCategories();
+            $subCategories = Category::where('parent_id', '<>', 0)
+                ->orderBy('name')
+                ->get()
+                ->groupBy('parent_id');
+            $taxRages = $systemController->getAllTaxRates();
+            $taxTypes = $systemController->getAllTaxTypes();
+            $productUnits = ProductUnit::where('product_id',$id)->get();
+            $productTaxes = ProductTax::where('product_id',$id)->pluck('tax_rate_id')->toArray();
+            $productVariants = ProductVariant::where('product_id',$id)->get();
 
-                return view('admin.products.update',
-                compact('product','brands','categories','taxRages','taxTypes','units','productUnits','productTaxes','productVariants'));
-            }
+            return view('admin.products.update',
+            compact('product','brands','categories','subCategories','taxRages','taxTypes','units','productUnits','productTaxes','productVariants'));
+        }
         }
 
     private function syncProductTaxes(int $productId, array $taxIds): void
@@ -299,14 +326,23 @@ class ProductController extends Controller
                 $this->productValidationAttributes()
             );
 
-            $siteController = new SystemController();
-            $tax_excise = $siteController->getCategoryById($request->category_id)->tax_excise;
+            $category = Category::find($request->category_id);
+            $tax_excise = $category->tax_excise ?? 0;
+            if (!empty($request->subcategory_id)) {
+                $subCategory = Category::find($request->subcategory_id);
+                if ($subCategory && $subCategory->tax_excise !== null) {
+                    $tax_excise = $subCategory->tax_excise;
+                }
+            }
+            if ($request->filled('tax_excise')) {
+                $tax_excise = (float) $request->tax_excise;
+            }
 
             if($request->hasFile('img')) {
                 $imageName = time() . '.' . $request->img->extension();
                 $request->img->move(('uploads/items/images'), $imageName);
             } else {
-                $imageName = '';
+                $imageName = $product->img;
             }
 
             try {
@@ -316,6 +352,7 @@ class ProductController extends Controller
                 }
                 $product -> update ([
                     'code' => $request->code,
+                    'barcode' => $request->barcode ? trim($request->barcode) : null,
                     'name' => $request->name,
                     'unit' => $request->unit,
                     'cost' => $request->cost,
@@ -332,7 +369,7 @@ class ProductController extends Controller
                     'tax_method' => $request->tax_method,
                     'price_includes_tax' => $request->boolean('price_includes_tax'),
                     'profit_margin' => $request->profit_margin,
-                    'tax_excise' => $tax_excise > 0 ? $tax_excise:0,
+                    'tax_excise' => max($tax_excise, 0),
                     'type' => $request->type,
                     'brand' => $request->brand,
                     'slug' => $request->slug,
@@ -398,19 +435,23 @@ class ProductController extends Controller
 
         $codeRule = Rule::unique('products', 'code');
         $nameRule = Rule::unique('products', 'name');
+        $barcodeRule = Rule::unique('products', 'barcode');
 
         if ($subscriberId) {
             $codeRule = $codeRule->where(fn ($q) => $q->where('subscriber_id', $subscriberId));
             $nameRule = $nameRule->where(fn ($q) => $q->where('subscriber_id', $subscriberId));
+            $barcodeRule = $barcodeRule->where(fn ($q) => $q->where('subscriber_id', $subscriberId));
         }
 
         if ($productId) {
             $codeRule = $codeRule->ignore($productId);
             $nameRule = $nameRule->ignore($productId);
+            $barcodeRule = $barcodeRule->ignore($productId);
         }
 
         $rules = [
             'code' => ['required', 'string', 'max:191', $codeRule],
+            'barcode' => ['nullable', 'string', 'max:191', $barcodeRule],
             'name' => ['required', 'string', 'max:191', $nameRule],
             'unit' => ['required', 'exists:units,id'],
             'brand' => ['required', 'exists:brands,id'],
@@ -463,6 +504,7 @@ class ProductController extends Controller
         $messages = [
             'code.required' => 'يرجى إدخال كود الصنف.',
             'code.unique' => 'كود الصنف مستخدم مسبقاً.',
+            'barcode.unique' => 'الباركود مستخدم مسبقاً.',
             'name.required' => 'يرجى إدخال اسم الصنف.',
             'name.unique' => 'اسم الصنف مستخدم مسبقاً.',
             'unit.exists' => 'الوحدة الأساسية المختارة غير صحيحة.',
@@ -497,6 +539,7 @@ class ProductController extends Controller
     {
         $attributes = [
             'code' => 'كود الصنف',
+            'barcode' => 'باركود الصنف',
             'name' => 'اسم الصنف',
             'unit' => 'الوحدة الأساسية',
             'brand' => 'الماركة',
@@ -581,6 +624,7 @@ class ProductController extends Controller
             exit;
         }else{
             $product = Product::where('code' , 'like' , '%'.$code.'%')
+                ->orWhere('barcode','like','%'.$code.'%')
                 ->orWhere('name','like' , '%'.$code.'%')
                 ->limit(5)
                 ->get()
@@ -591,8 +635,11 @@ class ProductController extends Controller
     }
 
     private function getSingleProduct($code){ 
-        $product = Product::where('code' , '=' , $code)
-            ->orWhere('name','=' , $code)
+        $product = Product::where(function($query) use ($code){
+                $query->where('code','=',$code)
+                    ->orWhere('barcode','=',$code)
+                    ->orWhere('name','=',$code);
+            })
             ->first(); 
 
         if(!$product){
@@ -713,6 +760,10 @@ class ProductController extends Controller
             $results = $this->searchWarehouseProducts($warehouse_id, $code, false, 5);
         }
 
+        if ($results->isEmpty()) {
+            $results = $this->searchProductsWithoutWarehouse($code, true);
+        }
+
         echo json_encode($results->values());
         exit;
     }
@@ -736,6 +787,23 @@ class ProductController extends Controller
         })->filter();
     }
 
+    private function searchProductsWithoutWarehouse($code, bool $exact = true, ?int $limit = null)
+    {
+        $query = Product::with('units')
+            ->where('products.status', 1);
+
+        $this->applyProductSearchFilters($query, $code, $exact);
+
+        if ($limit) {
+            $query->limit($limit);
+        }
+
+        return $query->get()->map(function ($product) {
+            $product->qty = $product->quantity ?? 0;
+            return $this->appendProductMeta($product);
+        })->filter();
+    }
+
     private function applyProductSearchFilters($query, $code, bool $exact): void
     {
         $value = $exact ? $code : '%' . $code . '%';
@@ -743,9 +811,11 @@ class ProductController extends Controller
         $query->where(function ($q) use ($value, $exact, $code) {
             if ($exact) {
                 $q->where('products.code', '=', $value)
+                    ->orWhere('products.barcode', '=', $value)
                     ->orWhere('products.name', '=', $value);
             } else {
                 $q->where('products.code', 'like', $value)
+                    ->orWhere('products.barcode', 'like', $value)
                     ->orWhere('products.name', 'like', $value);
             }
 

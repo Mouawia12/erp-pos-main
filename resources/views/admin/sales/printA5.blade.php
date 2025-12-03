@@ -99,7 +99,7 @@
                         <td>{{ $index+1 }}</td>
                         <td>{{ $detail->product_code }}</td>
                         <td>
-                            {{ $detail->name }}
+                            {{ $detail->note ?: $detail->name }}
                             @if(!empty($detail->variant_color) || !empty($detail->variant_size))
                                 <div style="font-size: 11px; color:#555;">
                                     @if(!empty($detail->variant_color)) {{ $detail->variant_color }} @endif

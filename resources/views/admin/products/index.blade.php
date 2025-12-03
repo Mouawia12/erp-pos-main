@@ -47,7 +47,7 @@
                                         <th>{{__('main.name')}}</th>
                                         <th>{{__('main.unit')}}</th>
                                         <th>{{__('main.brand')}}</th>
-                                        <th>{{__('main.main_category')}}</th>
+                                        <th>{{__('main.categories')}}</th>
                                         <th>{{__('main.price')}}</th>
                                         <th>{{__('main.cost')}}</th> 
                                         @if(empty(Auth::user()->branch_id))
@@ -187,8 +187,8 @@
                         name: 'brandName'
                     },
                     {
-                        data: 'category_name_ar',
-                        name: 'category_name_ar'
+                        data: 'category_path',
+                        name: 'category_path'
                     },
         
                     {

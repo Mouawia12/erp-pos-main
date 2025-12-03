@@ -59,12 +59,25 @@
                                     </div>
                                 </div> 
                                 <div class="col-md-3">
-                                     <div class="form-group">
-                                         <label>{{ __('main.code') }}<span class="text-danger">*</span> </label>
-                                         <input type="text"  id="code" name="code"
-                                                class="form-control @error('code') is-invalid @enderror"
-                                                placeholder="{{ __('main.code') }}" value="{{ old('code', $defaultCode ?? '') }}" required />
+                                    <div class="form-group">
+                                        <label>{{ __('main.code') }}<span class="text-danger">*</span> </label>
+                                        <input type="text"  id="code" name="code"
+                                               class="form-control @error('code') is-invalid @enderror"
+                                               placeholder="{{ __('main.code') }}" value="{{ old('code', $defaultCode ?? '') }}" required />
                                          @error('code')
+                                         <span class="invalid-feedback" role="alert">
+                                             <strong>{{ $message }}</strong>
+                                         </span>
+                                         @enderror
+                                     </div>
+                                 </div> 
+                                <div class="col-md-3">
+                                     <div class="form-group">
+                                         <label>{{ __('main.barcode') }}</label>
+                                         <input type="text"  id="barcode" name="barcode"
+                                                class="form-control @error('barcode') is-invalid @enderror"
+                                                placeholder="{{ __('main.barcode') }}" value="{{ old('barcode') }}" />
+                                         @error('barcode')
                                          <span class="invalid-feedback" role="alert">
                                              <strong>{{ $message }}</strong>
                                          </span>
@@ -102,12 +115,26 @@
                                 <div class="col-md-3">
                                     <div class="form-group">
                                         <label>{{ __('main.categories') }}  <span class="text-danger">*</span> </label>
-                                        <select class="js-example-basic-single w-100 @error('category_id') is-invalid @enderror" name="category_id">
+                                        <select class="js-example-basic-single w-100 @error('category_id') is-invalid @enderror" name="category_id" id="category_id">
+                                            <option value="">{{ __('main.choose') }}</option>
                                             @foreach($categories as $cat) 
-                                                <option value="{{$cat->id}}" @if(old('category_id')==$cat->id) selected @endif>{{$cat->name}}</option> 
+                                                <option value="{{$cat->id}}" data-excise="{{ $cat->tax_excise ?? 0 }}" @if(old('category_id')==$cat->id) selected @endif>{{$cat->name}}</option> 
                                             @endforeach
                                         </select>
                                         @error('category_id')
+                                        <span class="invalid-feedback" role="alert">
+                                            <strong>{{ $message }}</strong>
+                                        </span>
+                                        @enderror
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label>{{ __('main.subcategory') ?? 'التصنيف الفرعي' }}</label>
+                                        <select class="form-control @error('subcategory_id') is-invalid @enderror" name="subcategory_id" id="subcategory_id" data-selected="{{ old('subcategory_id') }}">
+                                            <option value="">{{ __('main.choose') }}</option>
+                                        </select>
+                                        @error('subcategory_id')
                                         <span class="invalid-feedback" role="alert">
                                             <strong>{{ $message }}</strong>
                                         </span>
@@ -154,6 +181,17 @@
                                                 <option value="{{$tax->id}}" @if(in_array($tax->id,$selectedTaxes)) selected @endif>{{$tax->rate}}</option>
                                             @endforeach
                                         </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label>{{ __('main.tax_excise') }}</label>
+                                        <input type="number" step="0.01" id="tax_excise" name="tax_excise" class="form-control @error('tax_excise') is-invalid @enderror" value="{{ old('tax_excise') }}">
+                                        @error('tax_excise')
+                                        <span class="invalid-feedback" role="alert">
+                                            <strong>{{ $message }}</strong>
+                                        </span>
+                                        @enderror
                                     </div>
                                 </div>
                                 
@@ -377,11 +415,91 @@
     </div>
 @endcan 
 @endsection 
+@php
+    $subCategoryOptions = $subCategories->mapWithKeys(function ($group, $parentId) {
+        return [
+            $parentId => $group->map(function ($cat) {
+                return [
+                    'id' => $cat->id,
+                    'name' => $cat->name,
+                    'tax_excise' => $cat->tax_excise ?? 0,
+                ];
+            })->values()
+        ];
+    });
+@endphp
 @section('js')
 <script type="text/javascript">
-
+    const subCategories = @json($subCategoryOptions);
+    const subPlaceholder = "{{ __('main.choose') }}";
     $(document).ready(function () {
-        
+        const subSelect = document.getElementById('subcategory_id');
+        const parentSelect = document.getElementById('category_id');
+        let exciseTouched = false;
+
+        function fillSubCategories(parentId) {
+            if (!subSelect) return;
+            const selected = subSelect.dataset.selected || '';
+            subSelect.innerHTML = `<option value="">${subPlaceholder}</option>`;
+            (subCategories[parentId] || []).forEach(function (cat) {
+                const option = document.createElement('option');
+                option.value = cat.id;
+                option.textContent = cat.name;
+                option.dataset.excise = cat.tax_excise ?? 0;
+                if (selected && String(cat.id) === String(selected)) {
+                    option.selected = true;
+                }
+                subSelect.appendChild(option);
+            });
+            if (!(subCategories[parentId] || []).some(cat => String(cat.id) === String(selected))) {
+                subSelect.value = '';
+            }
+        }
+
+        function autoSetExcise(option) {
+            if (!option || exciseTouched) return;
+            const value = option.dataset.excise ?? null;
+            const exciseInput = document.getElementById('tax_excise');
+            if (value !== null && exciseInput && !exciseInput.value) {
+                exciseInput.value = value;
+            }
+        }
+
+        if (parentSelect) {
+            fillSubCategories(parentSelect.value);
+            autoSetExcise(parentSelect.selectedOptions[0]);
+            parentSelect.addEventListener('change', function () {
+                exciseTouched = false;
+                fillSubCategories(this.value);
+                if (!subSelect.value) {
+                    autoSetExcise(this.selectedOptions[0]);
+                }
+            });
+        }
+
+        if (subSelect) {
+            subSelect.addEventListener('change', function () {
+                subSelect.dataset.selected = this.value || '';
+                if (this.value && this.selectedOptions[0]) {
+                    exciseTouched = true;
+                    const option = this.selectedOptions[0];
+                    if (option.dataset.excise !== undefined && document.getElementById('tax_excise')) {
+                        document.getElementById('tax_excise').value = option.dataset.excise;
+                    }
+                } else if (parentSelect) {
+                    exciseTouched = false;
+                    autoSetExcise(parentSelect.selectedOptions[0]);
+                }
+            });
+        }
+
+        const exciseInput = document.getElementById('tax_excise');
+        if (exciseInput) {
+            exciseInput.addEventListener('input', function () {
+                exciseTouched = true;
+            });
+        }
+
         // وحدات متعددة
         const unitOptionsHtml = `@foreach($units as $unit)<option value="{{$unit->id}}">{{$unit->name}}</option>@endforeach`;
         let unitRowIndex = 0;

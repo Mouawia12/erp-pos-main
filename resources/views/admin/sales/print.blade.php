@@ -242,7 +242,7 @@
                         <tr>
                             <td>{{$loop -> index+1}}</td>
                             <td>
-                                {{$detail ->name }} -- {{$detail ->code }}
+                                {{ $detail->note ?: $detail->name }} -- {{$detail ->code }}
                                 @if(!empty($detail->variant_color) || !empty($detail->variant_size))
                                     <div style="font-size: 11px; color:#555;">
                                         @if(!empty($detail->variant_color)) {{$detail->variant_color}} @endif

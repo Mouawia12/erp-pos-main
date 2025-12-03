@@ -314,13 +314,21 @@ class SalesController extends Controller
             $productDetails = Product::with('productTaxes')->find($id);
             $unitId = $request->unit_id[$index] ?? $productDetails->unit;
             $unitFactor = $request->unit_factor[$index] ?? 1;
-            $basePrice = $request->price_unit[$index];
+            $basePrice = (float) ($request->original_price[$index] ?? $request->price_unit[$index]);
             if($customerPriceLevel){
                 $col = 'price_level_'.$customerPriceLevel;
                 if(!empty($productDetails->$col)){
-                    $basePrice = $productDetails->$col;
+                    $basePrice = (float) $productDetails->$col;
                 }
             }
+            $manualDiscount = isset($request->discount_unit[$index]) ? (float)$request->discount_unit[$index] : 0;
+            if($manualDiscount < 0){
+                $manualDiscount = 0;
+            }
+            if($manualDiscount > $basePrice){
+                $manualDiscount = $basePrice;
+            }
+            $basePrice -= $manualDiscount;
             if (! $allowNegativeStock) {
                 $availableQty = WarehouseProductModel::query()
                     ->where('warehouse_id', $request->warehouse_id)
@@ -342,8 +350,8 @@ class SalesController extends Controller
                 $request->qnt[$index],
                 $basePrice
             );
-            $discountPerUnit = $promoDiscount['discount_unit'];
-            $basePrice = max($basePrice - $discountPerUnit, 0);
+            $discountPerUnit = $manualDiscount + $promoDiscount['discount_unit'];
+            $basePrice = max($basePrice - $promoDiscount['discount_unit'], 0);
             $qty = $request->qnt[$index];
             $taxRate = $productDetails->totalTaxRate();
             $exciseRate = (float)($productDetails->tax_excise ?? 0);
@@ -380,7 +388,8 @@ class SalesController extends Controller
                 'tax_excise' => $lineTaxExcise, 
                 'total' => $lineTotal,
                 'lista' => 0,
-                'profit'=> ($basePrice - ($productDetails->cost * $unitFactor)) * $qty
+                'profit'=> ($basePrice - ($productDetails->cost * $unitFactor)) * $qty,
+                'note' => !empty($request->item_note[$index]) ? trim($request->item_note[$index]) : null,
             ];
 
             $item = new Product();

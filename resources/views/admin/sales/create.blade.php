@@ -204,7 +204,7 @@ span strong {font-size:12px;}
                                                             <th class="text-center">{{__('main.available_qty')}}</th>
                                                             <th class="text-center">{{__('main.cost')}}</th>
                                                             <th class="text-center">{{__('main.last_sale_price')}}</th>
-                                                            <th class="text-center">{{__('main.quantity')}}</th>
+                                                            <th class="text-center">{{ __('main.unit') }} / {{ __('main.quantity') }}</th>
                                                             <th class="text-center">{{__('main.price.unit')}}</th>
                                                             <th class="text-center">{{__('main.discount')}}</th> 
                                                             <th class="text-center">{{__('main.mount')}}</th>
@@ -377,6 +377,7 @@ span strong {font-size:12px;}
     var sItems = {};
     var count = 1;
     var itemKey = 1;
+    const itemNotePlaceholder = @json(__('main.line_note_hint'));
 
     $(document).ready(function() {  
 
@@ -744,11 +745,13 @@ span strong {font-size:12px;}
         sItems[key].product_id = item.id;
         sItems[key].price_with_tax = priceWithTax;
         sItems[key].price_withoute_tax = priceWithoutTax;
+        sItems[key].original_price = priceWithoutTax;
         sItems[key].item_tax = itemTax;
         sItems[key].tax_rate = taxRate;
         sItems[key].tax_excise = Excise; 
         sItems[key].qnt = 1;
         sItems[key].discount = 0;
+        sItems[key].note = '';
         sItems[key].available_qty = item.qty ? Number(item.qty) : 0;
         sItems[key].cost = item.cost ? Number(item.cost) : 0;
         sItems[key].last_sale_price = item.last_sale_price ? Number(item.last_sale_price) : 0;
@@ -805,20 +808,13 @@ span strong {font-size:12px;}
                 return;
             }
 
-            var newPrice = parseFloat($(this).val()),
+            var newPrice = parseFloat($(this).val()) || 0,
                 item_id = row.attr('data-item-id');
 
-            var item_tax = sItems[item_id].item_tax;
-            var tax_rate = sItems[item_id].tax_rate;
-            var tax_excise = sItems[item_id].tax_excise;
-            var priceWithTax = newPrice;
-            if(item_tax > 0){
-                priceWithTax = newPrice + (newPrice * (tax_rate/100));
-                item_tax = (newPrice * (tax_rate/100)) + (newPrice * (tax_excise/100));
-            }
-            sItems[item_id].price_withoute_tax= newPrice;
-            sItems[item_id].price_with_tax= priceWithTax;
-            sItems[item_id].item_tax= item_tax;
+            sItems[item_id].discount = 0;
+            row.find('.iDiscount').val('0');
+            sItems[item_id].original_price = newPrice;
+            updateItemPricingValues(sItems[item_id], newPrice);
             loadItems();
 
         }); 
@@ -826,18 +822,12 @@ span strong {font-size:12px;}
         $(document).on('change','.selectUnit',function () {
             var row = $(this).closest('tr');
             var item_id = row.attr('data-item-id');
-            var selectedPrice = parseFloat($(this).find(':selected').data('price')) || sItems[item_id].price_withoute_tax;
+            var selectedPrice = parseFloat($(this).find(':selected').data('price')) || sItems[item_id].original_price || 0;
             var factor = parseFloat($(this).find(':selected').data('factor')) || 1;
 
-            var item_tax = 0;
-            var tax_rate = sItems[item_id].tax_rate;
-            var tax_excise = sItems[item_id].tax_excise;
-            var priceWithTax = selectedPrice;
-            priceWithTax = selectedPrice + (selectedPrice * (tax_rate/100));
-            item_tax = (selectedPrice * (tax_rate/100)) + (selectedPrice * (tax_excise/100));
-            sItems[item_id].price_withoute_tax= selectedPrice;
-            sItems[item_id].price_with_tax= priceWithTax;
-            sItems[item_id].item_tax= item_tax;
+            sItems[item_id].original_price = selectedPrice;
+            var effectivePrice = Math.max(selectedPrice - (sItems[item_id].discount ?? 0), 0);
+            updateItemPricingValues(sItems[item_id], effectivePrice);
             sItems[item_id].selected_unit_id = $(this).val();
             sItems[item_id].unit_factor = factor;
             row.find('.unitFactor').val(factor);
@@ -848,25 +838,31 @@ span strong {font-size:12px;}
         $(document).on('change','.iDiscount',function () {
             var row = $(this).closest('tr'); 
        
-            var newDiscount = parseFloat($(this).val()),
+            var newDiscount = parseFloat($(this).val()) || 0,
                 item_id = row.attr('data-item-id');   
-            
-            var price_withoute_tax = sItems[item_id].price_withoute_tax; 
-            var priceWithTax = sItems[item_id].priceWithTax; 
-            var item_tax = sItems[item_id].item_tax;
-            var tax_rate = sItems[item_id].tax_rate;
-            var tax_excise = sItems[item_id].tax_excise;
- 
-            price_withoute_tax = price_withoute_tax - newDiscount;
-            priceWithTax = price_withoute_tax + (price_withoute_tax * (tax_rate/100));
-            item_tax = (price_withoute_tax * (tax_rate/100)) + (price_withoute_tax * (tax_excise/100));
+
+            if(newDiscount < 0){
+                newDiscount = 0;
+                $(this).val(newDiscount.toFixed(2));
+            }
+
+            var maxDiscount = sItems[item_id].original_price ?? 0;
+            if(newDiscount > maxDiscount){
+                newDiscount = maxDiscount;
+                $(this).val(maxDiscount.toFixed(2));
+            }
 
             sItems[item_id].discount = newDiscount;
-            //sItems[item_id].price_withoute_tax = price_withoute_tax;
-            sItems[item_id].price_with_tax= priceWithTax;
-            sItems[item_id].item_tax= item_tax;
+            var effectivePrice = Math.max((sItems[item_id].original_price ?? 0) - newDiscount, 0);
+            updateItemPricingValues(sItems[item_id], effectivePrice);
             loadItems();
         }); 
+
+        $(document).on('input','.itemNote',function () {
+            var row = $(this).closest('tr');
+            var item_id = row.attr('data-item-id');
+            sItems[item_id].note = $(this).val();
+        });
 
     function is_numeric(mixed_var) {
         var whitespace = ' \n\r\t\f\x0b\xa0\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u3000';
@@ -875,6 +871,29 @@ span strong {font-size:12px;}
             mixed_var !== '' &&
             !isNaN(mixed_var)
         );
+    }
+
+    function updateItemPricingValues(item, effectivePrice){
+        effectivePrice = Math.max(effectivePrice || 0, 0);
+        var tax_rate = parseFloat(item.tax_rate ?? 0) || 0;
+        var tax_excise = parseFloat(item.tax_excise ?? 0) || 0;
+        var vatAmount = effectivePrice * (tax_rate/100);
+        var exciseAmount = effectivePrice * (tax_excise/100);
+        item.price_withoute_tax = effectivePrice;
+        item.item_tax = vatAmount + exciseAmount;
+        item.price_with_tax = effectivePrice + item.item_tax;
+    }
+
+    function escapeHtml(value){
+        if(value === null || value === undefined){
+            return '';
+        }
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
     }
 
   function loadItems(){
@@ -892,7 +911,9 @@ span strong {font-size:12px;}
             console.log(item);
 
             var newTr = $('<tr data-item-id="'+i+'">');
-            var tr_html ='<td><input type="hidden" name="product_id[]" value="'+(item.product_id ?? item.id)+'"> <span><strong>'+item.name + '</strong><br>' + (item.code)+'</span> </td>';
+            var nameLabel = '<div><strong>'+escapeHtml(item.name ?? '')+'</strong><br><small class="text-muted">'+escapeHtml(item.code ?? '')+'</small></div>';
+            var noteInput = '<div class="mt-2"><input type="text" class="form-control form-control-sm itemNote" name="item_note[]" value="'+escapeHtml(item.note ?? '')+'" placeholder="'+escapeHtml(itemNotePlaceholder)+'"></div>';
+            var tr_html ='<td><input type="hidden" name="product_id[]" value="'+(item.product_id ?? item.id)+'">' + nameLabel + noteInput + '</td>';
                 tr_html +='<td><span class="badge badge-light">'+Number(item.available_qty ?? 0)+'</span></td>';
                 tr_html +='<td><input type="text" readonly class="form-control" value="'+Number(item.cost ?? 0).toFixed(2)+'"></td>';
                 tr_html +='<td><input type="text" readonly class="form-control" value="'+Number(item.last_sale_price ?? 0).toFixed(2)+'"></td>';
@@ -904,16 +925,16 @@ span strong {font-size:12px;}
                     });
                 }
                 unitSelect += '</select><input type="hidden" name="unit_factor[]" class="unitFactor" value="'+(item.unit_factor ?? 1)+'">';
+                var qtyInput = '<div class="mt-2"><input type="number" step="0.01" min="0" class="form-control form-control-sm iQuantity" name="qnt[]" value="'+item.qnt+'"></div>';
 
-                tr_html +='<td>'+unitSelect+'</td>';
-                tr_html +='<td><input type="number" class="form-control iQuantity" name="qnt[]" value="'+item.qnt+'"></td>';
-                tr_html +='<td><input type="number" readonly="readonly" class="form-control iPrice" name="price_unit[]" value="'+(item.price_withoute_tax - item.discount).toFixed(2)+'"></td>';
-                tr_html +='<td><input type="number" class="form-control iDiscount" name="discount_unit[]" value="'+(item.discount).toFixed(2)+'"></td>';
-                tr_html +='<td hidden><input type="hidden" class="form-control iPriceWTax" name="price_with_tax[]" value="'+item.price_with_tax.toFixed(2)+'"></td>'; 
-                tr_html +='<td><input type="text" readonly="readonly" class="form-control" name="total[]" value="'+((item.price_withoute_tax - item.discount)*item.qnt).toFixed(2)+'"></td>';
-                tr_html +='<td><input type="text" readonly="readonly" class="form-control" name="tax[]" value="'+(item.item_tax*item.qnt).toFixed(2)+'"></td>';
-                tr_html +='<td hidden><input type="hidden" class="form-control TaxExcise" name="tax_excise[]" value="'+(((item.tax_excise/100)*(item.price_withoute_tax - item.discount))*item.qnt).toFixed(2)+'"></td>';
-                tr_html +='<td><input type="text" readonly="readonly" class="form-control" name="net[]" value="'+(((item.price_withoute_tax - item.discount) + item.item_tax)*item.qnt).toFixed(2)+'"></td>';
+                tr_html +='<td>'+unitSelect+qtyInput+'</td>';
+                tr_html +='<td><input type="number" readonly="readonly" class="form-control iPrice" name="price_unit[]" value="'+Number(item.price_withoute_tax ?? 0).toFixed(2)+'"><input type="hidden" name="original_price[]" value="'+Number(item.original_price ?? 0).toFixed(2)+'"></td>';
+                tr_html +='<td><input type="number" class="form-control iDiscount" name="discount_unit[]" value="'+Number(item.discount ?? 0).toFixed(2)+'"></td>';
+                tr_html +='<td hidden><input type="hidden" class="form-control iPriceWTax" name="price_with_tax[]" value="'+Number(item.price_with_tax ?? 0).toFixed(2)+'"></td>'; 
+                tr_html +='<td><input type="text" readonly="readonly" class="form-control" name="total[]" value="'+((Number(item.price_withoute_tax ?? 0))*item.qnt).toFixed(2)+'"></td>';
+                tr_html +='<td><input type="text" readonly="readonly" class="form-control" name="tax[]" value="'+(Number(item.item_tax ?? 0)*item.qnt).toFixed(2)+'"></td>';
+                tr_html +='<td hidden><input type="hidden" class="form-control TaxExcise" name="tax_excise[]" value="'+(((Number(item.tax_excise ?? 0)/100)*(Number(item.price_withoute_tax ?? 0)))*item.qnt).toFixed(2)+'"></td>';
+                tr_html +='<td><input type="text" readonly="readonly" class="form-control" name="net[]" value="'+(((Number(item.price_withoute_tax ?? 0)) + Number(item.item_tax ?? 0))*item.qnt).toFixed(2)+'"></td>';
                 tr_html +='<td hidden><input type="hidden" class="form-control TaxRate" name="tax_rate[]" value="'+item.tax_rate+'"></td>';
                 tr_html +='<td hidden><input type="hidden" class="form-control TaxExciseRate" name="tax_excise_rate[]" value="'+item.tax_excise+'"></td>';
                 tr_html +=`<td> <button type="button" class="btn btn-labeled btn-danger deleteBtn " value=" '+i+' ">
@@ -925,11 +946,11 @@ span strong {font-size:12px;}
             newTr.html(tr_html);
             newTr.appendTo('#sTable');
 
-            items_count_val += 1 ;  
-            first_total_val += (item.price_withoute_tax - item.discount) * item.qnt;
-            tax_total_val +=  Number(item.item_tax)  * Number(item.qnt)  ;
-            discount_total_val += item.discount;
-			net_sales_val += (((item.price_withoute_tax - item.discount) + item.item_tax)*item.qnt);
+            items_count_val += Number(item.qnt ?? 0);
+            first_total_val += Number(item.price_withoute_tax ?? 0) * item.qnt;
+            tax_total_val +=  Number(item.item_tax ?? 0)  * Number(item.qnt)  ;
+            discount_total_val += Number(item.discount ?? 0) * Number(item.qnt ?? 0);
+			net_sales_val += (((Number(item.price_withoute_tax ?? 0)) + Number(item.item_tax ?? 0))*item.qnt);
 
 
         });
