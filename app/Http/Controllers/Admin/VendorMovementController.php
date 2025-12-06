@@ -12,6 +12,8 @@ use App\Http\Requests\StoreVendorMovementRequest;
 use App\Http\Requests\UpdateVendorMovementRequest;
 use Carbon\Carbon; 
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Log;
 
 class VendorMovementController extends Controller
 {
@@ -103,7 +105,7 @@ class VendorMovementController extends Controller
         $multy = $isMinus ? -1:1;
         if($items){
             foreach ($items as $item){
-                WarehouseMovement::create([ 
+                $payload = [
                     'warehouse_id' => $item->warehouse_id,
                     'product_id' => $item->product_id,
                     'debit' => $type > 0 ? $item->quantity * $multy : 0,
@@ -112,9 +114,43 @@ class VendorMovementController extends Controller
                     'invoice_id' => $bill_id,
                     'invoice_no' => $bill_no,
                     'user_id' => Auth::user() -> id,
-                ]);
+                ];
+
+                $this->storeWarehouseMovement($payload, $bill_no);
             }
         }
+    }
+
+    private function storeWarehouseMovement(array $payload, string $billNo): void
+    {
+        try {
+            WarehouseMovement::create($payload);
+        } catch (QueryException $e) {
+            if ($this->isInvoiceNoIntegerError($e)) {
+                $fallbackValue = $this->sanitizeInvoiceNumber($billNo);
+                $payload['invoice_no'] = $fallbackValue;
+                WarehouseMovement::create($payload);
+                Log::warning('warehouse_movements.invoice_no forced to numeric fallback', [
+                    'original' => $billNo,
+                    'fallback' => $fallbackValue,
+                ]);
+            } else {
+                throw $e;
+            }
+        }
+    }
+
+    private function isInvoiceNoIntegerError(QueryException $e): bool
+    {
+        return str_contains($e->getMessage(), 'warehouse_movements') &&
+            str_contains($e->getMessage(), 'invoice_no') &&
+            str_contains($e->getMessage(), 'Incorrect integer value');
+    }
+
+    private function sanitizeInvoiceNumber(string $invoiceNo): int
+    {
+        $numbersOnly = preg_replace('/\\D+/', '', $invoiceNo);
+        return (int) ($numbersOnly !== '' ? $numbersOnly : 0);
     }
 
 }

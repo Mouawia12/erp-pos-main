@@ -13,7 +13,7 @@ class Sales extends Model
     protected $fillable = [
         'date','invoice_no','customer_id','representative_id', 'customer_name', 'customer_phone','biller_id',
         'warehouse_id','note','total','discount','tax','tax_excise','net','paid',
-        'sale_status','payment_status','pos','lista','profit','sale_id',
+        'sale_status','payment_status','pos','lista','profit','sale_id','created_by',
         'additional_service', 'branch_id','user_id', 'status', 'invoice_type','service_mode','session_location','session_type','cost_center','tax_mode',
         'locked_at','subscriber_id'
     ];

@@ -7,6 +7,22 @@
             {{ session('success') }}
         </div>
     @endif
+    @if (session('error'))
+        <div class="alert alert-danger fade show">
+            <button class="close" data-dismiss="alert" aria-label="Close">×</button>
+            {{ session('error') }}
+        </div>
+    @endif
+    @if ($errors->any())
+        <div class="alert alert-danger fade show">
+            <button class="close" data-dismiss="alert" aria-label="Close">×</button>
+            <ul class="mb-0">
+                @foreach ($errors->all() as $message)
+                    <li>{{ $message }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
 <style>  
 .modal-content{
     border: unset !important;
@@ -350,8 +366,10 @@ span strong {font-size:12px;}
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <div class="modal-body" id="smallBody">
-                <img src="../../assets/img/warning.png" class="alertImage">
+            <div class="modal-body text-center" id="smallBody">
+                <div class="mb-3">
+                    <i class="fa fa-exclamation-triangle text-warning" style="font-size:48px;"></i>
+                </div>
                 <label class="alertTitle">{{__('main.notfound')}}</label>
                 <br> 
                 <label  class="alertSubTitle" id="modal_table_bill"></label>
@@ -379,46 +397,131 @@ span strong {font-size:12px;}
     var itemKey = 1;
     const itemNotePlaceholder = @json(__('main.line_note_hint'));
 
+    function setupPaymentModal(){
+        const mismatchMsg = "{{ __('main.payments_must_match_total') }}";
+        const totalLabel = "{{ __('main.total.final') }}";
+        const paidLabel = "{{ __('main.paid') }}";
+
+        function sumCards(){
+            var total = 0;
+            document.querySelectorAll('.card_amount').forEach(function(el){
+                var v = parseFloat(el.value);
+                if(!isNaN(v)){
+                    total += v;
+                }
+            });
+            return total;
+        }
+
+        function clearErrorState(){
+            var errorBox = document.getElementById('paymentError');
+            if(errorBox){
+                errorBox.classList.add('d-none');
+                errorBox.textContent = '';
+            }
+            document.querySelectorAll('.payment-input').forEach(function(el){
+                el.classList.remove('is-invalid');
+            });
+        }
+
+        function showError(message){
+            var errorBox = document.getElementById('paymentError');
+            if(errorBox){
+                errorBox.textContent = message;
+                errorBox.classList.remove('d-none');
+            }
+            document.querySelectorAll('.payment-input').forEach(function(el){
+                el.classList.add('is-invalid');
+            });
+        }
+
+        $(document).off('input','.payment-input').on('input','.payment-input',function (){
+            $(this).removeClass('is-invalid');
+            var errorBox = document.getElementById('paymentError');
+            if(errorBox){
+                errorBox.classList.add('d-none');
+            }
+        });
+
+        $(document).off('click','#addCardRow').on('click','#addCardRow',function (){
+            var wrapper = document.getElementById('cardRows');
+            if(!wrapper){ return; }
+            var row = document.createElement('div');
+            row.className = 'form-row card-row mb-1';
+            row.innerHTML = '<div class="col-7"><input type="text" class="form-control" name="card_bank[]" placeholder="{{__('main.method.payment')}}"></div><div class="col-5"><input type="number" class="form-control card_amount payment-input" name="card_amount[]" min="0" step="any" value="0"></div>';
+            wrapper.appendChild(row);
+        });
+
+        $(document).off('click','#payment_btn').on('click','#payment_btn',function (){
+            var paymentBtn = this;
+            var money = parseFloat(document.getElementById('money')?.value) || 0;
+            var cash = parseFloat(document.getElementById('cash')?.value) || 0;
+            var cards = sumCards();
+            var paid = Number((cash + cards).toFixed(2));
+            var invoiceTotal = Number(money.toFixed(2));
+
+            if(paid === invoiceTotal){
+                clearErrorState();
+                paymentBtn.disabled = true;
+                paymentBtn.innerText = '... جاري الحفظ';
+                $('#paymentsModal').modal('hide');
+                document.getElementById('salesform').submit();
+            }else{
+                var differenceValue = invoiceTotal - paid;
+                var diffLabel = differenceValue > 0 ? 'متبقي' : 'زيادة';
+                var formattedDiff = Math.abs(differenceValue).toFixed(2);
+                var message = mismatchMsg + ' - ' + totalLabel + ': ' + invoiceTotal.toFixed(2) + ' | ' + paidLabel + ': ' + paid.toFixed(2) + ' (' + diffLabel + ': ' + formattedDiff + ')';
+                showError(message);
+            }
+        });
+
+        $('#paymentsModal').off('shown.bs.modal').on('shown.bs.modal', function (){
+            var paymentBtn = document.getElementById('payment_btn');
+            if(paymentBtn){
+                paymentBtn.disabled = false;
+                paymentBtn.innerText = "{{ __('main.save_btn') }}";
+            }
+            clearErrorState();
+            // افتراضي: عبي الكاش بقيمة الفاتورة لتسريع الإدخال
+            var money = document.getElementById('money');
+            var cash = document.getElementById('cash');
+            if(money && cash){
+                cash.value = money.value || 0;
+            }
+            document.querySelectorAll('.card_amount').forEach(function(el){ el.value = 0; });
+        });
+    }
+
     $(document).ready(function() {  
 
-        $(document).on('click', '#payment_btn', function (){  
-            const money = $('#money').val();
-            let cash = $('#cash').val();
-            let visa = $('#visa').val();
-            if(Number(money) == ( Number(cash) + Number(visa) ) ){
-                document.getElementById('salesform').submit(); 
-            } else {
-                alert('{{ __('main.payments_must_match_total') }}');
-            } 
-        });
+        // ضمان وجود حقل رقم الفاتورة حتى لو لم يتم رسمه لأي سبب، لتجنب أخطاء JS توقف بقية المعالجات
+        if(!document.getElementById('invoice_no')){
+            var salesForm = document.getElementById('salesform') || document.body;
+            var hiddenInvoice = document.createElement('input');
+            hiddenInvoice.type = 'hidden';
+            hiddenInvoice.id = 'invoice_no';
+            hiddenInvoice.name = 'invoice_no';
+            salesForm.appendChild(hiddenInvoice);
+        }
 
-        $(document).on('change', '#cash', function () { 
-            const money = $('#money').val();
-            var visa = (Number(money) - Number(this.value)).toFixed(2);
-            if(visa > 0 ){ 
-                $('#visa').val(visa);
-            }else{
-                $('#visa').val(0);
-            } 
-        });
-        
-        $(document).on('keyup', '#cash', function () {
-            const money = $('#money').val();
-            var visa = (Number(money) - Number(this.value)).toFixed(2);
-            if(visa > 0 ){ 
-                $('#visa').val(visa);
-            }else{
-                $('#visa').val(0);
-            } 
-        });        
+        function resolveBranchSelect(){
+            return document.getElementById('branch_id');
+        }
 
-        var now = new Date();
-        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-        /* remove second/millisecond if needed - credit ref. https://stackoverflow.com/questions/24468518/html5-input-datetime-local-default-value-of-today-and-current-time#comment112871765_60884408 */
-        now.setMilliseconds(null);
-        now.setSeconds(null);
+        function resolveInvoiceInput(){
+            return document.getElementById('invoice_no');
+        }
 
-        document.getElementById('bill_date').value = now.toISOString().slice(0, -1);
+        var warehouseSelect = $('#warehouse_id');
+        var billInput = document.getElementById('bill_date');
+
+        if(billInput){
+            var now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            now.setMilliseconds(null);
+            now.setSeconds(null);
+            billInput.value = now.toISOString().slice(0, -1);
+        }
 
         $('#representative_id').on('change', function(){
             var selected = $(this).find('option:selected').text().trim();
@@ -447,9 +550,11 @@ span strong {font-size:12px;}
         $('#sale_service_mode').on('change', toggleServiceMeta);
         toggleServiceMeta();
 
-        getBillNo();
+        if(resolveBranchSelect()){
+            getWarehouse();
+        }
         $('#warehouse_id').change(function (){
-            getBillNo();
+            // invoice number is generated on save server-side
         });
 
         //document.getElementById('bill_date').valueAsDate = new Date();
@@ -525,42 +630,19 @@ span strong {font-size:12px;}
         });
 
         
-        getBillNo();
-        getWarehouse();
-
         $('#branch_id').change(function (){
             getWarehouse();
         });
 
-        function getBillNo(){
-
-            const id = document.getElementById('branch_id').value;
-            let invoice_no = document.getElementById('invoice_no');
-            var url = '{{route('get.sale.no',":id")}}';
-                url = url.replace(":id",id);
-    
-            $.ajax({
-                type:'get',
-                url:url,
-                dataType: 'json', 
-                success:function(response){
-                    console.log(response); 
-                    if(response){
-                        invoice_no.value = response ;
-                    } else {
-                        invoice_no.value = '' ;
-                    }
-                }
-            });
-        }       
-        
         function getWarehouse(){
+            var branchSelect = resolveBranchSelect();
+            if(!branchSelect){
+                return;
+            }
             
-            var branch_id = $('#branch_id').val();
+            var branch_id = branchSelect.value;
             var url = '{{route('get.warehouses.branches',":id")}}'; 
             url = url.replace(":id", branch_id); 
-            getBillNo();
-            
             $.ajax({
                 type: 'get',
                 url: url,
@@ -601,7 +683,6 @@ span strong {font-size:12px;}
         document.getElementById('first_total').value = 0; 
         document.getElementById('tax_total').value = 0;
         document.getElementById('discount_total').value = 0; 
-        document.getElementById('discount').value = 0; 
         document.getElementById('net_sales').value = 0; 
         document.getElementById('net_after_discount').value = 0;   
 
@@ -980,15 +1061,16 @@ span strong {font-size:12px;}
         NetAfterDiscount();
     }
 
-    function addPayments(remain) {  
-        var route = '{{route('show_sales_payments',":remain")}}';
-            route = route.replace(":remain",remain); 
-        
-        $.get( route, function(data){
-            $(".show_modal").html(data);
-            $('#paymentsModal').modal({backdrop: 'static', keyboard: false} ,'show');
-        });
-    }
+        function addPayments(remain) {  
+            var route = '{{route('show_sales_payments',":remain")}}';
+                route = route.replace(":remain",remain); 
+            
+            $.get( route, function(data){
+                $(".show_modal").html(data);
+                setupPaymentModal();
+                $('#paymentsModal').modal({backdrop: 'static', keyboard: false} ,'show');
+            });
+        }
 
     function NetAfterDiscount(){
 

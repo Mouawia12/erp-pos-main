@@ -26,6 +26,7 @@ use App\Models\Branch;
 use App\Models\Payment;
 use App\Models\CatchRecipt;
 use App\Models\Expenses; 
+use App\Models\SystemSettings;
 use Database\Factories\JournalFactory;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -133,19 +134,32 @@ class SystemController extends Controller
     }
 
     public function getAllWarehouses(){
-        if(!empty(Auth::user()->branch_id)) {
-            return Warehouse::where('branch_id', Auth::user()->branch_id)->get();
-        }else{
-            return Warehouse::all();
+        $query = Warehouse::query();
+        $user = Auth::user();
+
+        if(!empty($user?->branch_id)) {
+            return $query->where('branch_id', $user->branch_id)->get();
         }
+
+        if(!empty($user?->subscriber_id) && Schema::hasColumn('warehouses','subscriber_id')) {
+            $query->where('subscriber_id',$user->subscriber_id);
+        }
+
+        return $query->get();
     }
   
     public function getBranches(){
-        if(!empty(Auth::user()->branch_id)) {
-            return Branch::where('id', Auth::user()->branch_id)->get();
-        }else{
-            return Branch::where('status', 1)->get();
+        $user = Auth::user();
+        if(!empty($user?->branch_id)) {
+            return Branch::where('id', $user->branch_id)->get();
         }
+
+        $query = Branch::query();
+        if(!empty($user?->subscriber_id) && Schema::hasColumn('branches','subscriber_id')) {
+            $query->where('subscriber_id',$user->subscriber_id);
+        }
+
+        return $query->where('status', 1)->get();
     }
 
     public function getWarehousesBranches($id){  

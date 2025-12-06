@@ -22,10 +22,13 @@ use App\Models\Representative;
 use App\Models\Promotion;
 use App\Models\PromotionItem;
 use App\Models\Subscriber;
+use App\Models\WarehouseProducts as WarehouseProductModel;
 use App\Services\DocumentNumberService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use DataTables;
 use Salla\ZATCA\GenerateQrCode;
 use Salla\ZATCA\Tags\InvoiceDate;
@@ -287,17 +290,53 @@ class SalesController extends Controller
 
         $billDate = now()->format('Y-m-d H:i:s');
 
-        $parentSale = Sales::find($id);
+        // لا يوجد فاتورة أب لنستنسخ بياناتها في إنشاء فاتورة جديدة، استخدم القيم القادمة من الطلب فقط
         $serviceDefaults = [
-            'service_mode' => $parentSale->service_mode ?? null,
-            'session_location' => $parentSale->session_location ?? null,
-            'session_type' => $parentSale->session_type ?? null,
+            'service_mode' => $request->service_mode ?? null,
+            'session_location' => $request->session_location ?? null,
+            'session_type' => $request->session_type ?? null,
         ];
 
         $siteController = new SystemController();
         $allowNegativeStock = $siteController->allowSellingWithoutStock();
         $customer = Company::find($request->customer_id);
+        if (! $customer) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'العميل المحدد غير موجود');
+        }
         $customerPriceLevel = $customer->price_level_id ?? null;
+        $warehouseMeta = $siteController->getWarehouseById($request->warehouse_id);
+        if (! $warehouseMeta) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'المستودع المحدد غير متاح');
+        }
+        if (empty($request->product_id) || !is_array($request->product_id)) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', __('main.invoice_details_required') ?? 'يجب إضافة صنف واحد على الأقل للفاتورة');
+        }
+        if (count($request->product_id) !== count($request->qnt ?? [])) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'عدد الأصناف لا يطابق عدد الكميات المدخلة');
+        }
+
+        Log::info('sale_store_attempt', [
+            'user_id' => Auth::id(),
+            'customer_id' => $request->customer_id,
+            'warehouse_id' => $request->warehouse_id,
+            'branch_selected' => $request->branch_id,
+            'products_count' => count($request->product_id),
+        ]);
+
+        [$resolvedBranchId, $subscriberId] = $this->resolveBranchAndSubscriber($request, $warehouseMeta, $customer);
+        if (! $resolvedBranchId || ! $subscriberId) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', __('main.branch_required') ?? 'يجب اختيار فرع صالح للحفظ');
+        }
         $total = 0;
         $tax = 0;
         $tax_excise = 0;
@@ -309,9 +348,16 @@ class SalesController extends Controller
         $products = array();
         $qntProducts = array();
 
+        DB::beginTransaction();
+        try {
         foreach ($request->product_id as $index=>$id){ 
             
             $productDetails = Product::with('productTaxes')->find($id);
+            if (! $productDetails) {
+                throw ValidationException::withMessages([
+                    "product_id.$index" => __('main.product_not_found') ?? 'تم اختيار صنف غير موجود'
+                ]);
+            }
             $unitId = $request->unit_id[$index] ?? $productDetails->unit;
             $unitFactor = $request->unit_factor[$index] ?? 1;
             $basePrice = (float) ($request->original_price[$index] ?? $request->price_unit[$index]);
@@ -330,23 +376,25 @@ class SalesController extends Controller
             }
             $basePrice -= $manualDiscount;
             if (! $allowNegativeStock) {
-                $availableQty = WarehouseProductModel::query()
-                    ->where('warehouse_id', $request->warehouse_id)
-                    ->where('product_id', $id)
-                    ->value('quantity');
-                $availableQty = $availableQty ?? 0;
+                $warehouseStock = $this->resolveWarehouseProductStock(
+                    $request->warehouse_id,
+                    $id,
+                    $productDetails,
+                    $subscriberId
+                );
+                $availableQty = $warehouseStock?->quantity ?? 0;
                 $requiredQty = $request->qnt[$index] * $unitFactor;
                 if ($availableQty < $requiredQty) {
-                    return redirect()->back()
-                        ->withInput()
-                        ->with('error', __('main.insufficient_stock', ['item' => $productDetails->name]));
+                    throw ValidationException::withMessages([
+                        "product_id.$index" => __('main.insufficient_stock', ['item' => $productDetails->name])
+                    ]);
                 }
             }
 
             $promoDiscount = $this->resolvePromotionDiscount(
                 $id,
                 $request->variant_id[$index] ?? null,
-                $request->branch_id ?? $siteController->getWarehouseById($request->warehouse_id)->branch_id,
+                $request->branch_id ?? optional($warehouseMeta)->branch_id,
                 $request->qnt[$index],
                 $basePrice
             );
@@ -390,6 +438,7 @@ class SalesController extends Controller
                 'lista' => 0,
                 'profit'=> ($basePrice - ($productDetails->cost * $unitFactor)) * $qty,
                 'note' => !empty($request->item_note[$index]) ? trim($request->item_note[$index]) : null,
+                'subscriber_id' => $subscriberId,
             ];
 
             $item = new Product();
@@ -435,9 +484,12 @@ class SalesController extends Controller
             'lista' => $lista,
             'profit'=> $profit,
             'additional_service' => $request -> additional_service ?? 0,
-            'branch_id'=> $request->branch_id ?? $siteController->getWarehouseById($request->warehouse_id)->branch_id,
+            'branch_id'=> $resolvedBranchId,
             'status'=> 1,
-            'user_id'=> Auth::user()->id
+            'user_id'=> Auth::user()->id,
+            'created_by'=> Auth::user()->id,
+            'sale_id' => 0,
+            'subscriber_id' => $subscriberId,
         ];
 
         $sale = Sales::create(array_merge($saleData, $this->resolveServiceMeta($request, $serviceDefaults)));
@@ -460,15 +512,79 @@ class SalesController extends Controller
 
         $salePaymentController = new PaymentController();
         $salePaymentController->MakeSalePayment($request,$sale->id);
-        
+        DB::commit();
         if(!$request ->POS){
-            //return redirect()->route('sales');
-            return redirect()->route('print.sales',$sale->id);
+            return redirect()->route('sales')->with('success', __('main.created') ?? 'تم حفظ الفاتورة بنجاح');
         } else {
-            return redirect()->route('pos');
-            //return $this->print($sale->id);
+            return redirect()->route('pos')->with('success', __('main.created') ?? 'تم حفظ الفاتورة بنجاح');
         } 
+        } catch (ValidationException $e) {
+            DB::rollBack();
+            return redirect()->back()
+                ->withErrors($e->errors())
+                ->withInput();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Failed to store sale invoice', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', __('main.error_occured') ?? $e->getMessage());
+        }
         
+    }
+
+    private function resolveBranchAndSubscriber(Request $request, ?Warehouse $warehouse = null, ?Company $customer = null): array
+    {
+        $user = Auth::user();
+        $branchId = $user->branch_id
+            ?? $request->branch_id
+            ?? $warehouse?->branch_id
+            ?? $customer->branch_id
+            ?? null;
+
+        $branch = $branchId ? Branch::find($branchId) : null;
+
+        $subscriberId = $user->subscriber_id
+            ?? $branch?->subscriber_id
+            ?? $customer->subscriber_id
+            ?? $warehouse?->subscriber_id
+            ?? null;
+
+        return [$branchId, $subscriberId];
+    }
+
+    private function resolveWarehouseProductStock(int $warehouseId, int $productId, Product $product, ?int $subscriberId)
+    {
+        $record = WarehouseProductModel::query()
+            ->where('warehouse_id', $warehouseId)
+            ->where('product_id', $productId)
+            ->first();
+
+        if ($record) {
+            return $record;
+        }
+
+        $initialQty = $product->quantity ?? 0;
+        $newRecord = WarehouseProductModel::create([
+            'warehouse_id' => $warehouseId,
+            'product_id' => $productId,
+            'quantity' => $initialQty,
+            'cost' => $product->cost,
+        ]);
+
+        Log::warning('warehouse_product_autocreated', [
+            'user_id' => Auth::id(),
+            'subscriber_id' => $subscriberId,
+            'warehouse_id' => $warehouseId,
+            'product_id' => $productId,
+            'initial_quantity' => $initialQty,
+        ]);
+
+        return $newRecord;
     }
 
     public function sales_return_create()
