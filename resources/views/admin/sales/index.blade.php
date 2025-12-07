@@ -157,6 +157,15 @@ a.btn {
                 }
             });
 
+            function formatAmountCell(value){
+                var numeric = parseFloat(value);
+                if(isNaN(numeric)){
+                    return value ?? '';
+                }
+                var fixed = numeric.toFixed(3);
+                return fixed.replace(/(\.\d*?[1-9])0+$|\.0+$/,'$1');
+            }
+
             var table = $('#salesTable').DataTable({
                 processing: true,
                 //serverSide: true,
@@ -239,6 +248,17 @@ a.btn {
                         orderable: false,
                         searchable: false
                     },
+                ],
+                columnDefs: [
+                    {
+                        targets: [8,9,10,11,12,13],
+                        render: function(data, type){
+                            if(type === 'display' || type === 'filter'){
+                                return formatAmountCell(data);
+                            }
+                            return data;
+                        }
+                    }
                 ],
                 dom: 'lBfrtip',
                 buttons: [

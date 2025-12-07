@@ -488,11 +488,16 @@ span strong {font-size:12px;}
             return;
         }
         try{
-            audioElement.pause();
             audioElement.currentTime = 0;
             var promise = audioElement.play();
             if(promise && typeof promise.catch === 'function'){
-                promise.catch(function(){});
+                promise.catch(function(){
+                    try{
+                        var clone = audioElement.cloneNode(true);
+                        clone.currentTime = 0;
+                        clone.play();
+                    }catch(e){}
+                });
             }
         }catch (e){}
     }
@@ -536,24 +541,30 @@ span strong {font-size:12px;}
             }
         }
 
-        function syncBankAmount(){
+        function syncBankAmount(formatCashField){
             if(!moneyInput || !cashInput || !bankInput){ return; }
             const total = parseFloat(moneyInput.value) || 0;
             let cashVal = parseFloat(cashInput.value);
-            if(isNaN(cashVal) || cashVal < 0){
+            if(isNaN(cashVal)){
                 cashVal = 0;
             }
-            if(cashVal > total){
-                cashVal = total;
+            cashVal = Math.min(Math.max(cashVal, 0), total);
+            if(formatCashField){
+                cashInput.value = cashVal.toFixed(2);
             }
-            cashInput.value = cashVal.toFixed(2);
             bankInput.value = (total - cashVal).toFixed(2);
         }
 
         $(document).off('input','.payment-input').on('input','.payment-input',function (){
             clearErrorState();
-            syncBankAmount();
+            syncBankAmount(false);
         });
+
+        if(cashInput){
+            $(cashInput).off('blur.paymentFormat').on('blur.paymentFormat', function(){
+                syncBankAmount(true);
+            });
+        }
 
         $(document).off('click','#payment_btn').on('click','#payment_btn',function (){
             const paymentBtn = this;
@@ -588,7 +599,7 @@ span strong {font-size:12px;}
                 cashInput.value = (moneyInput.value || 0);
             }
             clearErrorState();
-            syncBankAmount();
+            syncBankAmount(true);
         });
     }
 

@@ -83,7 +83,18 @@ class SalesController extends Controller
             $query->where('s.branch_id', Auth::user()->branch_id); 
         }  
 
-        $data = $query->get();
+        $data = $query->get()->transform(function($row){
+            $numericFields = ['net','discount','tax','total','paid','remain'];
+            foreach ($numericFields as $field){
+                if(isset($row->{$field})){
+                    $row->{$field} = round((float)$row->{$field}, 3);
+                } else {
+                    $row->{$field} = 0;
+                }
+            }
+            $row->remain = round((float)$row->net - (float)$row->paid, 3);
+            return $row;
+        });
 
         if ($request->ajax()) { 
             return Datatables::of($data)->addIndexColumn()
