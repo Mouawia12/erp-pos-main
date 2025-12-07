@@ -482,6 +482,29 @@ span strong {font-size:12px;}
     const allowNegativeStock = {{ !empty($allowNegativeStock) ? 'true' : 'false' }};
     const insufficientTemplate = "{{ __('main.insufficient_stock', ['item' => '__ITEM__']) }}";
 
+    function playSoundById(audioId){
+        var audioElement = document.getElementById(audioId);
+        if(!audioElement){
+            return;
+        }
+        try{
+            audioElement.pause();
+            audioElement.currentTime = 0;
+            var promise = audioElement.play();
+            if(promise && typeof promise.catch === 'function'){
+                promise.catch(function(){});
+            }
+        }catch (e){}
+    }
+
+    function playSuccessSound(){
+        playSoundById('mysoundclip1');
+    }
+
+    function playWarningSound(){
+        playSoundById('mysoundclip2');
+    }
+
     function setupPaymentModal(){
         const mismatchMsg = "{{ __('main.payments_must_match_total') }}";
         const totalLabel = "{{ __('main.total.final') }}";
@@ -758,8 +781,7 @@ span strong {font-size:12px;}
             var item_id = row1.attr('data-item-id');
             delete sItems[item_id];
             loadItems(); 
-            var audio = $("#mysoundclip2")[0];
-            audio.play();
+            playWarningSound();
         });
 
         $(document).on('click', '.select_product', function () {
@@ -768,8 +790,7 @@ span strong {font-size:12px;}
             addItemToTable(suggestionItems[item_id]);
             document.getElementById('products_suggestions').innerHTML = '';
             suggestionItems = {};
-            var audio = $("#mysoundclip1")[0];
-            audio.play();
+            playSuccessSound();
         });
 
         $(document).on('click', '#SaveSales', function () {
@@ -948,10 +969,9 @@ span strong {font-size:12px;}
                 document.getElementById('products_suggestions').innerHTML = '';
                 if(response){
                     if(response.length == 1){
-                        //addItemToTable 
-                        addItemToTable(response[0]);
-                        var audio = $("#mysoundclip2")[0];
-                        audio.play();
+                        //addItemToTable
+                        addItemToTable(response[0]); 
+                        playSuccessSound();
                     }else if(response.length > 1){ 
                         showSuggestions(response); 
                     } else if(response.id){
@@ -1059,10 +1079,7 @@ span strong {font-size:12px;}
             pendingDuplicateItem = item;
             $('#duplicateItemName').text(item.name ? item.name : (item.code || ''));
             $('#duplicateItemModal').modal({backdrop: 'static', keyboard: false});
-            try {
-                var warnAudio = $("#mysoundclip2")[0];
-                if(warnAudio){ warnAudio.play(); }
-            } catch (e) {}
+            playWarningSound();
             return;
         }
 
@@ -1146,6 +1163,7 @@ span strong {font-size:12px;}
         loadItems(); 
         document.getElementById('add_item').value = '' ;
         $('#add_item').focus();
+        playSuccessSound();
     }
 
     var old_row_qty=0;
