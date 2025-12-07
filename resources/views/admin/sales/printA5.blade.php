@@ -78,6 +78,12 @@
                 <td>{{ __('main.warehouse') }}: {{ $data->warehouse_name }}</td>
                 <td>{{ __('main.payment_status') }}: {{ $data->payment_status }}</td>
             </tr>
+            @if(!empty($data->vehicle_plate) || !empty($data->vehicle_odometer))
+                <tr>
+                    <td>{{ __('main.vehicle_plate') }}: {{ $data->vehicle_plate ?? '-' }}</td>
+                    <td>{{ __('main.vehicle_odometer') }}: {{ $data->vehicle_odometer ?? '-' }}</td>
+                </tr>
+            @endif
         </table>
 
         <table>

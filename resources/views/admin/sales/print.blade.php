@@ -201,6 +201,16 @@
                             <td colspan="2">{{ __('main.session_type') }} : <strong>{{ $data->session_type }}</strong></td>
                         </tr>
                     @endif
+                    @if(!empty($data->vehicle_plate) || !empty($data->vehicle_odometer))
+                        <tr>
+                            <td>{{ __('main.vehicle_plate') }} :
+                                <strong>{{ $data->vehicle_plate ?? '-' }}</strong>
+                            </td>
+                            <td>{{ __('main.vehicle_odometer') }} :
+                                <strong>{{ $data->vehicle_odometer ?? '-' }}</strong>
+                            </td>
+                        </tr>
+                    @endif
                     <tr>
                         <td>{{__('main.tax_mode')}} : <strong>{{ $data->tax_mode === 'exclusive' ? __('main.tax_mode_exclusive') : __('main.tax_mode_inclusive') }}</strong></td>
                         <td></td>

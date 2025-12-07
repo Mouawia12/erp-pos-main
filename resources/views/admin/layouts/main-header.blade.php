@@ -26,8 +26,10 @@
             <div class="nav nav-item  navbar-nav-right ml-auto">
                @php
                     app(\App\Services\AlertService::class)->sync();
-                    $alertUnreadCount = \App\Models\Alert::unread()->count();
-                    $latestAlerts = \App\Models\Alert::unread()->latest()->take(5)->get();
+                    $currentUser = Auth::user();
+                    $alertBaseQuery = \App\Models\Alert::forUser($currentUser)->unread();
+                    $alertUnreadCount = (clone $alertBaseQuery)->count();
+                    $latestAlerts = (clone $alertBaseQuery)->latest()->take(5)->get();
                     $currentLocale = app()->getLocale();
                     $toggleLocale = $currentLocale === 'ar' ? 'en' : 'ar';
                     $localeLabel = $currentLocale === 'ar' ? __('main.lang_ar') : __('main.lang_en');

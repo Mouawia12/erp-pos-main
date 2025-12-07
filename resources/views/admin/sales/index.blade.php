@@ -86,6 +86,10 @@ a.btn {
                                 <label>{{ __('main.item') ?? 'الصنف' }}</label>
                                 <input type="text" class="form-control" id="filter_item_search" name="item_search" placeholder="{{__('main.product_code')}}">
                             </div>
+                            <div class="col-md-3 mt-2">
+                                <label>{{ __('main.vehicle_plate') }}</label>
+                                <input type="text" class="form-control" id="filter_vehicle_plate" name="vehicle_plate" placeholder="{{ __('main.vehicle_plate') }}">
+                            </div>
                             <div class="col-md-3 d-flex align-items-end gap-2 mt-2">
                                 <button type="submit" class="btn btn-primary">{{ __('main.search') }}</button>
                                 <button type="button" id="filterReset" class="btn btn-secondary">{{ __('main.reset') ?? 'إعادة تعيين' }}</button>
@@ -104,6 +108,8 @@ a.btn {
                                         <th>{{__('main.branche')}}</th>  
                                         <th>{{__('main.warehouse')}}</th>
                                         <th>{{__('main.customer')}}</th>
+                                        <th>{{ __('main.vehicle_plate') }}</th>
+                                        <th>{{ __('main.vehicle_odometer') }}</th>
                                         <th>{{__('main.invoice.total')}}</th> 
                                         <th>{{__('main.discount')}}</th> 
                                         <th>{{__('main.tax')}}</th>
@@ -166,6 +172,7 @@ a.btn {
                         d.date_from = $('#filter_date_from').val();
                         d.date_to = $('#filter_date_to').val();
                         d.item_search = $('#filter_item_search').val();
+                        d.vehicle_plate = $('#filter_vehicle_plate').val();
                     }
                 },
                 columns: [
@@ -192,6 +199,14 @@ a.btn {
                     {
                         data: 'customer_name',
                         name: 'customer_name'
+                    },
+                    {
+                        data: 'vehicle_plate',
+                        name: 'vehicle_plate'
+                    },
+                    {
+                        data: 'vehicle_odometer',
+                        name: 'vehicle_odometer'
                     },
                     {
                         data: 'net',

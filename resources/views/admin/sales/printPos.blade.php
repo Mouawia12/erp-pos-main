@@ -166,6 +166,14 @@
                     {{ __('main.session_type') }} : {{$data->session_type}}
                 </h6>
             @endif
+            @if(!empty($data->vehicle_plate) || !empty($data->vehicle_odometer))
+                <h6 class="text-center mt-1" style="font-weight: bold;">
+                    {{ __('main.vehicle_plate') }} : {{$data->vehicle_plate ?? '-'}}
+                </h6>
+                <h6 class="text-center mt-1" style="font-weight: bold;">
+                    {{ __('main.vehicle_odometer') }} : {{$data->vehicle_odometer ?? '-'}}
+                </h6>
+            @endif
             @if(!empty($data->branch_phone))
             <h6 class="text-center mt-1" style="font-weight: bold;">
                 هاتف الفرع / Branch Phone : {{$data->branch_phone}}

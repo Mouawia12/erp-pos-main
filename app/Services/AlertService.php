@@ -14,18 +14,30 @@ class AlertService
 {
     public function sync(): void
     {
-        $this->syncLowStockAlerts();
-        $this->syncExpiryAlerts();
-        $this->syncRepresentativeDocumentAlerts();
-        $this->syncSubscriberExpiryAlerts();
+        $user = Auth::user();
+        if (! $user) {
+            return;
+        }
+
+        $subscriberId = $user->subscriber_id;
+        $branchId = $user->branch_id;
+        $isOwner = $user->hasRole('system_owner');
+
+        if ($subscriberId) {
+            $this->syncLowStockAlerts($subscriberId, $branchId);
+            $this->syncExpiryAlerts($subscriberId, $branchId);
+            $this->syncRepresentativeDocumentAlerts($subscriberId);
+        }
+
+        $this->syncSubscriberExpiryAlerts($isOwner, $subscriberId);
     }
 
-    protected function syncLowStockAlerts(): void
+    protected function syncLowStockAlerts(int $subscriberId, ?int $branchId): void
     {
-        Alert::where('type', 'low_stock')->update(['resolved_at' => now()]);
-
-        $branchId = optional(Auth::user())->branch_id;
-        $subscriberId = optional(Auth::user())->subscriber_id;
+        Alert::query()
+            ->where('type', 'low_stock')
+            ->where('subscriber_id', $subscriberId)
+            ->update(['resolved_at' => now()]);
 
         $rows = DB::table('warehouse_products')
             ->join('products', 'products.id', '=', 'warehouse_products.product_id')
@@ -45,11 +57,9 @@ class AlertService
             ->where('products.alert_quantity', '>', 0)
             ->whereColumn('warehouse_products.quantity', '<=', 'products.alert_quantity')
             ->when($branchId, fn($q, $v) => $q->where('warehouses.branch_id', $v))
-            ->when($subscriberId, function ($q, $v) {
-                $q->where(function ($query) use ($v) {
-                    $query->where('warehouse_products.subscriber_id', $v)
-                        ->orWhere('products.subscriber_id', $v);
-                });
+            ->where(function ($query) use ($subscriberId) {
+                $query->where('warehouse_products.subscriber_id', $subscriberId)
+                    ->orWhere('products.subscriber_id', $subscriberId);
             })
             ->get();
 
@@ -81,13 +91,14 @@ class AlertService
         }
     }
 
-    protected function syncExpiryAlerts(): void
+    protected function syncExpiryAlerts(int $subscriberId, ?int $branchId): void
     {
-        Alert::where('type', 'near_expiry')->update(['resolved_at' => now()]);
+        Alert::query()
+            ->where('type', 'near_expiry')
+            ->where('subscriber_id', $subscriberId)
+            ->update(['resolved_at' => now()]);
 
         $settings = SystemSettings::first();
-        $branchId = optional(Auth::user())->branch_id;
-        $subscriberId = optional(Auth::user())->subscriber_id;
         $days = $settings?->item_expired ?? 30;
         $toDate = Carbon::today()->addDays($days)->toDateString();
 
@@ -113,7 +124,7 @@ class AlertService
             ->whereNotNull('pd.expiry_date')
             ->whereDate('pd.expiry_date', '<=', $toDate)
             ->when($branchId, fn($q, $v) => $q->where('p.branch_id', $v))
-            ->when($subscriberId, fn($q, $v) => $q->where('pd.subscriber_id', $v))
+            ->where('pd.subscriber_id', $subscriberId)
             ->orderBy('pd.expiry_date')
             ->get();
 
@@ -147,15 +158,19 @@ class AlertService
         }
     }
 
-    protected function syncRepresentativeDocumentAlerts(): void
+    protected function syncRepresentativeDocumentAlerts(int $subscriberId): void
     {
-        Alert::where('type', 'representative_document')->update(['resolved_at' => now()]);
+        Alert::query()
+            ->where('type', 'representative_document')
+            ->where('subscriber_id', $subscriberId)
+            ->update(['resolved_at' => now()]);
 
         $threshold = 30;
         $today = Carbon::today();
         $limitDate = $today->copy()->addDays($threshold);
 
         $reps = Representative::query()
+            ->where('subscriber_id', $subscriberId)
             ->whereNotNull('document_expiry_date')
             ->whereDate('document_expiry_date', '<=', $limitDate)
             ->get();
@@ -188,14 +203,19 @@ class AlertService
         }
     }
 
-    protected function syncSubscriberExpiryAlerts(): void
+    protected function syncSubscriberExpiryAlerts(bool $isOwner, ?int $subscriberId): void
     {
-        Alert::where('type', 'subscriber_near_expiry')->update(['resolved_at' => now()]);
+        Alert::query()
+            ->where('type', 'subscriber_near_expiry')
+            ->when($isOwner, fn($q) => $q->whereNull('subscriber_id'))
+            ->when(! $isOwner && $subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->update(['resolved_at' => now()]);
 
         $today = Carbon::today();
         $limitDate = $today->copy()->addDays(30);
 
         $subs = Subscriber::query()
+            ->when(! $isOwner && $subscriberId, fn($q) => $q->where('id', $subscriberId))
             ->whereNotNull('subscription_end')
             ->whereDate('subscription_end', '<=', $limitDate)
             ->get();

@@ -12,6 +12,34 @@ class Unit extends Model
 
     protected $fillable = [
         'code',
-        'name', 
+        'name',
+        'name_ar',
+        'name_en',
     ];
+
+    public function getNameAttribute($value)
+    {
+        $locale = app()->getLocale();
+
+        if ($locale === 'en' && ! empty($this->attributes['name_en'])) {
+            return $this->attributes['name_en'];
+        }
+
+        if ($locale === 'ar' && ! empty($this->attributes['name_ar'])) {
+            return $this->attributes['name_ar'];
+        }
+
+        if (! empty($value)) {
+            return $value;
+        }
+
+        return $this->attributes['name_ar']
+            ?? $this->attributes['name_en']
+            ?? $value;
+    }
+
+    public function getRawNameAttribute(): ?string
+    {
+        return $this->attributes['name'] ?? null;
+    }
 }

@@ -47,9 +47,16 @@
                                                         </div>
                                                         <div class="col-md-4">
                                                             <div class="form-group">
-                                                                <label>{{ __('main.name') }} <span class="text-danger">*</span></label>
+                                                                <label>{{ __('main.product_name_ar') ?? __('main.name') }} <span class="text-danger">*</span></label>
                                                                 <input type="text" id="name" name="name" class="form-control @error('name') is-invalid @enderror" value="{{ $product->name }}">
                                                                 @error('name')<span class="invalid-feedback">{{ $message }}</span>@enderror
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-4">
+                                                            <div class="form-group">
+                                                                <label>{{ __('main.product_name_en') }}</label>
+                                                                <input type="text" id="name_en" name="name_en" class="form-control @error('name_en') is-invalid @enderror" value="{{ $product->name_en }}">
+                                                                @error('name_en')<span class="invalid-feedback">{{ $message }}</span>@enderror
                                                             </div>
                                                         </div>
                                                         <div class="col-md-4">
@@ -64,13 +71,6 @@
                                                                 <label>{{ __('main.barcode') }}</label>
                                                                 <input type="text" id="barcode" name="barcode" class="form-control @error('barcode') is-invalid @enderror" value="{{ $product->barcode }}">
                                                                 @error('barcode')<span class="invalid-feedback">{{ $message }}</span>@enderror
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-md-4">
-                                                            <div class="form-group">
-                                                                <label>{{ __('main.Slug') }} <span class="text-danger">*</span></label>
-                                                                <input type="text" id="slug" name="slug" class="form-control @error('slug') is-invalid @enderror" value="{{ $product->slug }}">
-                                                                @error('slug')<span class="invalid-feedback">{{ $message }}</span>@enderror
                                                             </div>
                                                         </div>
                                                         <div class="col-md-4">
@@ -173,6 +173,7 @@
                                                                 <label>{{ __('main.Cost') }} <span class="text-danger">*</span></label>
                                                                 <input type="number" step="0.01" id="cost" name="cost" class="form-control @error('cost') is-invalid @enderror" value="{{ $product->cost }}">
                                                                 @error('cost')<span class="invalid-feedback">{{ $message }}</span>@enderror
+                                                                <small id="exciseCostHelper" class="form-text text-info d-none"></small>
                                                             </div>
                                                         </div>
                                                         <div class="col-md-4">
@@ -211,30 +212,9 @@
                                                         </div>
                                                         <div class="col-md-4">
                                                             <div class="form-group">
-                                                                <label>{{ __('main.Product_Tax_Type') }} <span class="text-danger">*</span></label>
-                                                                <select class="form-control @error('tax_method') is-invalid @enderror" name="tax_method">
-                                                                    @foreach($taxTypes as $taxType)
-                                                                        <option value="{{ $taxType['id'] }}" @if($product->tax_method == $taxType['id']) selected @endif>{{ $taxType['name'] }}</option>
-                                                                    @endforeach
-                                                                </select>
-                                                                @error('tax_method')<span class="invalid-feedback">{{ $message }}</span>@enderror
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-md-4">
-                                                            <div class="form-group">
                                                                 <label>{{ __('main.tax_excise') }}</label>
                                                                 <input type="number" step="0.01" id="tax_excise" name="tax_excise" class="form-control @error('tax_excise') is-invalid @enderror" value="{{ $product->tax_excise }}">
                                                                 @error('tax_excise')<span class="invalid-feedback">{{ $message }}</span>@enderror
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-md-12">
-                                                            <div class="form-group">
-                                                                <label>{{ __('main.additional_taxes') }}</label>
-                                                                <select class="js-example-basic-multiple w-100" name="tax_rates_multi[]" multiple>
-                                                                    @foreach($taxRages as $tax)
-                                                                        <option value="{{ $tax->id }}" @if(!empty($productTaxes) && in_array($tax->id, $productTaxes)) selected @endif>{{ $tax->rate }}</option>
-                                                                    @endforeach
-                                                                </select>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -367,6 +347,30 @@
 @section('js')
 <script type="text/javascript">
     const subCategories = @json($subCategoryOptions);
+    const unitOptions = @json($units->map(function($unit){ return ['id'=>$unit->id,'name'=>$unit->name]; })->values());
+
+    function escapeHtml(text) {
+        if (text === null || text === undefined) {
+            return '';
+        }
+        return text.toString()
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function regenerateUnitOptionsHtml(excludeId = null){
+        return unitOptions.map(function(unit){
+            if(excludeId && String(unit.id) === String(excludeId)){
+                return '';
+            }
+            return `<option value="${unit.id}">${escapeHtml(unit.name ?? '')}</option>`;
+        }).join('');
+    }
+
+    let unitOptionsHtml = '';
     $(document).ready(function () {
         document.title = "{{ __('main.update_product')}}";
         const subSelect = document.getElementById('subcategory_id');
@@ -429,6 +433,23 @@
             });
         }
 
+        const baseUnitSelect = $('select[name="unit"]');
+        function refreshUnitOptionsHtml(){
+            const excludeId = baseUnitSelect.val();
+            unitOptionsHtml = regenerateUnitOptionsHtml(excludeId);
+            $('#unitRowsTable select').each(function(){
+                const previousValue = $(this).val();
+                $(this).html(unitOptionsHtml);
+                if(previousValue && String(previousValue) !== String(excludeId)){
+                    $(this).val(previousValue);
+                }
+            });
+        }
+        refreshUnitOptionsHtml();
+        baseUnitSelect.on('change', function(){
+            refreshUnitOptionsHtml();
+        });
+
         const exciseInput = document.getElementById('tax_excise');
         if (exciseInput) {
             exciseInput.addEventListener('input', function () {
@@ -436,11 +457,11 @@
             });
         }
 
-        const unitOptionsHtml = `@foreach($units as $unit)<option value="{{$unit->id}}">{{$unit->name}}</option>@endforeach`;
         let unitRowIndex = 0;
         function addUnitRow(unitId, price, factor, barcode, canDelete=true){
+            const optionsHtml = unitOptionsHtml || regenerateUnitOptionsHtml(baseUnitSelect.val());
             const row = `<tr data-index="${unitRowIndex}">
-                <td><select name="product_units[${unitRowIndex}][unit]" class="form-control">${unitOptionsHtml}</select></td>
+                <td><select name="product_units[${unitRowIndex}][unit]" class="form-control">${optionsHtml}</select></td>
                 <td><input type="number" step="0.01" name="product_units[${unitRowIndex}][price]" class="form-control" value="${price ?? ''}"></td>
                 <td><input type="number" step="0.01" name="product_units[${unitRowIndex}][conversion_factor]" class="form-control" value="${factor ?? 1}"></td>
                 <td><input type="text" name="product_units[${unitRowIndex}][barcode]" class="form-control" value="${barcode ?? ''}"></td>
@@ -495,6 +516,34 @@
         $('#tax_rate').change(function (){
             $('#tax').val($('#tax_rate option:selected').text());
         }).trigger('change');
+
+        const $costInput = $('#cost');
+        const $exciseInput = $('#tax_excise');
+        function resetExciseHelper(){
+            $('#exciseCostHelper').addClass('d-none').text('');
+        }
+        $costInput.data('inclusive-cost', $costInput.val());
+        $costInput.on('input', function(){
+            $(this).data('inclusive-cost', $(this).val());
+            resetExciseHelper();
+        });
+        function adjustCostForExcise(){
+            const exciseVal = parseFloat($exciseInput.val());
+            const inclusiveCost = parseFloat($costInput.data('inclusive-cost') || $costInput.val());
+            if(!(inclusiveCost > 0) || !(exciseVal > 0)){
+                resetExciseHelper();
+                return;
+            }
+            const baseCost = inclusiveCost / (1 + (exciseVal/100));
+            const exciseAmount = inclusiveCost - baseCost;
+            $costInput.val(baseCost.toFixed(4));
+            $('#exciseCostHelper').removeClass('d-none').text(
+                "{{ __('main.excise_adjusted_hint') }}".replace(':amount', exciseAmount.toFixed(4))
+            );
+        }
+        $exciseInput.on('change blur', function(){
+            adjustCostForExcise();
+        });
     });
 </script>
 @endsection

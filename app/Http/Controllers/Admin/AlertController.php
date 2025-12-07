@@ -14,7 +14,7 @@ class AlertController extends Controller
     {
         $alertService->sync();
 
-        $alerts = Alert::query()
+        $alerts = Alert::forUser($request->user())
             ->when($request->type, fn($q, $v) => $q->where('type', $v))
             ->when($request->status, function ($q, $status) {
                 if ($status === 'unread') {
@@ -45,6 +45,7 @@ class AlertController extends Controller
 
     public function markRead(Alert $alert): RedirectResponse
     {
+        $this->ensureAlertAccessible($alert);
         $alert->markRead();
 
         return back()->with('success', __('main.alert_marked_read'));
@@ -52,8 +53,32 @@ class AlertController extends Controller
 
     public function resolve(Alert $alert): RedirectResponse
     {
+        $this->ensureAlertAccessible($alert);
         $alert->resolve();
 
         return back()->with('success', __('main.alert_resolved'));
+    }
+
+    private function ensureAlertAccessible(Alert $alert): void
+    {
+        $user = auth()->user();
+        if (! $user) {
+            abort(403);
+        }
+
+        if ($user->hasRole('system_owner')) {
+            if (! is_null($alert->subscriber_id)) {
+                abort(403);
+            }
+            return;
+        }
+
+        if ($user->subscriber_id != $alert->subscriber_id) {
+            abort(403);
+        }
+
+        if ($user->branch_id && $alert->branch_id && $alert->branch_id != $user->branch_id) {
+            abort(403);
+        }
     }
 }

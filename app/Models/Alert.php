@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Traits\BelongsToSubscriber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 
 class Alert extends Model
 {
@@ -36,6 +37,31 @@ class Alert extends Model
     public function scopeUnread($query)
     {
         return $query->whereNull('read_at')->whereNull('resolved_at');
+    }
+
+    public function scopeForUser($query, $user = null)
+    {
+        $user = $user ?: Auth::user();
+        if (! $user) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $table = $query->getModel()->getTable();
+
+        if ($user->hasRole('system_owner')) {
+            $query->whereNull($table . '.subscriber_id');
+        } elseif (! empty($user->subscriber_id)) {
+            $query->where($table . '.subscriber_id', $user->subscriber_id);
+        }
+
+        if (! empty($user->branch_id)) {
+            $query->where(function ($branchQuery) use ($table, $user) {
+                $branchQuery->whereNull($table . '.branch_id')
+                    ->orWhere($table . '.branch_id', $user->branch_id);
+            });
+        }
+
+        return $query;
     }
 
     public function scopeOpen($query)

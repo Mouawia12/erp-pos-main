@@ -6,6 +6,22 @@
             {{ session('success') }}
         </div>
     @endif
+    @if (session('error'))
+        <div class="alert alert-danger fade show">
+            <button class="close" data-dismiss="alert" aria-label="Close">×</button>
+            {{ session('error') }}
+        </div>
+    @endif
+    @if ($errors->any())
+        <div class="alert alert-danger fade show">
+            <button class="close" data-dismiss="alert" aria-label="Close">×</button>
+            <ul class="mb-0">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
     @can('عرض ترميز')
     <!-- End Navbar -->
     <div class="container-fluid py-4">
@@ -54,7 +70,7 @@
                                             </button>
                                         @endcan 
                                         @can('حذف ترميز')
-                                            <button type="button" class="btn btn-labeled btn-danger deleteBtn "  id="{{$unit -> id}}">
+                                            <button type="button" class="btn btn-labeled btn-danger deleteBtn "  id="{{$unit -> id}}" data-id="{{$unit -> id}}">
                                                 <i class="fa fa-trash"></i>  
                                             </button>
                                         @endcan 
@@ -82,18 +98,34 @@
                 </button>
             </div>
             <div class="modal-body" id="paymentBody">
-                <form   method="POST" action="{{ route('storeUnit') }}"
+                <form id="unitForm"  method="POST" action="{{ route('storeUnit') }}"
                         enctype="multipart/form-data" >
                     @csrf
                     <input type="hidden" name="id" id="id" value="0"/> 
                     <div class="row">
                         <div class="col-12 " >
                             <div class="form-group">
-                                <label>{{ __('main.name') }} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
-                                <input type="text"  id="name" name="name"
+                                <label>{{ __('main.code') }}</label>
+                                <input type="text"  id="code" name="code"
                                        class="form-control"
-                                       placeholder="{{ __('main.name') }}"  /> 
+                                       placeholder="{{ __('main.code') }}"  /> 
 
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>{{ __('main.unit_name_ar') }} <span class="text-danger">*</span></label>
+                                <input type="text" id="name_ar" name="name_ar"
+                                       class="form-control"
+                                       placeholder="{{ __('main.unit_name_ar') }}" required />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>{{ __('main.unit_name_en') }} <span class="text-danger">*</span></label>
+                                <input type="text" id="name_en" name="name_en"
+                                       class="form-control"
+                                       placeholder="{{ __('main.unit_name_en') }}" required />
                             </div>
                         </div>
                     </div>
@@ -151,53 +183,17 @@
         $(document).on('click', '#createButton', function(event) {
             id = 0 ;
             event.preventDefault();
-            let href = $(this).attr('data-attr');
-            $.ajax({
-                url: href,
-                beforeSend: function() {
-                    $('#loader').show();
-                },
-                // return the result
-                success: function(result) {
-                    $('#createModal').modal("show");
-                    $(".modal-body #name").val( "" );
-                    $(".modal-body #code").val( "" );
-                    $(".modal-body #id").val( 0 );
-                },
-                complete: function() {
-                    $('#loader').hide();
-                },
-                error: function(jqXHR, testStatus, error) {
-                    console.log(error);
-                    alert("Page " + href + " cannot open. Error:" + error);
-                    $('#loader').hide();
-                },
-                timeout: 8000
-            })
+            const $form = $('#unitForm');
+            if ($form.length) {
+                $form.trigger('reset');
+                $form.find('#id').val(0);
+            }
+            $('#createModal').modal("show");
         });
         $(document).on('click', '.deleteBtn', function(event) {
-             id = event.currentTarget.id ;
+             id = event.currentTarget.dataset.id || event.currentTarget.id ;
             event.preventDefault();
-            let href = $(this).attr('data-attr');
-            $.ajax({
-                url: href,
-                beforeSend: function() {
-                    $('#loader').show();
-                },
-                // return the result
-                success: function(result) {
-                    $('#deleteModal').modal("show");
-                },
-                complete: function() {
-                    $('#loader').hide();
-                },
-                error: function(jqXHR, testStatus, error) {
-                    console.log(error);
-                    alert("Page " + href + " cannot open. Error:" + error);
-                    $('#loader').hide();
-                },
-                timeout: 8000
-            })
+            $('#deleteModal').modal("show");
         });
  
         $(document).on('click' , '.cancel-modal' , function (event) {
@@ -226,36 +222,23 @@
             type:'get',
             url:url,
             dataType: 'json',
-
+            beforeSend: function() {
+                $('#loader').show();
+            },
+            complete: function() {
+                $('#loader').hide();
+            },
+            error: function() {
+                alert('حدث خطأ غير متوقع، حاول مجدداً');
+                $('#loader').hide();
+            },
             success:function(response){
-                console.log(response);
                 if(response){
-                    let href = $(this).attr('data-attr');
-                    $.ajax({
-                        url: href,
-                        beforeSend: function() {
-                            $('#loader').show();
-                        },
-                        // return the result
-                        success: function(result) {
-                            $('#createModal').modal("show");
-                            $(".modal-body #name").val( response.name );
-                            $(".modal-body #code").val( response.code );
-                            $(".modal-body #id").val( response.id );
-
-                        },
-                        complete: function() {
-                            $('#loader').hide();
-                        },
-                        error: function(jqXHR, testStatus, error) {
-                            console.log(error);
-                            alert("Page " + href + " cannot open. Error:" + error);
-                            $('#loader').hide();
-                        },
-                        timeout: 8000
-                    })
-                } else {
-
+                    $('#createModal').modal("show");
+                    $(".modal-body #name_ar").val( response.name_ar ?? "" );
+                    $(".modal-body #name_en").val( response.name_en ?? "" );
+                    $(".modal-body #code").val( response.code ?? "" );
+                    $(".modal-body #id").val( response.id ?? 0 );
                 }
             }
         });

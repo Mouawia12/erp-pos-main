@@ -336,6 +336,7 @@ Route::group(
     Route::get('/get-sales/{id}', [SalesController::class, 'get_sales'])->name('get.sales');
     Route::get('/pos', [SalesController::class, 'pos'])->name('pos');
     Route::get('/print_last_pos', [SalesController::class, 'print_last_pos'])->name('print_last_pos');
+    Route::get('/customers/{customer}/vehicles', [SalesController::class, 'customerVehicles'])->name('customers.vehicles');
 
     Route::get('/pos-product-list-img', [ProductController::class, 'pos_product_list_img'])->name('pos.product.list.img');
     Route::get('/get_product_list_img/{warehouse_id}', [ProductController::class, 'get_product_list_img'])->name('get_product_list_img');
@@ -463,11 +464,11 @@ Route::group(
 
       
     Route::get('/daily_sales_report', [ReportController::class, 'daily_sales_report'])->name('daily_sales_report');
-    Route::get('/daily-sales-report-search/{date}/{warehouse}/{branch_id}', [ReportController::class, 'daily_sales_report_search'])
+    Route::get('/daily-sales-report-search/{date}/{warehouse}/{branch_id}/{customer_id?}/{vehicle_plate?}', [ReportController::class, 'daily_sales_report_search'])
         ->name('daily.sales.report.search');
 
     Route::get('/sales_item_report', [ReportController::class, 'sales_item_report'])->name('sales_item_report');
-    Route::get('/sales_item_report_search/{fdate}/{tdate}/{warehouse}/{branch_id}/{item}/{supplier}', [ReportController::class, 'sales_item_report_search'])
+    Route::get('/sales_item_report_search/{fdate}/{tdate}/{warehouse}/{branch_id}/{item}/{supplier}/{vehicle_plate?}', [ReportController::class, 'sales_item_report_search'])
         ->name('sales.item.report.search');
 
     Route::get('/sales_return_report', [ReportController::class, 'sales_return_report'])->name('sales.return.report');

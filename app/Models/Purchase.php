@@ -33,7 +33,10 @@ class Purchase extends Model
         'representative_id',
         'supplier_name',
         'supplier_phone',
-        'tax_mode','subscriber_id'
+        'tax_mode',
+        'invoice_type',
+        'payment_method',
+        'subscriber_id'
     ];
 
     public function branch(){

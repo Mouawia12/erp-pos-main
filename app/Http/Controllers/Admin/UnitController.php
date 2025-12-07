@@ -43,6 +43,7 @@ class UnitController extends Controller
      */
     public function store(Request $request)
     {
+        $expectsJson = $request->expectsJson();
         if($request -> id == 0){
             $subscriberId = Auth::user()->subscriber_id ?? null;
             $code = $request->input('code') ?: $this->nextUnitCode($subscriberId);
@@ -55,16 +56,30 @@ class UnitController extends Controller
 
             $validated = $request->validate([
                 'code' => ['required', 'string', $codeRule],
-                'name' => 'required',
+                'name_ar' => 'required|string|max:255',
+                'name_en' => 'required|string|max:255',
+                'name' => 'nullable|string|max:255',
             ]);
             try {
-                
-                Unit::create([
+                $unit = Unit::create([
                     'code' => $request->code,
-                    'name' => $request->name, 
+                    'name' => $request->name ?? $request->name_ar ?? $request->name_en,
+                    'name_ar' => $request->name_ar,
+                    'name_en' => $request->name_en,
                 ]);
+                if ($expectsJson) {
+                    return response()->json([
+                        'message' => __('main.created'),
+                        'unit' => $unit,
+                    ], 201);
+                }
                 return redirect()->route('units')->with('success' , __('main.created'));
             } catch(QueryException $ex){ 
+                if ($expectsJson) {
+                    return response()->json([
+                        'message' => $ex->getMessage(),
+                    ], 422);
+                }
                 return redirect()->route('units')->with('error' ,  $ex->getMessage());
             }
         } else {
@@ -105,20 +120,51 @@ class UnitController extends Controller
      */
     public function update(Request $request)
     {
+        $expectsJson = $request->expectsJson();
         $unit = Unit::find($request -> id);
         if($unit) {
+            $subscriberId = Auth::user()->subscriber_id ?? null;
+            $codeRule = Rule::unique('units', 'code')->ignore($unit->id);
+            if ($subscriberId) {
+                $codeRule = $codeRule->where(fn($query) => $query->where('subscriber_id', $subscriberId));
+            }
+
+            if (! $request->input('code')) {
+                $request->merge(['code' => $unit->code]);
+            }
+
             $validated = $request->validate([
-                //'code' => ['required' , Rule::unique('units')->ignore($request -> id)],
-                'name' => 'required',
+                'code' => ['required', 'string', $codeRule],
+                'name_ar' => 'required|string|max:255',
+                'name_en' => 'required|string|max:255',
+                'name' => 'nullable|string|max:255',
             ]);
             try {
                 $unit -> update([ 
-                    'name' => $request->name, 
+                    'code' => $request->code,
+                    'name' => $request->name ?? $request->name_ar ?? $request->name_en,
+                    'name_ar' => $request->name_ar,
+                    'name_en' => $request->name_en,
                 ]);
+                if ($expectsJson) {
+                    return response()->json([
+                        'message' => __('main.updated'),
+                        'unit' => $unit,
+                    ]);
+                }
                 return redirect()->route('units' , $request -> isGold)->with('success', __('main.updated'));
             } catch (QueryException $ex) { 
+                if ($expectsJson) {
+                    return response()->json([
+                        'message' => $ex->getMessage(),
+                    ], 422);
+                }
                 return redirect()->route('units' , $request -> isGold)->with('error', $ex->getMessage());
             }
+        } elseif ($expectsJson) {
+            return response()->json([
+                'message' => __('main.not_found'),
+            ], 404);
         }
     }
 

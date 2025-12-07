@@ -29,6 +29,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Carbon;
 use DataTables;
 use Salla\ZATCA\GenerateQrCode;
 use Salla\ZATCA\Tags\InvoiceDate;
@@ -58,6 +59,7 @@ class SalesController extends Controller
                 $q->where('s.subscriber_id',$sub);
             })
             ->when($request->invoice_no, fn($q,$v)=>$q->where('s.invoice_no','like','%'.$v.'%'))
+            ->when($request->vehicle_plate, fn($q,$v)=>$q->where('s.vehicle_plate','like','%'.$v.'%'))
             ->when($request->customer_id, fn($q,$v)=>$q->where('s.customer_id',$v))
             ->when($request->representative_id, fn($q,$v)=>$q->where('s.representative_id',$v))
             ->when($request->branch_id, fn($q,$v)=>$q->where('s.branch_id',$v))
@@ -125,8 +127,8 @@ class SalesController extends Controller
         } 
  
         $customers = Company::where('group_id',3)->get();
-        $representatives = Representative::all();
         $branches = Branch::where('status',1)->get();
+        $representatives = Representative::all();
 
         return view('admin.sales.index',compact('customers','representatives','branches'));
     
@@ -268,8 +270,15 @@ class SalesController extends Controller
         $settings = SystemSettings::with('currency') -> first();
         $branches = Branch::where('status',1)->get();
         $defaultInvoiceType = $this->resolveDefaultInvoiceType();
+        $allowNegativeStock = $siteContrller->allowSellingWithoutStock();
+        $walkInCustomer = Company::ensureWalkInCustomer(Auth::user()->subscriber_id ?? null);
+        if ($walkInCustomer) {
+            $customers = $customers->sortByDesc(function ($customer) use ($walkInCustomer) {
+                return $customer->id === $walkInCustomer->id ? 1 : 0;
+            })->values();
+        }
 
-        return view('admin.sales.create',compact('warehouses','customers','representatives','settings','branches','defaultInvoiceType'));
+        return view('admin.sales.create',compact('warehouses','customers','representatives','settings','branches','defaultInvoiceType','allowNegativeStock','walkInCustomer'));
     }
 
     /**
@@ -297,6 +306,7 @@ class SalesController extends Controller
             'session_type' => $request->session_type ?? null,
         ];
 
+        $subscriberId = Auth::user()->subscriber_id ?? null;
         $siteController = new SystemController();
         $allowNegativeStock = $siteController->allowSellingWithoutStock();
         $customer = Company::find($request->customer_id);
@@ -304,6 +314,14 @@ class SalesController extends Controller
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'العميل المحدد غير موجود');
+        }
+        $walkInCustomer = Company::ensureWalkInCustomer($subscriberId);
+        $isWalkInCustomer = $walkInCustomer && (int) $customer->id === (int) $walkInCustomer->id;
+        if ($isWalkInCustomer) {
+            $request->validate([
+                'customer_name' => 'required|string|max:191',
+                'customer_phone' => 'nullable|string|max:191',
+            ]);
         }
         $customerPriceLevel = $customer->price_level_id ?? null;
         $warehouseMeta = $siteController->getWarehouseById($request->warehouse_id);
@@ -467,8 +485,8 @@ class SalesController extends Controller
             'representative_id' => $request->representative_id,
             'tax_mode' => $request->tax_mode ?? 'inclusive',
             'customer_id' => $request->customer_id,
-            'customer_name' => $request->customer_name,//pos
-            'customer_phone' => $request->customer_phone,//pos
+            'customer_name' => $isWalkInCustomer ? $request->customer_name : $customer->name,
+            'customer_phone' => $isWalkInCustomer ? $request->customer_phone : $customer->phone,
             'biller_id' => Auth::user()->id,
             'warehouse_id' => $request->warehouse_id,
             'note' => $request->notes ? $request->notes:'',
@@ -490,6 +508,8 @@ class SalesController extends Controller
             'created_by'=> Auth::user()->id,
             'sale_id' => 0,
             'subscriber_id' => $subscriberId,
+            'vehicle_plate' => $request->vehicle_plate ? trim($request->vehicle_plate) : null,
+            'vehicle_odometer' => $request->vehicle_odometer,
         ];
 
         $sale = Sales::create(array_merge($saleData, $this->resolveServiceMeta($request, $serviceDefaults)));
@@ -865,18 +885,45 @@ class SalesController extends Controller
          echo $no ;
          exit;
     }
- 
+
+    public function customerVehicles(Company $customer)
+    {
+        if (! Auth::user()->can('عرض مبيعات')) {
+            abort(403);
+        }
+
+        $vehicles = Sales::query()
+            ->select('vehicle_plate', 'vehicle_odometer')
+            ->where('customer_id', $customer->id)
+            ->whereNotNull('vehicle_plate')
+            ->orderByDesc('id')
+            ->limit(50)
+            ->get()
+            ->filter(fn ($row) => filled($row->vehicle_plate))
+            ->unique('vehicle_plate')
+            ->values();
+
+        return response()->json($vehicles);
+    }
+
     public function pos(){
         $siteContrller = new SystemController();
         $vendors = Company::where('group_id' , '=' , 3) -> get();
         $warehouses = $siteContrller->getAllWarehouses();
         $settings = SystemSettings::with('currency') ->first();
-        $representatives = Representative::all();
         $defaultInvoiceType = $this->resolveDefaultInvoiceType();
         $posSettings = PosSettings::first();
         $posMode = optional($posSettings)->pos_mode ?? 'classic';
+        $defaultWarehouseId = optional($warehouses->first())->id;
+        if($settings && $settings->branch_id){
+            $preferred = $warehouses->firstWhere('id', $settings->branch_id);
+            if($preferred){
+                $defaultWarehouseId = $preferred->id;
+            }
+        }
+        $allowNegativeStock = $siteContrller->allowSellingWithoutStock();
      
-       return view('admin.sales.pos' , compact('vendors' , 'warehouses' , 'settings','representatives','defaultInvoiceType','posSettings','posMode'));
+       return view('admin.sales.pos' , compact('vendors' , 'warehouses' , 'settings','defaultInvoiceType','posSettings','posMode','defaultWarehouseId','allowNegativeStock'));
     }
 
     private function resolveDefaultInvoiceType(): string
@@ -1080,16 +1127,32 @@ class SalesController extends Controller
 
         $sessionLocation = null;
         $sessionType = null;
+        $reservationTime = null;
+        $reservationGuests = null;
+        $reservationEnabled = (bool) ($request->boolean('reservation_enabled') ?? ($defaults['reservation_enabled'] ?? false));
 
         if ($mode === 'dine_in') {
             $sessionLocation = trim((string) ($request->input('session_location') ?? $defaults['session_location'] ?? '')) ?: null;
             $sessionType = trim((string) ($request->input('session_type') ?? $defaults['session_type'] ?? '')) ?: null;
+            if ($reservationEnabled) {
+                $reservationGuests = (int) ($request->input('reservation_guests') ?? $defaults['reservation_guests'] ?? 0) ?: null;
+                $reservationInput = $request->input('reservation_time') ?? ($defaults['reservation_time'] ?? null);
+                if ($reservationInput) {
+                    try {
+                        $reservationTime = Carbon::parse($reservationInput);
+                    } catch (\Throwable $th) {
+                        $reservationTime = null;
+                    }
+                }
+            }
         }
 
         return [
             'service_mode' => $mode,
             'session_location' => $sessionLocation,
             'session_type' => $sessionType,
+            'reservation_time' => $reservationTime,
+            'reservation_guests' => $reservationGuests,
         ];
     }
 }

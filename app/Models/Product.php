@@ -14,6 +14,7 @@ class Product extends Model
       'code',
       'barcode',
       'name',
+      'name_en',
       'unit',
       'cost',
       'price',

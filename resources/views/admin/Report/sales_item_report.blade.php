@@ -65,6 +65,15 @@
                                 </select>
                             </div>
                         </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>{{ __('main.vehicle_plate') }}</label>
+                                <input type="text" id="vehicle_plate" name="vehicle_plate"
+                                       class="form-control" list="salesVehicleOptions"
+                                       placeholder="{{ __('main.vehicle_plate') }}">
+                                <datalist id="salesVehicleOptions"></datalist>
+                            </div>
+                        </div>
                     </div>   
                     <div class="row"> 
                         <div class="col-md-12">
@@ -132,8 +141,58 @@
     var suggestionItems = {};
     var sItems = {};
     var count = 1;
+    const supplierVehiclesCache = {};
 
     $(document).ready(function() {
+        const vehicleInput = $('#vehicle_plate');
+        const vehicleOptionsList = $('#salesVehicleOptions');
+        const supplierSelect = $('#supplier_id');
+
+        function renderVehicleOptions(vehicles){
+            if(!vehicleOptionsList.length){
+                return;
+            }
+            vehicleOptionsList.empty();
+            (vehicles || []).forEach(function(vehicle){
+                if(!vehicle || !vehicle.vehicle_plate){
+                    return;
+                }
+                var label = vehicle.vehicle_plate;
+                if(vehicle.vehicle_odometer !== undefined && vehicle.vehicle_odometer !== null && vehicle.vehicle_odometer !== ''){
+                    label += ' ('+vehicle.vehicle_odometer+')';
+                }
+                var option = $('<option>')
+                    .attr('value', vehicle.vehicle_plate)
+                    .attr('data-odometer', vehicle.vehicle_odometer ?? '');
+                option.text(label);
+                vehicleOptionsList.append(option);
+            });
+        }
+
+        function fetchSupplierVehicles(customerId){
+            if(!vehicleOptionsList.length){
+                return;
+            }
+            if(!customerId || Number(customerId) === 0){
+                renderVehicleOptions([]);
+                return;
+            }
+            if(supplierVehiclesCache[customerId]){
+                renderVehicleOptions(supplierVehiclesCache[customerId]);
+                return;
+            }
+            var url = "{{ route('customers.vehicles', ['customer' => ':id']) }}";
+            url = url.replace(':id', customerId);
+            $.get(url)
+                .done(function(response){
+                    supplierVehiclesCache[customerId] = response || [];
+                    renderVehicleOptions(supplierVehiclesCache[customerId]);
+                })
+                .fail(function(){
+                    renderVehicleOptions([]);
+                });
+        }
+
         $('#is_from_date').prop('checked' , false);
         $('#from_date').attr('disabled' , true);
         $('#is_to_date').prop('checked' , false);
@@ -181,8 +240,16 @@
                 item_id = 0 ;
             }
 
-           showReport( fromDate,toDate,warehouse,branch_id,item_id,supplier ); 
+            const vehicle_plate = vehicleInput.val() ? vehicleInput.val().trim() : 'empty';
+           showReport( fromDate,toDate,warehouse,branch_id,item_id,supplier , vehicle_plate); 
         });
+
+        if(supplierSelect.length){
+            supplierSelect.on('change', function(){
+                fetchSupplierVehicles($(this).val());
+            });
+            fetchSupplierVehicles(supplierSelect.val());
+        }
 
         $('#add_item').on('input',function(e){
             searchProduct($('#add_item').val());
@@ -230,9 +297,9 @@
         document.title = "{{__('تقرير المبيعات تفصيلي')}}";
     });
 
-    function showReport(fdate, tdate,warehouse,branch_id,item,supplier) {
+    function showReport(fdate, tdate,warehouse,branch_id,item,supplier,vehicle_plate) {
 
-        var route = '{{route('sales.item.report.search',[":fdate",":tdate",":warehouse",":branch_id",":item",":supplier"])}}';
+        var route = '{{route('sales.item.report.search',[":fdate",":tdate",":warehouse",":branch_id",":item",":supplier",":vehicle"])}}';
 
         route = route.replace(":fdate",fdate );
         route = route.replace(":tdate",tdate );
@@ -240,6 +307,8 @@
         route = route.replace(":branch_id", branch_id ? branch_id : 0);
         route = route.replace(":item",item );
         route = route.replace(":supplier",supplier );
+        var encodedPlate = vehicle_plate ? encodeURIComponent(vehicle_plate) : 'empty';
+        route = route.replace(":vehicle", encodedPlate ? encodedPlate : 'empty');
         console.log(route);
 
         $.get( route, function( data ) {

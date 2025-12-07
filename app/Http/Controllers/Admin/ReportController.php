@@ -35,16 +35,26 @@ class ReportController extends Controller
         $siteContrller = new SystemController();
         $warehouses = $siteContrller->getAllWarehouses();
         $branches = $siteContrller->getBranches(); 
-        return view('admin.Report.daily_sales_report' , compact('warehouses','branches'));
+        $customers = Company::where('group_id',3)->get();
+        return view('admin.Report.daily_sales_report' , compact('warehouses','branches','customers'));
     }
 
-    public function daily_sales_report_search($date , $warehouse, $branch_id){
-        $data = Sales::where('sale_id',0)
-                    ->where('date',$date)
-                    ->get();
+    public function daily_sales_report_search($date , $warehouse, $branch_id, $customer_id = 0, $vehicle_plate = 'empty'){
+        $query = Sales::with(['branch','warehouse','customer'])
+                    ->where('sale_id',0)
+                    ->when(Auth::user()->subscriber_id ?? null, function($q,$sub){
+                        $q->where('subscriber_id',$sub);
+                    })
+                    ->whereDate('date',$date);
 
-        if( $warehouse >0 ) $data = $data -> where('warehouse_id',$warehouse);  
-        if( $branch_id >0 ) $data = $data -> where('branch_id',$branch_id);               
+        if( $warehouse >0 ) $query->where('warehouse_id',$warehouse);  
+        if( $branch_id >0 ) $query->where('branch_id',$branch_id);
+        if( $customer_id >0 ) $query->where('customer_id',$customer_id);
+        if(!empty($vehicle_plate) && $vehicle_plate !== 'empty'){
+            $query->where('vehicle_plate','like','%'.$vehicle_plate.'%');
+        }
+
+        $data = $query->get();               
      
         $period_ar = 'الفترة :';
         if($date){
@@ -68,9 +78,9 @@ class ReportController extends Controller
         return view('admin.Report.sales_item_report' , compact('warehouses','vendors','branches'));
     }
 
-    public function sales_item_report_search($fdate,$tdate,$warehouse,$branch_id,$item_id,$supplier ){
+    public function sales_item_report_search($fdate,$tdate,$warehouse,$branch_id,$item_id,$supplier,$vehicle_plate = 'empty' ){
 
-        $data = DB::table('sale_details')
+        $dataQuery = DB::table('sale_details')
                     ->join('sales' , 'sales.id' , 'sale_details.sale_id')
                     ->join('products' , 'products.id' , 'sale_details.product_id')
                     ->join('companies' , 'sales.customer_id' , '=' , 'companies.id')
@@ -79,21 +89,27 @@ class ReportController extends Controller
                     ->select('sale_details.*', 'sales.date as bill_date', 'sales.invoice_no as invoice_no',
                             'sales.branch_id','products.code as product_code', 'products.name as product_name',
                             'warehouses.name as warehouse_name', 'branches.branch_name','sales.warehouse_id'
-                            ,'sales.customer_id','sales.date')
+                            ,'sales.customer_id','sales.date','sales.vehicle_plate','sales.vehicle_odometer','companies.name as customer_name')
                     ->where('sales.sale_id' , '=' ,  0)  
                     ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
                         $q->where('sale_details.subscriber_id',$sub);
-                    })
-                    ->get();
+                    });
  
- 
- 
-        if($fdate) $data = $data->where('date','>=',\Carbon\Carbon::parse($fdate)->format('Y-m-d'));
-        if($tdate) $data = $data->where('date','<=',\Carbon\Carbon::parse($tdate)->format('Y-m-d'));
-        if( $warehouse > 0 ) $data = $data->where('warehouse_id',$warehouse);
-        if( $branch_id > 0 ) $data = $data->where('branch_id',$branch_id);
-        if($item_id>0) $data = $data->where('product_id',$item_id);
-        if($supplier > 0) $data = $data->where('customer_id',$supplier);  
+        if($fdate){
+            $dataQuery->whereDate('sales.date','>=',\Carbon\Carbon::parse($fdate)->format('Y-m-d'));
+        }
+        if($tdate){
+            $dataQuery->whereDate('sales.date','<=',\Carbon\Carbon::parse($tdate)->format('Y-m-d'));
+        }
+        if( $warehouse > 0 ) $dataQuery->where('sales.warehouse_id',$warehouse);
+        if( $branch_id > 0 ) $dataQuery->where('sales.branch_id',$branch_id);
+        if($item_id>0) $dataQuery->where('sale_details.product_id',$item_id);
+        if($supplier > 0) $dataQuery->where('sales.customer_id',$supplier);  
+        if(!empty($vehicle_plate) && $vehicle_plate !== 'empty'){
+            $dataQuery->where('sales.vehicle_plate','like','%'.$vehicle_plate.'%');
+        }
+        
+        $data = $dataQuery->get();
         
            
         $period_ar = 'الفترة :';

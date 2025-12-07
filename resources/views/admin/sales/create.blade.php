@@ -33,11 +33,21 @@
 span strong {font-size:12px;}
 </style>  
     @can('اضافة مبيعات')   
+    @if(!empty($allowNegativeStock))
+        <div class="alert alert-success small">
+            {{ __('main.sell_without_stock_enabled') }}
+        </div>
+    @else
+        <div class="alert alert-warning small">
+            {{ __('main.sell_without_stock_disabled') }}
+        </div>
+    @endif
     <div class="row row-sm">
         <div class="col-xl-12">
             <form method="POST" action="{{ route('store_sale') }}" id="salesform"
                            enctype="multipart/form-data" autocomplete="off">
             @csrf 
+            <input type="hidden" name="tax_mode" value="inclusive">
             <div class="card shadow mb-4 col-xl-12"> 
                 <div class="card-header"  id="head-right" > 
                     <div class="row"> 
@@ -59,41 +69,10 @@ span strong {font-size:12px;}
                             <div class="form-group">
                                 <label>{{ __('main.invoice_type') }}</label>
                                 <select class="form-control" name="invoice_type" id="invoice_type">
-                                    @php $defaultType = $defaultInvoiceType ?? ($settings->default_invoice_type ?? 'tax_invoice'); @endphp
+                                    @php $defaultType = $defaultInvoiceType ?? ($settings->default_invoice_type ?? 'simplified_tax_invoice'); @endphp
                                     <option value="tax_invoice" @if($defaultType=='tax_invoice') selected @endif>{{ __('main.invoice_type_tax') }}</option>
                                     <option value="simplified_tax_invoice" @if($defaultType=='simplified_tax_invoice') selected @endif>{{ __('main.invoice_type_simplified') }}</option>
                                     <option value="non_tax_invoice" @if($defaultType=='non_tax_invoice') selected @endif>{{ __('main.invoice_type_nontax') }}</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="form-group">
-                                <label>{{ __('main.service_mode') }}</label>
-                                <select class="form-control" name="service_mode" id="sale_service_mode">
-                                    <option value="dine_in">{{ __('main.service_mode_dine_in') }}</option>
-                                    <option value="takeaway">{{ __('main.service_mode_takeaway') }}</option>
-                                    <option value="delivery">{{ __('main.service_mode_delivery') }}</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-2 service-meta-input d-none">
-                            <div class="form-group">
-                                <label>{{ __('main.session_location') }}</label>
-                                <input type="text" class="form-control" name="session_location" id="sale_session_location" placeholder="{{ __('main.session_location') }}">
-                            </div>
-                        </div>
-                        <div class="col-md-2 service-meta-input d-none">
-                            <div class="form-group">
-                                <label>{{ __('main.session_type') }}</label>
-                                <input type="text" class="form-control" name="session_type" id="sale_session_type" placeholder="{{ __('main.session_type') }}">
-                            </div>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="form-group">
-                                <label>{{ __('main.tax_mode') }}</label>
-                                <select class="form-control" name="tax_mode" id="tax_mode">
-                                    <option value="inclusive">{{__('main.tax_mode_inclusive')}}</option>
-                                    <option value="exclusive">{{__('main.tax_mode_exclusive')}}</option>
                                 </select>
                             </div>
                         </div>
@@ -126,14 +105,25 @@ span strong {font-size:12px;}
                         <div class="col-md-3" >
                             <div class="form-group">
                                 <label>{{ __('main.clients') }} <span class="text-danger">*</span> </label>
+                                @php
+                                    $defaultCustomerId = optional($walkInCustomer)->id ?? optional($customers->first())->id;
+                                    $selectedCustomer = old('customer_id', $defaultCustomerId);
+                                @endphp
                                 <select class="js-example-basic-single w-100"
-                                    name="customer_id" id="customer_id" required> 
+                                    name="customer_id" id="customer_id" required data-walk-in="{{ optional($walkInCustomer)->id }}">
                                     @foreach ($customers as $customer)
-                                        <option value="{{$customer -> id}}" data-default-discount="{{$customer->default_discount ?? 0}}" data-representative="{{$customer->representative_id_ ?? ''}}">
+                                        <option value="{{$customer -> id}}"
+                                                data-default-discount="{{$customer->default_discount ?? 0}}"
+                                                data-representative="{{$customer->representative_id_ ?? ''}}"
+                                                @if($selectedCustomer == $customer->id) selected @endif>
                                             {{ $customer -> name}}
+                                            @if(!empty($walkInCustomer) && $walkInCustomer->id === $customer->id)
+                                                ({{ __('main.walk_in_customer') }})
+                                            @endif
                                         </option>
                                     @endforeach
                                 </select>
+                                <input type="hidden" id="walk_in_customer_id" value="{{ optional($walkInCustomer)->id }}">
                                 <div class="mt-1 d-flex gap-2">
                                     <a href="{{ route('clients',3) }}" target="_blank" class="btn btn-sm btn-outline-primary">
                                         {{ __('main.add_new') }} {{ __('main.clients') }}
@@ -141,15 +131,20 @@ span strong {font-size:12px;}
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-3">
+                        @php $showWalkInFields = ($selectedCustomer == optional($walkInCustomer)->id); @endphp
+                        <div class="col-md-3 {{ $showWalkInFields ? '' : 'd-none' }}" id="walk_in_fields">
                             <div class="form-group">
-                                <label class="d-block">{{ __('main.walk_in_customer') ?? 'عميل نقدي/افتراضي' }}</label>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="walk_in_toggle">
-                                    <label class="form-check-label" for="walk_in_toggle">{{ __('main.enable') }}</label>
-                                </div>
-                                <input type="text" class="form-control mt-2 d-none" name="customer_name" id="walk_in_name" placeholder="{{__('main.customer_name')}}">
-                                <input type="text" class="form-control mt-2 d-none" name="customer_phone" id="walk_in_phone" placeholder="{{__('main.customer_phone')}}">
+                                <label>{{ __('main.customer_name') }} <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="customer_name" id="walk_in_name"
+                                       placeholder="{{__('main.customer_name')}}"
+                                       value="{{ old('customer_name', optional($walkInCustomer)->name) }}">
+                            </div>
+                            <div class="form-group mt-2">
+                                <label>{{ __('main.customer_phone') }}</label>
+                                <input type="text" class="form-control" name="customer_phone" id="walk_in_phone"
+                                       placeholder="{{__('main.customer_phone')}}"
+                                       value="{{ old('customer_phone', optional($walkInCustomer)->phone) }}">
+                                <small class="text-muted">{{ __('main.walk_in_customer_hint') }}</small>
                             </div>
                         </div>
                         <div class="col-md-3">
@@ -173,6 +168,33 @@ span strong {font-size:12px;}
                             <div class="form-group">
                                 <label>{{ __('main.cost_center') }}</label>
                                 <input type="text" class="form-control" name="cost_center" id="cost_center" placeholder="{{__('main.cost_center')}}">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>{{ __('main.invoice_payment_method') ?? __('main.payment_method') }}</label>
+                                <select class="form-control" name="payment_method" id="payment_method">
+                                    <option value="cash">{{ __('main.cash') }}</option>
+                                    <option value="credit">{{ __('main.credit') }}</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>{{ __('main.vehicle_plate') }}</label>
+                                <input type="text" id="vehicle_plate" name="vehicle_plate"
+                                       class="form-control" list="vehiclePlateOptions"
+                                       placeholder="{{ __('main.vehicle_plate') }}"
+                                       value="{{ old('vehicle_plate') }}">
+                                <datalist id="vehiclePlateOptions"></datalist>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>{{ __('main.vehicle_odometer') }}</label>
+                                <input type="number" step="1" id="vehicle_odometer" name="vehicle_odometer"
+                                       class="form-control" placeholder="{{ __('main.vehicle_odometer') }}"
+                                       value="{{ old('vehicle_odometer') }}">
                             </div>
                         </div>
                     </div> 
@@ -220,7 +242,8 @@ span strong {font-size:12px;}
                                                             <th class="text-center">{{__('main.available_qty')}}</th>
                                                             <th class="text-center">{{__('main.cost')}}</th>
                                                             <th class="text-center">{{__('main.last_sale_price')}}</th>
-                                                            <th class="text-center">{{ __('main.unit') }} / {{ __('main.quantity') }}</th>
+                                                            <th class="text-center">{{ __('main.unit') }}</th>
+                                                            <th class="text-center">{{ __('main.quantity') }}</th>
                                                             <th class="text-center">{{__('main.price.unit')}}</th>
                                                             <th class="text-center">{{__('main.discount')}}</th> 
                                                             <th class="text-center">{{__('main.mount')}}</th>
@@ -231,7 +254,7 @@ span strong {font-size:12px;}
                                                     </thead>
                                                     <tbody id="tbody"></tbody>
                                                     <tfoot>
-                                                        <th colspan="6">
+                                                        <th colspan="7">
                                                             {{__('main.sum')}}
                                                         </th>
                                                         <td class="text-center" colspan="1">
@@ -386,6 +409,65 @@ span strong {font-size:12px;}
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="duplicateItemModal" tabindex="-1" role="dialog" aria-labelledby="duplicateItemLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <label class="alertTitle mb-0">{{ __('main.alerts') }}</label>
+                <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body text-center">
+                <p class="mb-1">{{ __('main.duplicate_item_warning') }}</p>
+                <p class="text-muted" id="duplicateItemName"></p>
+                <div class="d-flex justify-content-around mt-3">
+                    <button type="button" class="btn btn-secondary" id="cancelDuplicateItem">
+                        {{ __('main.cancel_btn') }}
+                    </button>
+                    <button type="button" class="btn btn-primary" id="confirmDuplicateItem">
+                        {{ __('main.add_new') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="variantModal" tabindex="-1" role="dialog" aria-labelledby="variantModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <label class="alertTitle mb-0">{{ __('main.choose_variant') ?? 'اختر المتغير' }}</label>
+                <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered text-center">
+                        <thead>
+                            <tr>
+                                <th>{{ __('main.color') ?? 'اللون' }}</th>
+                                <th>{{ __('main.size') ?? 'المقاس' }}</th>
+                                <th>{{ __('main.barcode') }}</th>
+                                <th>{{ __('main.price') }}</th>
+                                <th>{{ __('main.available_qty') }}</th>
+                                <th>{{ __('main.choose') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody id="variantOptionsBody"></tbody>
+                    </table>
+                </div>
+                <div class="text-center mt-3">
+                    <button type="button" class="btn btn-secondary" id="cancelVariantSelection">{{ __('main.cancel_btn') }}</button>
+                    <button type="button" class="btn btn-primary" id="confirmVariantSelection">{{ __('main.save_btn') }}</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 @endcan 
 @endsection 
 @section('js')
@@ -396,99 +478,94 @@ span strong {font-size:12px;}
     var count = 1;
     var itemKey = 1;
     const itemNotePlaceholder = @json(__('main.line_note_hint'));
+    let pendingDuplicateItem = null;
+    const allowNegativeStock = {{ !empty($allowNegativeStock) ? 'true' : 'false' }};
+    const insufficientTemplate = "{{ __('main.insufficient_stock', ['item' => '__ITEM__']) }}";
 
     function setupPaymentModal(){
         const mismatchMsg = "{{ __('main.payments_must_match_total') }}";
         const totalLabel = "{{ __('main.total.final') }}";
         const paidLabel = "{{ __('main.paid') }}";
 
-        function sumCards(){
-            var total = 0;
-            document.querySelectorAll('.card_amount').forEach(function(el){
-                var v = parseFloat(el.value);
-                if(!isNaN(v)){
-                    total += v;
-                }
-            });
-            return total;
-        }
+        const moneyInput = document.getElementById('money');
+        const cashInput = document.getElementById('cash');
+        const bankInput = document.getElementById('bank_amount');
 
         function clearErrorState(){
-            var errorBox = document.getElementById('paymentError');
+            const errorBox = document.getElementById('paymentError');
             if(errorBox){
                 errorBox.classList.add('d-none');
                 errorBox.textContent = '';
             }
-            document.querySelectorAll('.payment-input').forEach(function(el){
-                el.classList.remove('is-invalid');
-            });
+            if(cashInput){
+                cashInput.classList.remove('is-invalid');
+            }
         }
 
         function showError(message){
-            var errorBox = document.getElementById('paymentError');
+            const errorBox = document.getElementById('paymentError');
             if(errorBox){
                 errorBox.textContent = message;
                 errorBox.classList.remove('d-none');
             }
-            document.querySelectorAll('.payment-input').forEach(function(el){
-                el.classList.add('is-invalid');
-            });
+            if(cashInput){
+                cashInput.classList.add('is-invalid');
+            }
+        }
+
+        function syncBankAmount(){
+            if(!moneyInput || !cashInput || !bankInput){ return; }
+            const total = parseFloat(moneyInput.value) || 0;
+            let cashVal = parseFloat(cashInput.value);
+            if(isNaN(cashVal) || cashVal < 0){
+                cashVal = 0;
+            }
+            if(cashVal > total){
+                cashVal = total;
+            }
+            cashInput.value = cashVal.toFixed(2);
+            bankInput.value = (total - cashVal).toFixed(2);
         }
 
         $(document).off('input','.payment-input').on('input','.payment-input',function (){
-            $(this).removeClass('is-invalid');
-            var errorBox = document.getElementById('paymentError');
-            if(errorBox){
-                errorBox.classList.add('d-none');
-            }
-        });
-
-        $(document).off('click','#addCardRow').on('click','#addCardRow',function (){
-            var wrapper = document.getElementById('cardRows');
-            if(!wrapper){ return; }
-            var row = document.createElement('div');
-            row.className = 'form-row card-row mb-1';
-            row.innerHTML = '<div class="col-7"><input type="text" class="form-control" name="card_bank[]" placeholder="{{__('main.method.payment')}}"></div><div class="col-5"><input type="number" class="form-control card_amount payment-input" name="card_amount[]" min="0" step="any" value="0"></div>';
-            wrapper.appendChild(row);
+            clearErrorState();
+            syncBankAmount();
         });
 
         $(document).off('click','#payment_btn').on('click','#payment_btn',function (){
-            var paymentBtn = this;
-            var money = parseFloat(document.getElementById('money')?.value) || 0;
-            var cash = parseFloat(document.getElementById('cash')?.value) || 0;
-            var cards = sumCards();
-            var paid = Number((cash + cards).toFixed(2));
-            var invoiceTotal = Number(money.toFixed(2));
+            const paymentBtn = this;
+            const invoiceTotal = parseFloat(moneyInput?.value) || 0;
+            const cashVal = parseFloat(cashInput?.value) || 0;
+            const bankVal = parseFloat(bankInput?.value) || 0;
+            const paid = Number((cashVal + bankVal).toFixed(2));
+            const invoice = Number(invoiceTotal.toFixed(2));
 
-            if(paid === invoiceTotal){
+            if(paid === invoice){
                 clearErrorState();
                 paymentBtn.disabled = true;
                 paymentBtn.innerText = '... جاري الحفظ';
                 $('#paymentsModal').modal('hide');
                 document.getElementById('salesform').submit();
             }else{
-                var differenceValue = invoiceTotal - paid;
-                var diffLabel = differenceValue > 0 ? 'متبقي' : 'زيادة';
-                var formattedDiff = Math.abs(differenceValue).toFixed(2);
-                var message = mismatchMsg + ' - ' + totalLabel + ': ' + invoiceTotal.toFixed(2) + ' | ' + paidLabel + ': ' + paid.toFixed(2) + ' (' + diffLabel + ': ' + formattedDiff + ')';
+                const differenceValue = invoice - paid;
+                const diffLabel = differenceValue > 0 ? "{{ __('main.remain') }}" : "{{ __('main.extra_amount') ?? 'زيادة' }}";
+                const formattedDiff = Math.abs(differenceValue).toFixed(2);
+                const message = mismatchMsg + ' - ' + totalLabel + ': ' + invoice.toFixed(2) + ' | ' + paidLabel + ': ' + paid.toFixed(2) + ' (' + diffLabel + ': ' + formattedDiff + ')';
                 showError(message);
             }
         });
 
         $('#paymentsModal').off('shown.bs.modal').on('shown.bs.modal', function (){
-            var paymentBtn = document.getElementById('payment_btn');
+            const paymentBtn = document.getElementById('payment_btn');
             if(paymentBtn){
                 paymentBtn.disabled = false;
                 paymentBtn.innerText = "{{ __('main.save_btn') }}";
             }
-            clearErrorState();
-            // افتراضي: عبي الكاش بقيمة الفاتورة لتسريع الإدخال
-            var money = document.getElementById('money');
-            var cash = document.getElementById('cash');
-            if(money && cash){
-                cash.value = money.value || 0;
+            if(moneyInput && cashInput){
+                cashInput.value = (moneyInput.value || 0);
             }
-            document.querySelectorAll('.card_amount').forEach(function(el){ el.value = 0; });
+            clearErrorState();
+            syncBankAmount();
         });
     }
 
@@ -514,6 +591,90 @@ span strong {font-size:12px;}
 
         var warehouseSelect = $('#warehouse_id');
         var billInput = document.getElementById('bill_date');
+        const paymentMethodSelect = $('#payment_method');
+        const vehiclePlateInput = $('#vehicle_plate');
+        const vehicleOdometerInput = $('#vehicle_odometer');
+        const vehicleOptionsList = $('#vehiclePlateOptions');
+        const walkInCustomerId = Number($('#walk_in_customer_id').val() || 0);
+        const $walkInFields = $('#walk_in_fields');
+        const representativeSelect = $('#representative_id');
+        const costCenterInput = $('#cost_center');
+        const customerVehiclesCache = {};
+
+        function setPaymentMethod(value){
+            if(paymentMethodSelect && paymentMethodSelect.length){
+                paymentMethodSelect.val(value).trigger('change');
+            }
+        }
+
+        function hydrateVehicleOdometer(){
+            if(!vehiclePlateInput.length || !vehicleOdometerInput.length){
+                return;
+            }
+            var currentValue = (vehiclePlateInput.val() || '').trim();
+            if(!currentValue){
+                return;
+            }
+            var option = vehicleOptionsList.find('option').filter(function(){
+                return this.value === currentValue;
+            }).first();
+            if(option.length){
+                var stored = option.attr('data-odometer');
+                if(stored !== undefined && stored !== null && stored !== ''){
+                    vehicleOdometerInput.val(stored);
+                }
+            }
+        }
+
+        function renderVehicleOptions(vehicles){
+            if(!vehicleOptionsList.length){
+                return;
+            }
+            vehicleOptionsList.empty();
+            (vehicles || []).forEach(function(vehicle){
+                if(!vehicle || !vehicle.vehicle_plate){
+                    return;
+                }
+                var label = vehicle.vehicle_plate;
+                if(vehicle.vehicle_odometer !== undefined && vehicle.vehicle_odometer !== null && vehicle.vehicle_odometer !== ''){
+                    label += ' ('+vehicle.vehicle_odometer+')';
+                }
+                var option = $('<option>')
+                    .attr('value', vehicle.vehicle_plate)
+                    .attr('data-odometer', vehicle.vehicle_odometer !== undefined && vehicle.vehicle_odometer !== null ? vehicle.vehicle_odometer : '');
+                option.text(label);
+                vehicleOptionsList.append(option);
+            });
+            hydrateVehicleOdometer();
+        }
+
+        function fetchCustomerVehicles(customerId){
+            if(!vehicleOptionsList.length){
+                return;
+            }
+            if(!customerId){
+                renderVehicleOptions([]);
+                return;
+            }
+            if(customerVehiclesCache[customerId]){
+                renderVehicleOptions(customerVehiclesCache[customerId]);
+                return;
+            }
+            var url = "{{ route('customers.vehicles', ['customer' => ':id']) }}";
+            url = url.replace(':id', customerId);
+            $.get(url)
+                .done(function(response){
+                    customerVehiclesCache[customerId] = response || [];
+                    renderVehicleOptions(customerVehiclesCache[customerId]);
+                })
+                .fail(function(){
+                    renderVehicleOptions([]);
+                });
+        }
+
+        if(vehiclePlateInput.length){
+            vehiclePlateInput.on('change blur', hydrateVehicleOdometer);
+        }
 
         if(billInput){
             var now = new Date();
@@ -523,32 +684,27 @@ span strong {font-size:12px;}
             billInput.value = now.toISOString().slice(0, -1);
         }
 
-        $('#representative_id').on('change', function(){
-            var selected = $(this).find('option:selected').text().trim();
-            if(selected && !$('#cost_center').val()){
-                $('#cost_center').val(selected);
-            }
-        });
 
-        $('#walk_in_toggle').on('change', function(){
-            const enabled = $(this).is(':checked');
-            $('#walk_in_name, #walk_in_phone').toggleClass('d-none', !enabled);
-            if(!enabled){
-                $('#walk_in_name, #walk_in_phone').val('');
+        function toggleWalkInFields(selectedId){
+            const isWalkIn = walkInCustomerId && Number(selectedId) === Number(walkInCustomerId);
+            if($walkInFields.length){
+                $walkInFields.toggleClass('d-none', !isWalkIn);
             }
-        });
-
-        function toggleServiceMeta(){
-            const mode = $('#sale_service_mode').val();
-            const showFields = mode === 'dine_in';
-            $('.service-meta-input').toggleClass('d-none', !showFields);
-            if(!showFields){
-                $('#sale_session_location, #sale_session_type').val('');
+            if(isWalkIn){
+                setPaymentMethod('cash');
+            } else {
+                setPaymentMethod('credit');
             }
         }
 
-        $('#sale_service_mode').on('change', toggleServiceMeta);
-        toggleServiceMeta();
+        if(representativeSelect.length){
+            representativeSelect.on('change', function(){
+                const selectedText = $(this).find('option:selected').text().trim();
+                if(selectedText && costCenterInput && !costCenterInput.val()){
+                    costCenterInput.val(selectedText);
+                }
+            });
+        }
 
         if(resolveBranchSelect()){
             getWarehouse();
@@ -578,10 +734,18 @@ span strong {font-size:12px;}
                 $('#discount_input').val(defaultDiscount);
                 NetAfterDiscount();
             }
-            if(repId){
-                $('#representative_id').val(repId).trigger('change');
+            if(representativeSelect.length){
+                if(repId){
+                    representativeSelect.val(repId).trigger('change');
+                } else {
+                    representativeSelect.val('').trigger('change');
+                }
             }
+            toggleWalkInFields($(this).val());
+            fetchCustomerVehicles($(this).val());
         });
+        toggleWalkInFields($('#customer_id').val());
+        fetchCustomerVehicles($('#customer_id').val());
 
         $(document).on('click' , '.cancel-modal' , function(event) {
             $('#deleteModal').modal("hide");
@@ -620,7 +784,6 @@ span strong {font-size:12px;}
             if(client > 0 && warehouse_id > 0){
                 if (rows > 0){ 
                     addPayments(net_after_discount);
-                   //document.getElementById('salesform').submit(); 
                 } else {
                     alert($('<div>{{__('main.invoice_details_required')}}</div>').text());
                 }
@@ -698,9 +861,76 @@ span strong {font-size:12px;}
             NetAfterDiscount(); 
         });
 
+        $('#confirmDuplicateItem').on('click', function (){
+            if(pendingDuplicateItem){
+                var item = pendingDuplicateItem;
+                pendingDuplicateItem = null;
+                $('#duplicateItemModal').modal('hide');
+                addItemToTable(item, true);
+            }
+        });
+
+        $('#cancelDuplicateItem').on('click', function (){
+            pendingDuplicateItem = null;
+            $('#duplicateItemModal').modal('hide');
+        });
+
+        $('#duplicateItemModal').on('hidden.bs.modal', function (){
+            pendingDuplicateItem = null;
+        });
+
+        $('#confirmVariantSelection').on('click', function (){
+            if(!pendingVariantProduct){
+                return;
+            }
+            const selected = $('input[name="variant_choice"]:checked').val();
+            if(!selected){
+                alert('{{ __('main.choose_variant') ?? 'اختر المتغير' }}');
+                return;
+            }
+            const variantObj = (pendingVariantProduct.variants || []).find(function(v){
+                return String(v.id) === String(selected);
+            });
+            if(variantObj){
+                pendingVariantProduct.selected_variant = variantObj;
+                pendingVariantProduct.variant_color = variantObj.color;
+                pendingVariantProduct.variant_size = variantObj.size;
+                pendingVariantProduct.variant_barcode = variantObj.barcode;
+            }
+            const item = pendingVariantProduct;
+            pendingVariantProduct = null;
+            $('#variantModal').modal('hide');
+            addItemToTable(item);
+        });
+
+        $('#cancelVariantSelection').on('click', function (){
+            pendingVariantProduct = null;
+            $('#variantModal').modal('hide');
+        });
+
+        $('#variantModal').on('hidden.bs.modal', function (){
+            pendingVariantProduct = null;
+            $('input[name="variant_choice"]').prop('checked', false);
+        });
+
         NetAfterDiscount();
 
     });
+
+    function formatInsufficientMessage(item){
+        const name = item.name ?? item.code ?? '';
+        return insufficientTemplate.replace('__ITEM__', name);
+    }
+
+    function isQuantityValid(item, qty){
+        if(allowNegativeStock){
+            return true;
+        }
+        const available = Number(item.available_qty ?? 0);
+        const factor = Number(item.unit_factor ?? 1);
+        const required = Number(qty ?? item.qnt ?? 0) * factor;
+        return available >= required;
+    }
 
     function searchProduct(code){
         //var url = '{{route('getProduct',":id")}}';
@@ -744,7 +974,12 @@ span strong {font-size:12px;}
         $data = '';
         $.each(response,function (i,item) {
             suggestionItems[item.id] = item;
-            $data +='<li class="select_product" data-item-id="'+item.id+'">'+item.name+'</li>';
+            let label = item.name;
+            if(item.selected_variant){
+                label += ' | '+(item.selected_variant.color ?? '');
+                label += ' '+(item.selected_variant.size ?? '');
+            }
+            $data +='<li class="select_product" data-item-id="'+item.id+'">'+label+'</li>';
         });
         document.getElementById('products_suggestions').innerHTML = $data;
     }
@@ -772,17 +1007,72 @@ span strong {font-size:12px;}
       })
     }
 
-    function addItemToTable(item){
+    function needsVariantSelection(item){
+        return Array.isArray(item.variants) && item.variants.length > 0 && !item.selected_variant;
+    }
+
+    function openVariantModal(item){
+        pendingVariantProduct = item;
+        const tbody = $('#variantOptionsBody');
+        tbody.empty();
+        (item.variants || []).forEach(function(variant){
+            const row = `<tr>
+                <td>${escapeHtml(variant.color ?? '')}</td>
+                <td>${escapeHtml(variant.size ?? '')}</td>
+                <td>${escapeHtml(variant.barcode ?? '')}</td>
+                <td>${Number(variant.price ?? item.price ?? 0).toFixed(2)}</td>
+                <td>${Number(variant.quantity ?? 0)}</td>
+                <td><input type="radio" name="variant_choice" value="${variant.id}"></td>
+            </tr>`;
+            tbody.append(row);
+        });
+        $('#variantModal').modal({backdrop:'static',keyboard:false});
+    }
+
+    function addItemToTable(item, forceDuplicate){
+        forceDuplicate = forceDuplicate || false;
+
+        if($('#warehouse_id').val() == null){
+            alert($('<div>{{__('main.customer_warehouse_required')}}</div>').text());
+            return;
+        }
+
+        if(!item){
+            return;
+        }
 
         if(count == 1){
             sItems = {};
         }
 
-        var isDuplicate = Object.values(sItems).some(function(existing){
-            return existing.product_id === item.id;
+        if(needsVariantSelection(item)){
+            openVariantModal(item);
+            return;
+        }
+
+        var targetVariantId = item.selected_variant ? item.selected_variant.id : null;
+        var duplicateExists = Object.values(sItems).some(function(existing){
+            var existingVariantId = existing.variant_id ?? (existing.selected_variant ? existing.selected_variant.id : null);
+            return existing.product_id === item.id && String(existingVariantId ?? '') === String(targetVariantId ?? '');
         });
+        if(duplicateExists && !forceDuplicate){
+            pendingDuplicateItem = item;
+            $('#duplicateItemName').text(item.name ? item.name : (item.code || ''));
+            $('#duplicateItemModal').modal({backdrop: 'static', keyboard: false});
+            try {
+                var warnAudio = $("#mysoundclip2")[0];
+                if(warnAudio){ warnAudio.play(); }
+            } catch (e) {}
+            return;
+        }
 
         var price = item.price;
+        if(item.selected_variant && item.selected_variant.price){
+            price = item.selected_variant.price;
+        }
+        if(item.promo_discount_unit){
+            price = Math.max(price - Number(item.promo_discount_unit), 0);
+        }
         var taxType = item.tax_method;
         var taxRate = item.tax;
         var itemTax = 0;
@@ -819,7 +1109,8 @@ span strong {font-size:12px;}
             itemTax = itemTax + taxExcise;
         }
         
-        var key = item.id + '_' + itemKey;
+        var uniqueKey = item.selected_variant ? ('v'+item.selected_variant.id) : ('p'+item.id);
+        var key = uniqueKey + '_' + itemKey;
         itemKey++;
 
         sItems[key] = item;
@@ -839,9 +1130,16 @@ span strong {font-size:12px;}
         sItems[key].selected_unit_id = defaultUnit;
         sItems[key].unit_factor = defaultFactor;
         sItems[key].units_options = item.units_options ?? [];
+        sItems[key].variant_id = item.selected_variant ? item.selected_variant.id : (item.variant_id ?? null);
+        sItems[key].variant_color = item.selected_variant ? item.selected_variant.color : (item.variant_color ?? null);
+        sItems[key].variant_size = item.selected_variant ? item.selected_variant.size : (item.variant_size ?? null);
+        sItems[key].variant_barcode = item.selected_variant ? item.selected_variant.barcode : (item.variant_barcode ?? null);
+        sItems[key].promo_discount_unit = item.promo_discount_unit ?? 0;
 
-        if(isDuplicate){
-            alert('{{ __('main.duplicate_item_warning') }}');
+        if(!isQuantityValid(sItems[key])){
+            alert(formatInsufficientMessage(item));
+            delete sItems[key];
+            return;
         }
 
         count++;
@@ -868,8 +1166,12 @@ span strong {font-size:12px;}
         var newQty = parseFloat($(this).val()),
             item_id = row.attr('data-item-id');
 
-        console.log(newQty);
-        console.log(item_id);
+        if(!isQuantityValid(sItems[item_id], newQty)){
+            alert(formatInsufficientMessage(sItems[item_id]));
+            $(this).val(old_row_qty);
+            return;
+        }
+
         sItems[item_id].qnt= newQty;
         loadItems();
         NetAfterDiscount();
@@ -903,6 +1205,8 @@ span strong {font-size:12px;}
         $(document).on('change','.selectUnit',function () {
             var row = $(this).closest('tr');
             var item_id = row.attr('data-item-id');
+            var previousUnit = sItems[item_id].selected_unit_id;
+            var previousFactor = sItems[item_id].unit_factor;
             var selectedPrice = parseFloat($(this).find(':selected').data('price')) || sItems[item_id].original_price || 0;
             var factor = parseFloat($(this).find(':selected').data('factor')) || 1;
 
@@ -911,6 +1215,13 @@ span strong {font-size:12px;}
             updateItemPricingValues(sItems[item_id], effectivePrice);
             sItems[item_id].selected_unit_id = $(this).val();
             sItems[item_id].unit_factor = factor;
+            if(!isQuantityValid(sItems[item_id])){
+                alert(formatInsufficientMessage(sItems[item_id]));
+                sItems[item_id].selected_unit_id = previousUnit;
+                sItems[item_id].unit_factor = previousFactor;
+                $(this).val(previousUnit);
+                return;
+            }
             row.find('.unitFactor').val(factor);
             loadItems();
             NetAfterDiscount();
@@ -992,9 +1303,19 @@ span strong {font-size:12px;}
             console.log(item);
 
             var newTr = $('<tr data-item-id="'+i+'">');
-            var nameLabel = '<div><strong>'+escapeHtml(item.name ?? '')+'</strong><br><small class="text-muted">'+escapeHtml(item.code ?? '')+'</small></div>';
+            var variantTag = '';
+            if(item.variant_color || item.variant_size){
+                variantTag = '<div class="small text-info">'+escapeHtml(item.variant_color ?? '')+' '+escapeHtml(item.variant_size ?? '')+'</div>';
+            }
+            var nameLabel = '<div><strong>'+escapeHtml(item.name ?? '')+'</strong><br><small class="text-muted">'+escapeHtml(item.code ?? '')+'</small>'+variantTag+'</div>';
             var noteInput = '<div class="mt-2"><input type="text" class="form-control form-control-sm itemNote" name="item_note[]" value="'+escapeHtml(item.note ?? '')+'" placeholder="'+escapeHtml(itemNotePlaceholder)+'"></div>';
-            var tr_html ='<td><input type="hidden" name="product_id[]" value="'+(item.product_id ?? item.id)+'">' + nameLabel + noteInput + '</td>';
+            var tr_html ='<td>'
+                +'<input type="hidden" name="product_id[]" value="'+(item.product_id ?? item.id)+'">'
+                +'<input type="hidden" name="variant_id[]" value="'+escapeHtml(item.variant_id ?? '')+'">'
+                +'<input type="hidden" name="variant_color[]" value="'+escapeHtml(item.variant_color ?? '')+'">'
+                +'<input type="hidden" name="variant_size[]" value="'+escapeHtml(item.variant_size ?? '')+'">'
+                +'<input type="hidden" name="variant_barcode[]" value="'+escapeHtml(item.variant_barcode ?? '')+'">'
+                + nameLabel + noteInput + '</td>';
                 tr_html +='<td><span class="badge badge-light">'+Number(item.available_qty ?? 0)+'</span></td>';
                 tr_html +='<td><input type="text" readonly class="form-control" value="'+Number(item.cost ?? 0).toFixed(2)+'"></td>';
                 tr_html +='<td><input type="text" readonly class="form-control" value="'+Number(item.last_sale_price ?? 0).toFixed(2)+'"></td>';
@@ -1008,8 +1329,9 @@ span strong {font-size:12px;}
                 unitSelect += '</select><input type="hidden" name="unit_factor[]" class="unitFactor" value="'+(item.unit_factor ?? 1)+'">';
                 var qtyInput = '<div class="mt-2"><input type="number" step="0.01" min="0" class="form-control form-control-sm iQuantity" name="qnt[]" value="'+item.qnt+'"></div>';
 
-                tr_html +='<td>'+unitSelect+qtyInput+'</td>';
-                tr_html +='<td><input type="number" readonly="readonly" class="form-control iPrice" name="price_unit[]" value="'+Number(item.price_withoute_tax ?? 0).toFixed(2)+'"><input type="hidden" name="original_price[]" value="'+Number(item.original_price ?? 0).toFixed(2)+'"></td>';
+                tr_html +='<td>'+unitSelect+'</td>';
+                tr_html +='<td>'+qtyInput+'</td>';
+                tr_html +='<td><input type="number" step="0.01" class="form-control iPrice" name="price_unit[]" value="'+Number(item.price_withoute_tax ?? 0).toFixed(2)+'"><input type="hidden" name="original_price[]" value="'+Number(item.original_price ?? 0).toFixed(2)+'"></td>';
                 tr_html +='<td><input type="number" class="form-control iDiscount" name="discount_unit[]" value="'+Number(item.discount ?? 0).toFixed(2)+'"></td>';
                 tr_html +='<td hidden><input type="hidden" class="form-control iPriceWTax" name="price_with_tax[]" value="'+Number(item.price_with_tax ?? 0).toFixed(2)+'"></td>'; 
                 tr_html +='<td><input type="text" readonly="readonly" class="form-control" name="total[]" value="'+((Number(item.price_withoute_tax ?? 0))*item.qnt).toFixed(2)+'"></td>';
@@ -1083,6 +1405,10 @@ span strong {font-size:12px;}
  
         $("#discount_amount").val(discountAmount.toFixed(2));
         $("#net_after_discount").val(net_after_discount.toFixed(2)); 
+
+        if((paymentMethodSelect.val() || '').toLowerCase() === 'cash'){
+            syncCashBoxInputs();
+        }
 
     } 
 </script>

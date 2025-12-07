@@ -24,6 +24,7 @@ class PurchaseDetails extends Model
         'tax',
         'total',
         'net',
+        'note',
         'returned_qnt','subscriber_id'
     ];
 }

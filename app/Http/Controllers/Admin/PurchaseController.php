@@ -20,6 +20,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class PurchaseController extends Controller
 {
@@ -131,8 +132,9 @@ class PurchaseController extends Controller
         $representatives = Representative::all();
         $setting = SystemSettings::all() -> first();
         $branches = Branch::where('status',1)->get();
+        $defaultInvoiceType = $this->resolveDefaultInvoiceType();
 
-        return view('admin.purchases.create',compact('warehouses','customers','representatives','setting','branches'));
+        return view('admin.purchases.create',compact('warehouses','customers','representatives','setting','branches','defaultInvoiceType'));
     }
 
     /**
@@ -145,10 +147,12 @@ class PurchaseController extends Controller
 
         $request['invoice_no'] = $this->get_purchases_no( 1 , $request -> branch_id); 
 
-        $validated = $request->validate([
-            'invoice_no' => 'required|unique:purchases', 
-            'customer_id' => 'required',
-            'warehouse_id' => 'required'
+        $request->validate([
+            'invoice_no' => 'required|unique:purchases',
+            'customer_id' => 'required|exists:companies,id',
+            'warehouse_id' => 'required|exists:warehouses,id',
+            'invoice_type' => ['nullable', Rule::in(['tax_invoice','simplified_tax_invoice','non_tax_invoice'])],
+            'payment_method' => ['nullable', Rule::in(['cash','credit'])],
         ]);
 
         $siteController = new SystemController();
@@ -203,7 +207,8 @@ class PurchaseController extends Controller
                 'unit_factor' => $unitFactor,
                 'tax' => $lineTax,
                 'total' => $lineTotal,
-                'net' => $lineNet
+                'net' => $lineNet,
+                'note' => !empty($request->item_note[$index]) ? trim($request->item_note[$index]) : null,
             ];
 
             $item = new Product();
@@ -234,6 +239,8 @@ class PurchaseController extends Controller
             'supplier_phone' => $request->supplier_phone,
             'cost_center' => $request->cost_center,
             'tax_mode' => $request->tax_mode ?? 'inclusive',
+            'invoice_type' => $request->invoice_type ?? 'tax_invoice',
+            'payment_method' => $request->payment_method ?? 'credit',
             'customer_id' => $request->customer_id,
             'biller_id' => Auth::id(),
             'warehouse_id' => $request->warehouse_id,
@@ -309,6 +316,23 @@ class PurchaseController extends Controller
             'cost' => $baseCost,
             'price' => $newPrice,
         ], $priceLevels));
+    }
+
+    private function resolveDefaultInvoiceType(): string
+    {
+        $user = Auth::user();
+
+        if ($user && !empty($user->default_invoice_type)) {
+            return $user->default_invoice_type;
+        }
+
+        if ($user && $user->branch && !empty($user->branch->default_invoice_type)) {
+            return $user->branch->default_invoice_type;
+        }
+
+        $systemDefault = optional(SystemSettings::first())->default_invoice_type;
+
+        return $systemDefault ?: 'tax_invoice';
     }
 
     private function syncVariantStock(array $purchaseRow, bool $isIncrease = true): void
@@ -509,6 +533,7 @@ class PurchaseController extends Controller
                 'tax' => $request->tax[$index] * -1,
                 'total' => $request->total[$index] * -1,
                 'net' => $request->net[$index] * -1,
+                'note' => !empty($request->item_note[$index]) ? trim($request->item_note[$index]) : null,
             ];
 
             $item = new Product();

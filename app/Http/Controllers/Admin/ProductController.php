@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\Auth;
 use DataTables;
 use App\Models\WarehouseProducts as WarehouseProductModel;
 use App\Models\WarehouseProducts;
+use Illuminate\Support\Str;
 
 class ProductController extends Controller
 {
@@ -118,6 +119,7 @@ class ProductController extends Controller
             $this->productValidationAttributes()
         );
         $siteController = new SystemController();
+        $settings = SystemSettings::first();
         $category = Category::find($request->category_id);
         $tax_excise = $category->tax_excise ?? 0;
         if ($request->filled('subcategory_id')) {
@@ -143,11 +145,18 @@ class ProductController extends Controller
             for($i=1;$i<=6;$i++){
                 $priceLevels['price_level_'.$i] = $request->input('price_level_'.$i,$request->price);
             }
+
+            $resolvedTaxMethod = 1;
+            if ($settings && !empty($settings->default_tax_method)) {
+                $resolvedTaxMethod = (int) $settings->default_tax_method;
+            }
+            $resolvedSlug = Str::slug($request->code ?: $request->name ?: Str::random(6));
        
             $product = Product::create([
                 'code' => $request->code,
                 'barcode' => $request->barcode ? trim($request->barcode) : null,
                 'name' => $request->name,
+                'name_en' => $request->name_en,
                 'unit' => $request->unit,
                 'cost' => $request->cost,
                 'price' => $request->price,
@@ -160,13 +169,13 @@ class ProductController extends Controller
                 'tax' => $request->tax ?? 0,
                 'tax_rate' => $request->tax_rate,
                 'track_quantity' => $request->track_quantity ?? 0,
-                'tax_method' => $request->tax_method,
+                'tax_method' => $resolvedTaxMethod,
                 'price_includes_tax' => $request->boolean('price_includes_tax'),
                 'profit_margin' => $request->profit_margin,
                 'tax_excise' => max($tax_excise, 0),
                 'type' => $request->type,
                 'brand' => $request->brand,
-                'slug' => $request->slug ?? 0,
+                'slug' => $resolvedSlug,
                 'featured' => $request->featured ?? 0, 
                 'city_tax' => $request->city_tax ?? 0,
                 'max_order' => $request->max_order ?? 0,
@@ -350,10 +359,17 @@ class ProductController extends Controller
                 for($i=1;$i<=6;$i++){
                     $priceLevels['price_level_'.$i] = $request->input('price_level_'.$i,$request->price);
                 }
+                $resolvedTaxMethod = 1;
+                $settings = SystemSettings::first();
+                if ($settings && !empty($settings->default_tax_method)) {
+                    $resolvedTaxMethod = (int) $settings->default_tax_method;
+                }
+                $slugValue = Str::slug($request->code ?: $request->name ?: ($product->slug ?? Str::random(6)));
                 $product -> update ([
                     'code' => $request->code,
                     'barcode' => $request->barcode ? trim($request->barcode) : null,
                     'name' => $request->name,
+                    'name_en' => $request->name_en,
                     'unit' => $request->unit,
                     'cost' => $request->cost,
                     'price' => $request->price,
@@ -366,13 +382,13 @@ class ProductController extends Controller
                     'tax' => $request->tax ?? 0,
                     'tax_rate' => $request->tax_rate,
                     'track_quantity' => $request->track_quantity ?? 0,
-                    'tax_method' => $request->tax_method,
+                    'tax_method' => $resolvedTaxMethod,
                     'price_includes_tax' => $request->boolean('price_includes_tax'),
                     'profit_margin' => $request->profit_margin,
                     'tax_excise' => max($tax_excise, 0),
                     'type' => $request->type,
                     'brand' => $request->brand,
-                    'slug' => $request->slug,
+                    'slug' => $slugValue,
                     'featured' => $request->featured ?? 0, 
                     'city_tax' => $request->city_tax ?? 0,
                     'max_order' => $request->max_order ?? 0,
@@ -453,6 +469,7 @@ class ProductController extends Controller
             'code' => ['required', 'string', 'max:191', $codeRule],
             'barcode' => ['nullable', 'string', 'max:191', $barcodeRule],
             'name' => ['required', 'string', 'max:191', $nameRule],
+            'name_en' => ['nullable', 'string', 'max:191'],
             'unit' => ['required', 'exists:units,id'],
             'brand' => ['required', 'exists:brands,id'],
             'category_id' => ['required', 'exists:categories,id'],
@@ -464,7 +481,6 @@ class ProductController extends Controller
             'tax_rate' => ['required', 'exists:tax_rates,id'],
             'tax_rates_multi' => ['nullable', 'array'],
             'tax_rates_multi.*' => ['integer', 'exists:tax_rates,id'],
-            'tax_method' => ['required', 'in:1,2'],
             'price_includes_tax' => ['nullable', 'in:0,1'],
             'profit_margin' => ['nullable', 'numeric', 'min:0'],
             'type' => ['required', 'in:1,2,3'],
@@ -473,7 +489,6 @@ class ProductController extends Controller
             'max_order' => ['nullable', 'numeric', 'min:0'],
             'track_quantity' => ['nullable', 'in:0,1'],
             'tax_excise' => ['nullable', 'numeric', 'min:0'],
-            'slug' => ['required', 'string', 'max:191'],
             'featured' => ['nullable', 'in:0,1'],
             'city_tax' => ['nullable', 'numeric', 'min:0'],
             'status' => ['nullable', 'in:0,1'],
@@ -515,9 +530,7 @@ class ProductController extends Controller
             'price.numeric' => 'سعر البيع يجب أن يكون رقمياً.',
             'price.min' => 'سعر البيع يجب ألا يكون سالباً.',
             'tax_rate.exists' => 'الضريبة المحددة غير متاحة.',
-            'tax_method.in' => 'نوع الضريبة المحدد غير صحيح.',
             'type.in' => 'نوع الصنف المحدد غير صحيح.',
-            'slug.required' => 'يرجى إدخال الاسم المختصر للصنف.',
             'img.image' => 'ملف الصورة يجب أن يكون من نوع صورة (JPG, PNG ...).',
             'img.max' => 'حجم الصورة يجب ألا يتجاوز 2 ميغابايت.',
             'tax_rates_multi.*.exists' => 'إحدى الضرائب الإضافية المختارة غير متاحة.',
@@ -541,6 +554,7 @@ class ProductController extends Controller
             'code' => 'كود الصنف',
             'barcode' => 'باركود الصنف',
             'name' => 'اسم الصنف',
+            'name_en' => 'اسم الصنف (إنجليزي)',
             'unit' => 'الوحدة الأساسية',
             'brand' => 'الماركة',
             'category_id' => 'التصنيف الرئيسي',
@@ -550,7 +564,6 @@ class ProductController extends Controller
             'quantity' => 'الكمية',
             'tax' => 'نسبة الضريبة',
             'tax_rate' => 'ضريبة المنتج',
-            'tax_method' => 'نوع الضريبة',
             'price_includes_tax' => 'سعر يشمل الضريبة',
             'profit_margin' => 'هامش الربح',
             'type' => 'نوع الصنف',
@@ -558,7 +571,6 @@ class ProductController extends Controller
             'alert_quantity' => 'الكمية الحرجة',
             'max_order' => 'الحد الأعلى للطلب',
             'track_quantity' => 'متابعة الكمية',
-            'slug' => 'الاسم المختصر',
             'city_tax' => 'ضريبة المدينة',
             'img' => 'صورة الصنف',
             'tax_rates_multi' => 'الضرائب الإضافية',
@@ -1036,8 +1048,9 @@ class ProductController extends Controller
         }
         */
 
-        $data =  Product::Join('warehouse_products','products.id','=','warehouse_products.product_id')  
-            ->select('products.*')
+        $data =  Product::Join('warehouse_products','products.id','=','warehouse_products.product_id')
+            ->leftJoin('categories','products.category_id','=','categories.id')
+            ->select('products.*','categories.name as category_name')
             //->whereIn('warehouse_products.warehouse_id',$warehouses)
             ->where('warehouse_products.warehouse_id',$warehouse_id)
             ->where('products.img','<>','')

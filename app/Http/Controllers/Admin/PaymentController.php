@@ -99,6 +99,11 @@ class PaymentController extends Controller
             $this -> MakePayment($request -> cash,'cash', $id);
         }
 
+        $bankAmount = $request->bank_amount ?? 0;
+        if($bankAmount > 0){
+            $this->MakePayment($bankAmount,'bank',$id);
+        }
+
         $cardAmounts = $request->card_amount ?? [];
         $cardBanks = $request->card_bank ?? [];
 

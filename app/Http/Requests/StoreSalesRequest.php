@@ -29,6 +29,12 @@ class StoreSalesRequest extends FormRequest
             'customer_id' => 'required|integer|exists:companies,id',
             'warehouse_id' => 'required|integer|exists:warehouses,id',
             'branch_id' => 'nullable|integer|exists:branches,id',
+            'service_mode' => 'nullable|in:dine_in,takeaway,delivery',
+            'session_location' => 'nullable|string|max:255',
+            'session_type' => 'nullable|string|max:191',
+            'reservation_enabled' => 'nullable|boolean',
+            'reservation_time' => 'nullable|date',
+            'reservation_guests' => 'nullable|integer|min:1|max:9999',
             'product_id' => 'required|array|min:1',
             'product_id.*' => 'required|integer|exists:products,id',
             'qnt' => 'required|array|min:1',
@@ -48,6 +54,13 @@ class StoreSalesRequest extends FormRequest
             'cash' => 'nullable|numeric|min:0',
             'card_amount' => 'nullable|array',
             'card_amount.*' => 'nullable|numeric|min:0',
+            'vehicle_plate' => 'nullable|string|max:255',
+            'vehicle_odometer' => 'nullable|numeric|min:0',
+            'customer_name' => 'nullable|string|max:191',
+            'customer_phone' => 'nullable|string|max:191',
+            'customer_address' => 'nullable|string|max:255',
+            'customer_tax_number' => 'nullable|string|max:191',
+            'notes' => 'nullable|string|max:5000',
         ];
     }
 

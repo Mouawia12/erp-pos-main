@@ -84,19 +84,56 @@
                                          @enderror
                                      </div>
                                  </div> 
-                                <div class="col-md-6" >
+                                <div class="col-md-4">
                                     <div class="form-group">
-                                        <label>{{ __('main.name') }}<span class="text-danger">*</span>  </label>
-                                        <input type="text"  id="name" name="name"
+                                        <label>{{ __('main.product_name_ar') ?? __('main.name') }}<span class="text-danger">*</span></label>
+                                        <input type="text" id="name" name="name"
                                                class="form-control @error('name') is-invalid @enderror"
-                                               placeholder="{{ __('main.name') }}" value="{{ old('name') }}" required />
+                                               placeholder="{{ __('main.product_name_ar') ?? __('main.name') }}" value="{{ old('name') }}" required />
                                         @error('name')
                                         <span class="invalid-feedback" role="alert">
                                             <strong>{{ $message }}</strong>
                                         </span>
                                         @enderror
                                     </div>
-                                </div>  
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label>{{ __('main.product_name_en') }}</label>
+                                        <input type="text" id="name_en" name="name_en"
+                                               class="form-control @error('name_en') is-invalid @enderror"
+                                               placeholder="{{ __('main.product_name_en') }}" value="{{ old('name_en') }}" />
+                                        @error('name_en')
+                                        <span class="invalid-feedback" role="alert">
+                                            <strong>{{ $message }}</strong>
+                                        </span>
+                                        @enderror
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label>{{ __('main.img') }}</label>
+                                        <div class="input-group">
+                                            <div class="custom-file">
+                                                <input type="file" accept="image/*"
+                                                       oninput="pic.src=window.URL.createObjectURL(this.files[0])" id="img"
+                                                       name="img" class="form-control"> 
+                                                <label class="custom-file-label" for="img"
+                                                       id="path">{{__('main.img_choose')}} 
+                                                    @if(old('img_name'))
+                                                        {{ old('img_name') }}
+                                                    @else
+                                                        {{__('main.optional')}}
+                                                    @endif
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <span style="font-size: 9pt ; color:gray;">{{ __('main.img_hint') }}</span>
+                                        <div class="mt-2 text-center">
+                                            <img id="pic" src="" style="max-width: 140px; max-height: 120px;" class="img-fluid rounded border">
+                                        </div>
+                                    </div>
+                                </div>
                                 <div class="col-md-3">
                                     <div class="form-group">
                                         <label>{{ __('main.brand') }}<span class="text-danger">*</span> </label>
@@ -143,7 +180,14 @@
                                 </div>  
                                 <div class="col-md-3">
                                     <div class="form-group">
-                                        <label>{{ __('main.units') }}<span class="text-danger">*</span>  </label>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <label class="mb-0">{{ __('main.units') }}<span class="text-danger">*</span></label>
+                                            @can('اضافة ترميز')
+                                            <button type="button" class="btn btn-sm btn-outline-primary" id="openInlineUnitModal">
+                                                {{ __('main.add_new') }}
+                                            </button>
+                                            @endcan
+                                        </div>
                                         <select class="js-example-basic-single w-100 @error('unit') is-invalid @enderror"     name="unit" id="unit_base">
                                             @foreach($units as $unit) 
                                                 <option value="{{$unit->id}}" @if(old('unit')==$unit->id) selected @endif>{{$unit->name}}</option> 
@@ -174,17 +218,6 @@
                                 </div>  
                                 <div class="col-md-3">
                                     <div class="form-group">
-                                        <label>{{ __('main.additional_taxes') }}</label>
-                                        @php $selectedTaxes = old('tax_rates_multi', []); @endphp
-                                        <select class="js-example-basic-multiple w-100" name="tax_rates_multi[]" multiple>
-                                            @foreach($taxRages as $tax)
-                                                <option value="{{$tax->id}}" @if(in_array($tax->id,$selectedTaxes)) selected @endif>{{$tax->rate}}</option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-group">
                                         <label>{{ __('main.tax_excise') }}</label>
                                         <input type="number" step="0.01" id="tax_excise" name="tax_excise" class="form-control @error('tax_excise') is-invalid @enderror" value="{{ old('tax_excise') }}">
                                         @error('tax_excise')
@@ -195,21 +228,6 @@
                                     </div>
                                 </div>
                                 
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label>{{ __('main.Product_Tax_Type') }}<span class="text-danger">*</span>  </label>
-                                        <select class="form-control @error('tax_method') is-invalid @enderror" name="tax_method">
-                                            @foreach($taxTypes as $taxType)
-                                                <option value="{{$taxType['id']}}" @if(old('tax_method')==$taxType['id']) selected @endif>{{$taxType['name']}}</option>
-                                            @endforeach
-                                        </select>
-                                        @error('tax_method')
-                                        <span class="invalid-feedback" role="alert">
-                                            <strong>{{ $message }}</strong>
-                                        </span>
-                                        @enderror
-                                    </div>
-                                </div>   
                                 <div class="col-md-3">  
                                     <div class="form-group">
                                         <label>{{ __('main.Cost') }} <span class="text-danger">*</span>  </label>
@@ -221,6 +239,7 @@
                                             <strong>{{ $message }}</strong>
                                         </span>
                                         @enderror
+                                        <small id="exciseCostHelper" class="form-text text-info d-none"></small>
                                     </div>
                                 </div>  
                                 <div class="col-md-3">
@@ -266,30 +285,6 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div class="col-md-9">
-                                    <div class="form-group">
-                                        <label>{{ __('main.additional_taxes') }}</label>
-                                        <select class="js-example-basic-multiple w-100" name="tax_rates_multi[]" multiple>
-                                            @foreach($taxRages as $tax)
-                                                <option value="{{$tax->id}}" @if(in_array($tax->id,$selectedTaxes)) selected @endif>{{$tax->rate}}</option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label>{{ __('main.Slug') }}  <span class="text-danger">*</span> </label>
-                                        <input type="text"  id="slug" name="slug"
-                                               class="form-control @error('slug') is-invalid @enderror"
-                                               placeholder="{{ __('main.Slug') }}" value="{{ old('slug', $defaultCode ?? '') }}" required />
-                                        @error('slug')
-                                        <span class="invalid-feedback" role="alert">
-                                            <strong>{{ $message }}</strong>
-                                        </span>
-                                        @enderror
-                                    </div>
-                                </div>
-
                                 <div class="col-12">
                                     <div class="form-group">
                                         <div class="d-flex justify-content-between align-items-center">
@@ -349,34 +344,6 @@
                                                placeholder="{{ __('main.Alert_Quantity') }}" value="{{ old('alert_quantity') }}"  />
                                     </div>
                                 </div> 
-                                <div class="col-md-12">
-                                    <div class="form-group">
-                                        <label>{{ __('main.img') }}</label>
-                                        <div class="row"> 
-                                            <div class="col-6">
-                                                <div class="custom-file"> 
-                                                    <input accept="image/*" type="file"
-                                                        oninput="pic.src=window.URL.createObjectURL(this.files[0])" id="img"
-                                                        name="img" class="form-control"> 
-                                                    <label class="custom-file-label" for="img"
-                                                        id="path">{{__('main.img_choose')}} 
-                                                    </label>
-                                                </div>
-                                                <br> 
-                                                <span style="font-size: 9pt ; color:gray;">{{ __('main.img_hint') }}</span>
-                                            </div>
-                                            <div class="col-6 text-right">  
-                                                <img id="pic" src=""
-                                                    style="width: 100px; height:100px;"/>
-                                            </div>
-                                        </div>
-                                        @error('printer')
-                                           <span class="invalid-feedback" role="alert">
-                                                <strong>{{ $message }}</strong>
-                                            </span>
-                                        @enderror
-                                    </div>
-                                </div>      
                             </div> 
                 
                             <div class="row">
@@ -412,6 +379,43 @@
                                     </div>
                                 </div>
                             </div> 
+                            @can('اضافة ترميز')
+                            <!-- Inline Unit Modal -->
+                            <div class="modal fade" id="inlineUnitModal" tabindex="-1" aria-labelledby="inlineUnitModalLabel" aria-hidden="true">
+                                <div class="modal-dialog modal-md" role="document">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="inlineUnitModalLabel">{{ __('main.units') }}</h5>
+                                            <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+                                                <span aria-hidden="true">&times;</span>
+                                            </button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="alert alert-danger d-none" id="inlineUnitErrors"></div>
+                                            <form id="inlineUnitForm" method="POST" action="{{ route('storeUnit') }}">
+                                                @csrf
+                                                <input type="hidden" name="id" value="0">
+                                                <div class="form-group">
+                                                    <label>{{ __('main.code') }}</label>
+                                                    <input type="text" name="code" class="form-control" placeholder="{{ __('main.code') }}">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label>{{ __('main.unit_name_ar') }} <span class="text-danger">*</span></label>
+                                                    <input type="text" name="name_ar" class="form-control" placeholder="{{ __('main.unit_name_ar') }}" required>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label>{{ __('main.unit_name_en') }} <span class="text-danger">*</span></label>
+                                                    <input type="text" name="name_en" class="form-control" placeholder="{{ __('main.unit_name_en') }}" required>
+                                                </div>
+                                                <div class="text-center mt-3">
+                                                    <button type="submit" class="btn btn-primary">{{ __('main.save_btn') }}</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            @endcan
     </div>
 @endcan 
 @endsection 
@@ -427,15 +431,72 @@
             })->values()
         ];
     });
+    $unitOptionsData = $units->map(function ($unit) {
+        return [
+            'id' => $unit->id,
+            'name' => $unit->name,
+        ];
+    })->values();
 @endphp
 @section('js')
 <script type="text/javascript">
     const subCategories = @json($subCategoryOptions);
     const subPlaceholder = "{{ __('main.choose') }}";
+    let unitOptions = @json($unitOptionsData);
+
+    function escapeHtml(text) {
+        if (text === null || text === undefined) {
+            return '';
+        }
+        return text
+            .toString()
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function regenerateUnitOptionsHtml(excludeId = null) {
+        return unitOptions.map(function (unit) {
+            if (excludeId && String(unit.id) === String(excludeId)) {
+                return '';
+            }
+            return `<option value="${unit.id}">${escapeHtml(unit.name ?? '')}</option>`;
+        }).join('');
+    }
+
+    function refreshUnitSelects(selectedId = null) {
+        const $base = $('#unit_base');
+        const currentBaseValue = selectedId ?? $base.val();
+        const baseHtml = regenerateUnitOptionsHtml();
+        $base.html(baseHtml);
+        if (currentBaseValue) {
+            $base.val(currentBaseValue);
+        }
+
+        unitOptionsHtml = regenerateUnitOptionsHtml($base.val());
+
+        $('#unitRowsTable select').each(function () {
+            const previousValue = $(this).val();
+            $(this).html(unitOptionsHtml);
+            if (previousValue && String(previousValue) !== String($base.val())) {
+                $(this).val(previousValue);
+            }
+        });
+    }
+
+    let unitOptionsHtml = '';
     $(document).ready(function () {
         const subSelect = document.getElementById('subcategory_id');
         const parentSelect = document.getElementById('category_id');
         let exciseTouched = false;
+
+        refreshUnitSelects();
+        unitOptionsHtml = regenerateUnitOptionsHtml($('#unit_base').val());
+        $('#unit_base').on('change', function(){
+            refreshUnitSelects($(this).val());
+        });
 
         function fillSubCategories(parentId) {
             if (!subSelect) return;
@@ -500,12 +561,89 @@
             });
         }
 
+        // إضافة وحدة جديدة من نفس الشاشة
+        if ($('#inlineUnitModal').length) {
+            $('#openInlineUnitModal').on('click', function () {
+                const $form = $('#inlineUnitForm');
+                $('#inlineUnitErrors').addClass('d-none').empty();
+                if ($form.length) {
+                    $form.trigger('reset');
+                    $form.find('input[name="id"]').val(0);
+                }
+                $('#inlineUnitModal').modal('show');
+            });
+
+            $('#inlineUnitModal').on('hidden.bs.modal', function () {
+                $('#inlineUnitErrors').addClass('d-none').empty();
+                const $form = $('#inlineUnitForm');
+                if ($form.length) {
+                    $form.trigger('reset');
+                }
+            });
+
+            $('#inlineUnitForm').on('submit', function (e) {
+                e.preventDefault();
+                const $form = $(this);
+                const $submit = $form.find('button[type="submit"]');
+                const $errors = $('#inlineUnitErrors');
+                $errors.addClass('d-none').empty();
+                $submit.prop('disabled', true);
+
+                $.ajax({
+                    url: $form.attr('action'),
+                    method: 'POST',
+                    data: $form.serialize(),
+                    headers: {
+                        'Accept': 'application/json',
+                    },
+                    success: function (response) {
+                        if (response && response.unit) {
+                            const newUnit = {
+                                id: response.unit.id,
+                                name: response.unit.name,
+                            };
+                            const existingIndex = unitOptions.findIndex(function (unit) {
+                                return Number(unit.id) === Number(newUnit.id);
+                            });
+                            if (existingIndex === -1) {
+                                unitOptions.push(newUnit);
+                            } else {
+                                unitOptions[existingIndex] = newUnit;
+                            }
+                            refreshUnitSelects(newUnit.id);
+                        }
+                        $('#inlineUnitModal').modal('hide');
+                    },
+                    error: function (xhr) {
+                        let messages = '';
+                        if (xhr.responseJSON && xhr.responseJSON.errors) {
+                            messages += '<ul class="mb-0">';
+                            Object.keys(xhr.responseJSON.errors).forEach(function (key) {
+                                xhr.responseJSON.errors[key].forEach(function (msg) {
+                                    messages += `<li>${escapeHtml(msg)}</li>`;
+                                });
+                            });
+                            messages += '</ul>';
+                        } else if (xhr.responseJSON && xhr.responseJSON.message) {
+                            messages = `<p class="mb-0">${escapeHtml(xhr.responseJSON.message)}</p>`;
+                        } else {
+                            messages = '<p class="mb-0">حدث خطأ غير متوقع</p>';
+                        }
+                        $errors.html(messages).removeClass('d-none');
+                    },
+                    complete: function () {
+                        $submit.prop('disabled', false);
+                    }
+                });
+            });
+        }
+
         // وحدات متعددة
-        const unitOptionsHtml = `@foreach($units as $unit)<option value="{{$unit->id}}">{{$unit->name}}</option>@endforeach`;
         let unitRowIndex = 0;
         function addUnitRow(unitId, price, factor, barcode, canDelete=true){
+            const optionsHtml = unitOptionsHtml || regenerateUnitOptionsHtml($('#unit_base').val());
             const row = `<tr data-index="${unitRowIndex}">
-                <td><select name="product_units[${unitRowIndex}][unit]" class="form-control">${unitOptionsHtml}</select></td>
+                <td><select name="product_units[${unitRowIndex}][unit]" class="form-control">${optionsHtml}</select></td>
                 <td><input type="number" step="0.01" name="product_units[${unitRowIndex}][price]" class="form-control" value="${price ?? ''}"></td>
                 <td><input type="number" step="0.01" name="product_units[${unitRowIndex}][conversion_factor]" class="form-control" value="${factor ?? 1}"></td>
                 <td><input type="text" name="product_units[${unitRowIndex}][barcode]" class="form-control" value="${barcode ?? ''}"></td>
@@ -519,7 +657,6 @@
             if(unitId){ $lastRow.find('select').val(unitId); }
             unitRowIndex++;
         }
-        addUnitRow($('#unit_base').val(), $('#price').val(), 1, '', false);
         $('#addUnitRowBtn').on('click', function(){
             addUnitRow('', '', 1, '', true);
         });
@@ -530,12 +667,33 @@
             const code = '9' + Math.floor(100000000000 + Math.random() * 900000000000).toString().slice(0,12);
             $(this).closest('tr').find('input[name*="[barcode]"]').val(code);
         });
-        $('#price').on('change', function(){
-            const val = $(this).val();
-            const firstRow = $('#unitRowsTable tbody tr').first();
-            if(firstRow.length){
-                firstRow.find('input[name*="[price]"]').val(val);
+
+        const $costInput = $('#cost');
+        const $exciseInput = $('#tax_excise');
+        function resetExciseHelper(){
+            $('#exciseCostHelper').addClass('d-none').text('');
+        }
+        $costInput.data('inclusive-cost', $costInput.val());
+        $costInput.on('input', function(){
+            $(this).data('inclusive-cost', $(this).val());
+            resetExciseHelper();
+        });
+        function adjustCostForExcise(){
+            const exciseVal = parseFloat($exciseInput.val());
+            const inclusiveCost = parseFloat($costInput.data('inclusive-cost') || $costInput.val());
+            if(!(inclusiveCost > 0) || !(exciseVal > 0)){
+                resetExciseHelper();
+                return;
             }
+            const baseCost = inclusiveCost / (1 + (exciseVal/100));
+            const exciseAmount = inclusiveCost - baseCost;
+            $costInput.val(baseCost.toFixed(4));
+            $('#exciseCostHelper').removeClass('d-none').text(
+                "{{ __('main.excise_adjusted_hint') }}".replace(':amount', exciseAmount.toFixed(4))
+            );
+        }
+        $exciseInput.on('change blur', function(){
+            adjustCostForExcise();
         });
 
         document.title = "{{ __('main.add_product')}}";

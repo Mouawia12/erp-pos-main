@@ -103,12 +103,20 @@
                     </div>
 
                     <div class="row">
-                        <div class="col-12">
+                        <div class="col-md-6">
                             <div class="form-group">
-                                <label>{{ __('main.name') }} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
-                                <input type="text"  id="name" name="name"
+                                <label>{{ __('main.unit_name_ar') }} <span class="text-danger">*</span></label>
+                                <input type="text" id="name_ar" name="name_ar"
                                        class="form-control"
-                                       placeholder="{{ __('main.name') }}"  />
+                                       placeholder="{{ __('main.unit_name_ar') }}" required />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>{{ __('main.unit_name_en') }} <span class="text-danger">*</span></label>
+                                <input type="text" id="name_en" name="name_en"
+                                       class="form-control"
+                                       placeholder="{{ __('main.unit_name_en') }}" required />
                             </div>
                         </div>
                     </div>
@@ -265,7 +273,8 @@
                 // return the result
                 success: function(result) {
                     $('#createModal').modal("show");
-                    $(".modal-body #name").val( "" );
+                    $(".modal-body #name_ar").val( "" );
+                    $(".modal-body #name_en").val( "" );
                     $(".modal-body #code").val( "" );
                     $(".modal-body #id").val( 0 );
                 },
@@ -356,7 +365,8 @@
                         // return the result
                         success: function(result) {
                             $('#createModal').modal("show");
-                            $(".modal-body #name").val( response.name );
+                            $(".modal-body #name_ar").val( response.name_ar ?? "" );
+                            $(".modal-body #name_en").val( response.name_en ?? "" );
                             $(".modal-body #code").val( response.code );
                             $(".modal-body #id").val( response.id );
 

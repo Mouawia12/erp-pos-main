@@ -22,6 +22,9 @@
                                 <th>{{__('main.date')}}</th> 
                                 <th>{{__('main.branche')}} </th>
                                 <th>{{__('main.warehouse')}} </th>
+                                <th>{{__('main.customer')}}</th>
+                                <th>{{__('main.vehicle_plate')}}</th>
+                                <th>{{__('main.vehicle_odometer')}}</th>
                                 <th>{{__('main.amount')}}</th>
                                 <th>{{__('main.tax')}}</th>
                                 <th>{{__('main.total')}}</th>
@@ -40,21 +43,23 @@
                                     <td>{{\Carbon\Carbon::parse($detail -> created_at) -> format('Y-m-d h:m:s')}}</td>
                                     <td>{{$detail ->branch->branch_name }}</td>
                                     <td>{{$detail ->warehouse->name }}</td>  
+                                    <td>{{ optional($detail->customer)->name ?? '-' }}</td>
+                                    <td>{{$detail ->vehicle_plate ?? '-'}}</td>
+                                    <td>{{$detail ->vehicle_odometer ?? '-'}}</td>
                                     <td>{{$detail ->total }}</td>
                                     <td>{{$detail ->tax + $detail ->tax_excise }}</td>
                                     <td>{{$detail ->net }}</td>
                                 </tr>
                                 <?php 
                                     $total += $detail -> total ;
-                                    $tax += $detail -> tax ;
+                                    $tax += $detail -> tax + $detail ->tax_excise ;
                                     $bet += $detail -> net ;
                                 ?> 
                             @endforeach 
                         </tbody>
                         <tfoot>
                             <tr class="bg-primary text-white">
-                                <th colspan="4"></th> 
-                                <th> الإجمالي</th> 
+                                <th colspan="8" class="text-right"> الإجمالي</th> 
                                 <th>{{$total}}</th>
                                 <th>{{$tax}}</th>
                                 <th>{{$bet}}</th>
