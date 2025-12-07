@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (! Schema::hasTable('quotations')) {
+            return;
+        }
+
         Schema::table('quotations', function (Blueprint $table) {
             if (! Schema::hasColumn('quotations', 'invoice_type')) {
                 $table->string('invoice_type')->default('simplified_tax_invoice')->after('quotation_no');
@@ -38,6 +42,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (! Schema::hasTable('quotations')) {
+            return;
+        }
+
         Schema::table('quotations', function (Blueprint $table) {
             foreach (['customer_tax_number','customer_address','customer_phone','customer_name','representative_id','cost_center','payment_method','invoice_type'] as $column) {
                 if (Schema::hasColumn('quotations', $column)) {

@@ -11,13 +11,32 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('sales', function (Blueprint $table) {
+        $afterColumn = null;
+        if (Schema::hasColumn('sales', 'session_type')) {
+            $afterColumn = 'session_type';
+        } elseif (Schema::hasColumn('sales', 'session_location')) {
+            $afterColumn = 'session_location';
+        } elseif (Schema::hasColumn('sales', 'service_mode')) {
+            $afterColumn = 'service_mode';
+        } elseif (Schema::hasColumn('sales', 'invoice_type')) {
+            $afterColumn = 'invoice_type';
+        }
+
+        Schema::table('sales', function (Blueprint $table) use ($afterColumn) {
             if (! Schema::hasColumn('sales', 'reservation_time')) {
-                $table->dateTime('reservation_time')->nullable()->after('session_type');
+                $column = $table->dateTime('reservation_time')->nullable();
+                if ($afterColumn) {
+                    $column->after($afterColumn);
+                }
             }
 
             if (! Schema::hasColumn('sales', 'reservation_guests')) {
-                $table->unsignedInteger('reservation_guests')->nullable()->after('reservation_time');
+                $column = $table->unsignedInteger('reservation_guests')->nullable();
+                if (Schema::hasColumn('sales', 'reservation_time')) {
+                    $column->after('reservation_time');
+                } elseif ($afterColumn) {
+                    $column->after($afterColumn);
+                }
             }
         });
     }
