@@ -236,6 +236,7 @@ Route::group(
     Route::get('/system_settings', [SystemSettingsController::class, 'index'])->name('system_settings');
     Route::post('storeSettings', [SystemSettingsController::class, 'store'])->name('storeSettings');
     Route::put('updateSettings', [SystemSettingsController::class, 'update'])->name('updateSettings');
+    Route::post('/system_settings/enable-negative-stock', [SystemSettingsController::class, 'enableNegativeStock'])->name('system_settings.enable_negative_stock');
     
     Route::get('/pos_settings', [PosSettingsController::class, 'index'])->name('pos_settings');
     Route::post('storePosSettings', [PosSettingsController::class, 'store'])->name('storePosSettings');

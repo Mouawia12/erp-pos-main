@@ -38,8 +38,15 @@ span strong {font-size:12px;}
             {{ __('main.sell_without_stock_enabled') }}
         </div>
     @else
-        <div class="alert alert-warning small">
-            {{ __('main.sell_without_stock_disabled') }}
+        <div class="alert alert-warning small d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <span>{{ __('main.sell_without_stock_disabled') }}</span>
+            <div class="d-flex flex-wrap gap-2">
+                @if(Route::has('system_settings.enable_negative_stock'))
+                    <button type="button" class="btn btn-sm btn-primary" id="enableNegativeStockBtn">
+                        {{ __('main.enable_negative_stock_now') }}
+                    </button>
+                @endif
+            </div>
         </div>
     @endif
     <div class="row row-sm">
@@ -435,6 +442,28 @@ span strong {font-size:12px;}
     </div>
 </div>
 
+@if(Route::has('system_settings.enable_negative_stock'))
+<div class="modal fade" id="enableNegativeStockModal" tabindex="-1" role="dialog" aria-labelledby="enableNegativeStockLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="enableNegativeStockLabel">{{ __('main.enable_negative_stock_confirm_title') }}</h5>
+                <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-0">{{ __('main.enable_negative_stock_confirm_text') }}</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('main.cancel_btn') }}</button>
+                <button type="button" class="btn btn-primary" id="confirmEnableNegativeStock">{{ __('main.enable_negative_stock_now') }}</button>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
 <div class="modal fade" id="variantModal" tabindex="-1" role="dialog" aria-labelledby="variantModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
@@ -481,6 +510,44 @@ span strong {font-size:12px;}
     let pendingDuplicateItem = null;
     const allowNegativeStock = {{ !empty($allowNegativeStock) ? 'true' : 'false' }};
     const insufficientTemplate = "{{ __('main.insufficient_stock', ['item' => '__ITEM__']) }}";
+
+    function setupNegativeStockQuickEnable(){
+        @if(Route::has('system_settings.enable_negative_stock'))
+        var enableBtn = document.getElementById('enableNegativeStockBtn');
+        if(!enableBtn){
+            return;
+        }
+        var modal = $('#enableNegativeStockModal');
+        var confirmBtn = $('#confirmEnableNegativeStock');
+        $(enableBtn).on('click', function(){
+            modal.modal('show');
+        });
+        confirmBtn.off('click').on('click', function(){
+            var $btn = $(this);
+            $btn.prop('disabled', true).text('{{ __('main.enable_negative_stock_processing') }}');
+            $.ajax({
+                url: '{{ route('system_settings.enable_negative_stock') }}',
+                method: 'POST',
+                data: {
+                    _token: '{{ csrf_token() }}'
+                },
+                success: function(){
+                    window.location.reload();
+                },
+                error: function(){
+                    alert('{{ __('main.enable_negative_stock_error') }}');
+                },
+                complete: function(){
+                    $btn.prop('disabled', false).text('{{ __('main.enable_negative_stock_now') }}');
+                    modal.modal('hide');
+                }
+            });
+        });
+        modal.on('hidden.bs.modal', function(){
+            confirmBtn.prop('disabled', false).text('{{ __('main.enable_negative_stock_now') }}');
+        });
+        @endif
+    }
 
     function playSoundById(audioId){
         var audioElement = document.getElementById(audioId);
@@ -604,6 +671,8 @@ span strong {font-size:12px;}
     }
 
     $(document).ready(function() {  
+
+        setupNegativeStockQuickEnable();
 
         // ضمان وجود حقل رقم الفاتورة حتى لو لم يتم رسمه لأي سبب، لتجنب أخطاء JS توقف بقية المعالجات
         if(!document.getElementById('invoice_no')){

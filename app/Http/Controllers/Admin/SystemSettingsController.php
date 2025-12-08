@@ -14,6 +14,7 @@ use App\Models\Warehouse;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 
 class SystemSettingsController extends Controller
 {
@@ -272,6 +273,37 @@ class SystemSettingsController extends Controller
         $settings = SystemSettings::all() -> first();
         echo json_encode($settings);
         exit();
+    }
+
+    public function enableNegativeStock(Request $request)
+    {
+        $user = Auth::guard('admin-web')->user() ?? Auth::user();
+        if(!$user || !$user->can('تعديل الاعدادات')){
+            return response()->json([
+                'message' => __('main.enable_negative_stock_error')
+            ], 403);
+        }
+
+        $subscriberId = $user?->subscriber_id;
+        $query = SystemSettings::query();
+
+        if($subscriberId && Schema::hasColumn('system_settings','subscriber_id')){
+            $query->where('subscriber_id',$subscriberId);
+        }
+
+        $setting = $query->first();
+
+        if(!$setting){
+            $setting = new SystemSettings();
+            if(Schema::hasColumn('system_settings','subscriber_id')){
+                $setting->subscriber_id = $subscriberId;
+            }
+        }
+
+        $setting->sell_without_stock = 2;
+        $setting->save();
+
+        return response()->json(['status' => 'ok']);
     }
 
 }
