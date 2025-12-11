@@ -7,6 +7,12 @@
             {{ session('success') }}
         </div>
     @endif
+    @if (session('warning'))
+        <div class="alert alert-warning fade show">
+            <button class="close" data-dismiss="alert" aria-label="Close">×</button>
+            {{ session('warning') }}
+        </div>
+    @endif
     @if (session('error'))
         <div class="alert alert-danger fade show">
             <button class="close" data-dismiss="alert" aria-label="Close">×</button>
@@ -609,17 +615,7 @@ span strong {font-size:12px;}
         }
 
         function syncBankAmount(formatCashField){
-            if(!moneyInput || !cashInput || !bankInput){ return; }
-            const total = parseFloat(moneyInput.value) || 0;
-            let cashVal = parseFloat(cashInput.value);
-            if(isNaN(cashVal)){
-                cashVal = 0;
-            }
-            cashVal = Math.min(Math.max(cashVal, 0), total);
-            if(formatCashField){
-                cashInput.value = cashVal.toFixed(2);
-            }
-            bankInput.value = (total - cashVal).toFixed(2);
+            syncCashBoxInputs(formatCashField);
         }
 
         $(document).off('input','.payment-input').on('input','.payment-input',function (){
@@ -670,6 +666,31 @@ span strong {font-size:12px;}
         });
     }
 
+    function syncCashBoxInputs(formatCashField){
+        const moneyInput = document.getElementById('money');
+        const cashInput = document.getElementById('cash');
+        const bankInput = document.getElementById('bank_amount');
+
+        if(!moneyInput || !cashInput || !bankInput){
+            return;
+        }
+
+        const total = parseFloat(moneyInput.value) || 0;
+        let cashVal = parseFloat(cashInput.value);
+        if(isNaN(cashVal)){
+            cashVal = 0;
+        }
+        cashVal = Math.min(Math.max(cashVal, 0), total);
+
+        if(formatCashField){
+            cashInput.value = cashVal.toFixed(2);
+        }
+
+        bankInput.value = (total - cashVal).toFixed(2);
+    }
+
+    let paymentMethodSelect;
+
     $(document).ready(function() {  
 
         setupNegativeStockQuickEnable();
@@ -694,7 +715,7 @@ span strong {font-size:12px;}
 
         var warehouseSelect = $('#warehouse_id');
         var billInput = document.getElementById('bill_date');
-        const paymentMethodSelect = $('#payment_method');
+        paymentMethodSelect = $('#payment_method');
         const vehiclePlateInput = $('#vehicle_plate');
         const vehicleOdometerInput = $('#vehicle_odometer');
         const vehicleOptionsList = $('#vehiclePlateOptions');

@@ -23,5 +23,8 @@ class Branch extends Model
     public function admin(){
         return $this->hasMany('\App\Models\Admin','branch_id','id');
     }
- 
+    public function zatcaSetting()
+    {
+        return $this->hasOne(BranchZatcaSetting::class);
+    }
 }

@@ -49,6 +49,7 @@ use App\Http\Controllers\Admin\PosController;
 use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\SubscriberController;
 use App\Http\Controllers\Admin\InvoiceTermTemplateController;
+use App\Http\Controllers\Admin\ZatcaController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -237,6 +238,10 @@ Route::group(
     Route::post('storeSettings', [SystemSettingsController::class, 'store'])->name('storeSettings');
     Route::put('updateSettings', [SystemSettingsController::class, 'update'])->name('updateSettings');
     Route::post('/system_settings/enable-negative-stock', [SystemSettingsController::class, 'enableNegativeStock'])->name('system_settings.enable_negative_stock');
+    Route::post('/zatca/onboard', [ZatcaController::class, 'onboard'])->name('zatca.onboard');
+    Route::post('/zatca/sales/{sale}/send', [ZatcaController::class, 'sendInvoice'])->name('zatca.sales.send');
+    Route::post('/zatca/documents/{document}/resend', [ZatcaController::class, 'resendDocument'])->name('zatca.documents.resend');
+    Route::post('/zatca/manual-send', [ZatcaController::class, 'sendByReference'])->name('zatca.manual_send');
     
     Route::get('/pos_settings', [PosSettingsController::class, 'index'])->name('pos_settings');
     Route::post('storePosSettings', [PosSettingsController::class, 'store'])->name('storePosSettings');

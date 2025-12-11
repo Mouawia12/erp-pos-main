@@ -5,6 +5,10 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Traits\BelongsToSubscriber;
+use App\Models\SaleDetails;
+use App\Models\ZatcaDocument;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Sales extends Model
 {
@@ -56,5 +60,20 @@ class Sales extends Model
 
     public function representative(){
         return $this->belongsTo(Representative::class,'representative_id');
+    }
+
+    public function details(): HasMany
+    {
+        return $this->hasMany(SaleDetails::class, 'sale_id');
+    }
+
+    public function zatcaDocuments(): HasMany
+    {
+        return $this->hasMany(ZatcaDocument::class, 'sale_id');
+    }
+
+    public function latestZatcaDocument(): HasOne
+    {
+        return $this->hasOne(ZatcaDocument::class, 'sale_id')->latestOfMany();
     }
 }

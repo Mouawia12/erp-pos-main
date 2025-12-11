@@ -49,6 +49,7 @@
                                 <li class="nav-item"><a class="nav-link" aria-controls="tab_email_settings" href="#tab_email_settings" data-toggle="tab">{{__('main.email_settings')}}</a></li> 
                                 <li class="nav-item"><a class="nav-link" aria-controls="tab_points_settings" href="#tab_points_settings" data-toggle="tab"> {{__('main.points_settings')}}</a></li> 
                                 <li class="nav-item"><a class="nav-link" aria-controls="tab_tobacco_settings" href="#tab_tobacco_settings" data-toggle="tab">{{__('main.tobacco_settings')}}</a></li>  
+                                <li class="nav-item"><a class="nav-link" aria-controls="tab_zatca_settings" href="#tab_zatca_settings" data-toggle="tab">{{ __('main.zatca_settings') }}</a></li>
                             </ul>
         
                             <div class="tab-content">
@@ -1000,6 +1001,194 @@
                                         </div> 
                                     </div>
 								</div> 
+                                <div class="tab-pane" id="tab_zatca_settings">
+                                    <div class="box">
+                                        <div class="card-header pb-0">
+                                            <h2 class="alert alert-info text-center">{{ __('main.zatca_settings') }}</h2>
+                                        </div>
+                                        <div class="box-content text-right">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="card card-body mb-4">
+                                                        <h5 class="mb-2">{{ __('main.zatca_onboarding') }}</h5>
+                                                        <p class="text-muted small mb-3">{{ __('main.zatca_onboarding_hint') }}</p>
+                                                        @php
+                                                            $currentEnv = old('env', $zatcaConfig['env'] ?? 'developer-portal');
+                                                        @endphp
+                                                        <div class="form-group">
+                                                            <label>{{ __('main.zatca_onboarding_otp') }}</label>
+                                                            <input type="text" name="otp" class="form-control" value="{{ old('otp') }}" required form="zatca_onboarding_form">
+                                                        </div>
+                                                        <div class="form-group">
+                                                            <label>{{ __('main.zatca_branch') }}</label>
+                                                            <select name="branch_id" class="form-control" form="zatca_onboarding_form" required>
+                                                                <option value="">{{ __('main.zatca_select_branch') }}</option>
+                                                                @foreach($zatcaBranches as $branchItem)
+                                                                    <option value="{{ $branchItem->id }}" @if(old('branch_id') == $branchItem->id) selected @endif>
+                                                                        {{ $branchItem->branch_name ?? __('main.branch').' #'.$branchItem->id }}
+                                                                    </option>
+                                                                @endforeach
+                                                            </select>
+                                                        </div>
+                                                        <div class="form-row">
+                                                            <div class="form-group col-md-6">
+                                                                <label>{{ __('main.zatca_env') }}</label>
+                                                                <select name="env" class="form-control" form="zatca_onboarding_form">
+                                                                    @foreach(['developer-portal','simulation','core'] as $env)
+                                                                        <option value="{{ $env }}" @if($currentEnv === $env) selected @endif>{{ ucfirst($env) }}</option>
+                                                                    @endforeach
+                                                                </select>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <label>{{ __('main.zatca_invoice_type_code') }}</label>
+                                                                <input type="text" name="invoice_type" class="form-control" value="{{ old('invoice_type', $zatcaConfig['onboarding_invoice_type'] ?? '1100') }}" form="zatca_onboarding_form">
+                                                            </div>
+                                                        </div>
+                                                        <div class="form-row">
+                                                            <div class="form-group col-md-6">
+                                                                <label>{{ __('main.zatca_egs_serial') }}</label>
+                                                                <input type="text" name="egs_serial" class="form-control" value="{{ old('egs_serial', $zatcaConfig['egs_serial_number'] ?? '') }}" form="zatca_onboarding_form">
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <label>{{ __('main.zatca_business_category') }}</label>
+                                                                <input type="text" name="business_category" class="form-control" value="{{ old('business_category', $zatcaConfig['business_category'] ?? '') }}" form="zatca_onboarding_form">
+                                                            </div>
+                                                        </div>
+                                                        <div class="form-group form-check">
+                                                            <input type="checkbox" name="simulate" value="1" class="form-check-input" id="zatca_simulate_check" form="zatca_onboarding_form" {{ old('simulate') ? 'checked' : '' }}>
+                                                            <label class="form-check-label" for="zatca_simulate_check">{{ __('main.zatca_simulate_label') }}</label>
+                                                            <small class="form-text text-muted">{{ __('main.zatca_simulate_hint') }}</small>
+                                                        </div>
+                                                        <button type="submit" class="btn btn-primary btn-block" form="zatca_onboarding_form">{{ __('main.zatca_send_onboarding') }}</button>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="card card-body mb-4">
+                                                        <h5 class="mb-2">{{ __('main.zatca_manual_send') }}</h5>
+                                                        <p class="text-muted small mb-3">{{ __('main.zatca_manual_send_hint') }}</p>
+                                                        <div class="form-row">
+                                                            <div class="form-group col-md-6">
+                                                                <label>{{ __('main.zatca_sale_id') }}</label>
+                                                                <input type="number" name="sale_id" class="form-control" placeholder="#123" value="{{ old('sale_id') }}" form="zatca_manual_send_form">
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <label>{{ __('main.invoice_no') }}</label>
+                                                                <input type="text" name="invoice_no" class="form-control" placeholder="INV-0001" value="{{ old('invoice_no') }}" form="zatca_manual_send_form">
+                                                            </div>
+                                                        </div>
+                                                        <button type="submit" class="btn btn-primary btn-block" form="zatca_manual_send_form">{{ __('main.send_btn') }}</button>
+                                                    </div>
+                                                    <div class="card card-body">
+                                                        <h5 class="mb-3">{{ __('main.zatca_recent_documents') }}</h5>
+                                                        <div class="table-responsive">
+                                                            <table class="table table-sm table-striped mb-0 text-left">
+                                                                <thead>
+                                                                    <tr>
+                                                                        <th>{{ __('main.invoice_no') }}</th>
+                                                                        <th>{{ __('main.zatca_document_icv') }}</th>
+                                                                        <th>{{ __('main.zatca_document_uuid') }}</th>
+                                                                        <th>{{ __('main.zatca_status') }}</th>
+                                                                        <th>{{ __('main.actions') }}</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                @forelse($zatcaDocuments as $document)
+                                                                    <tr>
+                                                                        <td>{{ $document->invoice_number }}</td>
+                                                                        <td>{{ $document->icv }}</td>
+                                                                        <td class="text-monospace">{{ \Illuminate\Support\Str::limit($document->uuid, 12, '...') }}</td>
+                                                                        <td>
+                                                                            @php
+                                                                                $statusLabel = $document->sent_to_zatca_status ?? ($document->sent_to_zatca ? __('main.sent_successfully') : __('main.pending'));
+                                                                                $badgeClass = $document->sent_to_zatca ? 'badge-success' : 'badge-warning';
+                                                                                if($document->error_message){
+                                                                                    $badgeClass = 'badge-danger';
+                                                                                    $statusLabel = $document->error_message;
+                                                                                }
+                                                                            @endphp
+                                                                            <span class="badge {{ $badgeClass }}">{{ $statusLabel }}</span>
+                                                                        </td>
+                                                                        <td>
+                                                                            <button type="submit" class="btn btn-link p-0" form="zatca_resend_form" formaction="{{ route('zatca.documents.resend', $document) }}">{{ __('main.zatca_resend') }}</button>
+                                                                        </td>
+                                                                    </tr>
+                                                                @empty
+                                                                    <tr>
+                                                                        <td colspan="5" class="text-center text-muted">{{ __('main.zatca_not_available') }}</td>
+                                                                    </tr>
+                                                                @endforelse
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-12">
+                                                    <div class="card card-body">
+                                                        <h5 class="mb-3">{{ __('main.zatca_branch_states') }}</h5>
+                                                        <div class="table-responsive">
+                                                            <table class="table table-sm table-striped mb-0 text-left">
+                                                                <thead>
+                                                                    <tr>
+                                                                        <th>{{ __('main.branch') }}</th>
+                                                                        <th>{{ __('main.zatca_env') }}</th>
+                                                                        <th>{{ __('main.zatca_certificate_status') }}</th>
+                                                                        <th>{{ __('main.zatca_last_requested') }}</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                @forelse($zatcaBranches as $branchItem)
+                                                                    @php
+                                                                        $setting = $branchItem->zatcaSetting;
+                                                                        $hasCompliance = $setting && $setting->certificate && $setting->secret && $setting->private_key;
+                                                                        $hasProduction = $setting && $setting->production_certificate && $setting->production_secret;
+                                                                    @endphp
+                                                                    <tr>
+                                                                        <td>{{ $branchItem->branch_name ?? __('main.branch').' #'.$branchItem->id }}</td>
+                                                                        <td>
+                                                                            @if($setting)
+                                                                                <span class="badge badge-info">{{ strtoupper($setting->zatca_stage) }}</span>
+                                                                                @if($setting->is_simulation)
+                                                                                    <span class="badge badge-secondary">{{ __('main.zatca_simulation_short') }}</span>
+                                                                                @endif
+                                                                            @else
+                                                                                <span class="badge badge-light">{{ __('main.zatca_not_available') }}</span>
+                                                                            @endif
+                                                                        </td>
+                                                                        <td>
+                                                                            @if($hasCompliance)
+                                                                                <span class="badge badge-success">{{ __('main.zatca_certificate_ready') }}</span>
+                                                                            @else
+                                                                                <span class="badge badge-warning">{{ __('main.zatca_certificate_missing') }}</span>
+                                                                            @endif
+                                                                            @if($hasProduction)
+                                                                                <span class="badge badge-success">{{ __('main.zatca_production_ready') }}</span>
+                                                                            @endif
+                                                                        </td>
+                                                                        <td>
+                                                                            @if($setting && $setting->requested_at)
+                                                                                {{ $setting->requested_at->format('Y-m-d H:i') }}
+                                                                            @else
+                                                                                {{ __('main.zatca_not_available') }}
+                                                                            @endif
+                                                                            @if($setting && $setting->csid)
+                                                                                <div class="small text-monospace">{{ \Illuminate\Support\Str::limit($setting->csid, 18, '...') }}</div>
+                                                                            @endif
+                                                                        </td>
+                                                                    </tr>
+                                                                @empty
+                                                                    <tr>
+                                                                        <td colspan="4" class="text-center text-muted">{{ __('main.zatca_not_available') }}</td>
+                                                                    </tr>
+                                                                @endforelse
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                                 <div class="row text-center"> 
                                     <hr>
                                     <div class="col-lg-12 margin-tb">
@@ -1012,6 +1201,15 @@
                                     </div>
                                 </div> 
                             </div> 
+                        </form>
+                        <form id="zatca_onboarding_form" method="POST" action="{{ route('zatca.onboard') }}" class="d-none">
+                            @csrf
+                        </form>
+                        <form id="zatca_manual_send_form" method="POST" action="{{ route('zatca.manual_send') }}" class="d-none">
+                            @csrf
+                        </form>
+                        <form id="zatca_resend_form" method="POST" class="d-none">
+                            @csrf
                         </form>
                     </div>
                 </div>

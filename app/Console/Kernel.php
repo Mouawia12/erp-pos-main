@@ -27,5 +27,7 @@ class Kernel extends ConsoleKernel
 
     protected $commands = [
         \App\Console\Commands\DatabaseBackupCommand::class,
+        \App\Console\Commands\ZatcaOnboardCommand::class,
+        \App\Console\Commands\ZatcaSendInvoiceCommand::class,
     ];
 }

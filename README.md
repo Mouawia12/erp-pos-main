@@ -24,6 +24,39 @@ Laravel 10 / PHP 8.1 project for multi-branch accounting, inventory, POS, and ZA
 ## Requirements Checklist
 The full Arabic requirements from "طلبات-تطوير-برنامج-المحاسبة-والمخزون-كلاود.pdf" are captured in `docs/requirements-checklist.md`. Use it to mark items as ✅/⚠️/❌ after verifying against the running system. For a condensed view of what is still missing, see `docs/pending-gaps.md`.
 
+## ZATCA Phase Two Integration
+The working implementation from **ERP-GOLD** now lives under `app/Services/Zatca/*` and is wrapped with ERP‑POS specific services inside `app/Services/ZatcaIntegration/*`. These classes build the XML/UBL payload, sign it, and push it through the ZATCA compliance or clearance endpoints.
+
+1. Populate all `ZATCA_*` keys in `.env` (see `.env.example`). This includes organization info, supplier VAT/CR, device serial, and the base64 certificate/private key pair provided by Fatoora.
+2. Install dependencies and publish the autoloader:
+   ```bash
+   composer install
+   npm install
+   ```
+3. Run the DB migrations to create `zatca_documents` and `branch_zatca_settings`:
+   ```bash
+   php artisan migrate
+   ```
+4. Submit an onboarding request per branch (developer-portal, simulation, or production). Certificates/secrets are stored in `branch_zatca_settings` instead of JSON files:
+   ```bash
+   # Real request
+   php artisan zatca:onboard {OTP} --branch=1 --env=developer-portal --invoice-type=1100 --egs="DEVICE-SN"
+
+   # Local simulation shortcut (no ZATCA call, generates a fake bundle)
+   php artisan zatca:onboard 123456 --branch=1 --simulate
+   ```
+   Each branch now shows its onboarding status, CSID, and whether the stored bundle is simulation/compliance/production inside System Settings → "تكامل هيئة الزكاة".
+5. Invoice submission flow:
+   - Saving a sales invoice creates a `zatca_documents` row (ICV per subscriber/branch) and dispatches `App\Jobs\SendZatcaInvoice`.
+   - The job loads the branch certificate bundle from `branch_zatca_settings`, builds the XML via `App\Services\ZatcaIntegration\ZatcaInvoiceService`, signs it, and calls the correct endpoint (developer-portal = compliance, simulation/core = clearance).
+   - Responses (hashes, XML, QR, validation results, errors) are persisted on the matching `zatca_documents` row so you can review/resend later.
+6. Manual/manual resend options:
+   ```bash
+   php artisan zatca:send 123              # by sales ID
+   php artisan zatca:send INV-100 --by-number
+   ```
+   The System Settings screen exposes the same actions plus OTP onboarding and the last 10 submissions.
+
 ## Working Notes
 - Preserve existing production data; add schema changes via migrations only.
 - Keep RTL layouts for Arabic and add English UI strings where required.

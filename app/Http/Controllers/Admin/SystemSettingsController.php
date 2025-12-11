@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller; 
+use App\Models\Branch;
 use App\Models\Cashier;
 use App\Models\Category;
 use App\Models\Company;
@@ -11,6 +12,7 @@ use App\Models\CustomerGroup;
 use App\Models\PosSettings;
 use App\Models\SystemSettings;
 use App\Models\Warehouse;
+use App\Models\ZatcaDocument;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -35,6 +37,17 @@ class SystemSettingsController extends Controller
         $groups = CustomerGroup::all();
         $branches = Warehouse::all();
         $cashiers = Cashier::all();
+        $zatcaBranches = Branch::query()
+            ->with('zatcaSetting')
+            ->when($subscriberId, fn ($q) => $q->where('subscriber_id', $subscriberId))
+            ->orderBy('branch_name')
+            ->get();
+        $zatcaDocuments = ZatcaDocument::query()
+            ->with('sale')
+            ->when($subscriberId, fn ($q) => $q->where('subscriber_id', $subscriberId))
+            ->latest()
+            ->limit(10)
+            ->get();
 
         return view('admin.settings.index' , [
             'setting' => $setting,
@@ -42,6 +55,9 @@ class SystemSettingsController extends Controller
             'groups' => $groups,
             'branches' => $branches,
             'cashiers' => $cashiers,
+            'zatcaDocuments' => $zatcaDocuments,
+            'zatcaConfig' => config('zatca'),
+            'zatcaBranches' => $zatcaBranches,
         ]);
 
     }

@@ -1,0 +1,42 @@
+<?php
+
+return [
+    'enabled' => env('ZATCA_ENABLED', false),
+    'env' => env('ZATCA_ENV', 'developer-portal'),
+    'language' => env('ZATCA_LANG', 'en'),
+    'auto_submit_production' => (bool) env('ZATCA_AUTO_SUBMIT', false),
+    'default_invoice_type_code' => env('ZATCA_INVOICE_TYPE_CODE', '0200000'),
+    'default_document_type' => env('ZATCA_DOCUMENT_TYPE', '388'),
+    'onboarding_invoice_type' => env('ZATCA_ONBOARDING_INVOICE_TYPE', '1100'),
+    'payment_means_code' => env('ZATCA_PAYMENT_MEANS_CODE', '10'),
+    'client_identification' => env('ZATCA_CLIENT_IDENTIFICATION', 'NAT'),
+    'business_category' => env('ZATCA_BUSINESS_CATEGORY', 'Professional Services'),
+    'registered_address' => env('ZATCA_REGISTERED_ADDRESS'),
+    'organization_unit' => env('ZATCA_ORGANIZATION_UNIT'),
+    'organization_name' => env('ZATCA_ORGANIZATION_NAME'),
+    'email' => env('ZATCA_EMAIL'),
+    'vat_number' => env('ZATCA_VAT_NUMBER'),
+    'egs_serial_number' => env('ZATCA_EGS_SERIAL'),
+    'certificate' => [
+        'encoded' => env('ZATCA_CERTIFICATE'),
+        'private_key' => env('ZATCA_CERT_PRIVATE_KEY'),
+        'secret' => env('ZATCA_CERT_SECRET'),
+    ],
+    'supplier' => [
+        'cr_number' => env('ZATCA_SUPPLIER_CR'),
+        'vat_number' => env('ZATCA_SUPPLIER_VAT'),
+        'name' => env('ZATCA_SUPPLIER_NAME'),
+        'street' => env('ZATCA_SUPPLIER_STREET'),
+        'building_number' => env('ZATCA_SUPPLIER_BUILDING'),
+        'plot' => env('ZATCA_SUPPLIER_PLOT'),
+        'subdivision' => env('ZATCA_SUPPLIER_SUBDIVISION'),
+        'city' => env('ZATCA_SUPPLIER_CITY'),
+        'postal_code' => env('ZATCA_SUPPLIER_POSTAL'),
+        'country' => env('ZATCA_SUPPLIER_COUNTRY', 'SA'),
+    ],
+    'storage' => [
+        'disk' => env('ZATCA_STORAGE_DISK', 'local'),
+        'onboarding_dir' => env('ZATCA_ONBOARDING_PATH', 'zatca/onboarding'),
+    ],
+    'local_simulation' => (bool) env('ZATCA_LOCAL_SIMULATION', false),
+];

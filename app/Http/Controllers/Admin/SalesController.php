@@ -24,10 +24,13 @@ use App\Models\PromotionItem;
 use App\Models\Subscriber;
 use App\Models\WarehouseProducts as WarehouseProductModel;
 use App\Services\DocumentNumberService;
+use App\Services\ZatcaIntegration\ZatcaDocumentService;
+use App\Jobs\SendZatcaInvoice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Database\QueryException;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Carbon;
 use DataTables;
@@ -377,7 +380,11 @@ class SalesController extends Controller
         $products = array();
         $qntProducts = array();
 
+        $shouldDispatchZatcaInvoice = false;
+
         DB::beginTransaction();
+        $zatcaWarning = null;
+
         try {
         foreach ($request->product_id as $index=>$id){ 
             
@@ -543,12 +550,43 @@ class SalesController extends Controller
 
         $salePaymentController = new PaymentController();
         $salePaymentController->MakeSalePayment($request,$sale->id);
+
+        if (config('zatca.enabled')) {
+            app(ZatcaDocumentService::class)->initDocumentForSale($sale);
+            $sale->loadMissing('branch.zatcaSetting');
+            $branchSetting = $sale->branch?->zatcaSetting;
+
+            if ($branchSetting && $branchSetting->getCertificateBundle()) {
+                $shouldDispatchZatcaInvoice = true;
+            } else {
+                $zatcaWarning = __('main.zatca_branch_missing_credentials') ?? 'ZATCA integration is enabled but this branch does not have onboarding credentials yet.';
+            }
+        }
+
         DB::commit();
-        if(!$request ->POS){
-            return redirect()->route('sales')->with('success', __('main.created') ?? 'تم حفظ الفاتورة بنجاح');
-        } else {
-            return redirect()->route('pos')->with('success', __('main.created') ?? 'تم حفظ الفاتورة بنجاح');
-        } 
+        if ($shouldDispatchZatcaInvoice) {
+            try {
+                SendZatcaInvoice::dispatch($sale->id);
+            } catch (\Throwable $dispatchException) {
+                Log::error('zatca_dispatch_failed', [
+                    'sale_id' => $sale->id,
+                    'message' => $dispatchException->getMessage(),
+                ]);
+                $zatcaWarning = __('main.zatca_send_failed') ?? 'Invoice saved but sending to ZATCA failed. Please resend later.';
+            }
+        }
+
+        $redirect = !$request->POS
+            ? redirect()->route('sales')
+            : redirect()->route('pos');
+
+        $redirect = $redirect->with('success', __('main.created') ?? 'تم حفظ الفاتورة بنجاح');
+
+        if ($zatcaWarning) {
+            $redirect = $redirect->with('warning', $zatcaWarning);
+        }
+
+        return $redirect;
         } catch (ValidationException $e) {
             DB::rollBack();
             return redirect()->back()
@@ -563,9 +601,32 @@ class SalesController extends Controller
 
             return redirect()->back()
                 ->withInput()
-                ->with('error', __('main.error_occured') ?? $e->getMessage());
+                ->with('error', $this->resolveStoreErrorMessage($e));
         }
         
+    }
+
+    protected function resolveStoreErrorMessage(\Throwable $e): string
+    {
+        if ($this->isZatcaIcvDuplicate($e)) {
+            return __('main.zatca_icv_duplicate') ?? 'Unable to create a new ZATCA document because the previous sequence is still pending.';
+        }
+
+        return __('main.error_occured') ?? $e->getMessage();
+    }
+
+    protected function isZatcaIcvDuplicate(\Throwable $e): bool
+    {
+        if ($e instanceof QueryException && $e->getCode() === '23000' && str_contains($e->getMessage(), 'zatca_documents_scope_icv_unique')) {
+            return true;
+        }
+
+        $previous = $e->getPrevious();
+        if ($previous) {
+            return $this->isZatcaIcvDuplicate($previous);
+        }
+
+        return false;
     }
 
     private function resolveBranchAndSubscriber(Request $request, ?Warehouse $warehouse = null, ?Company $customer = null): array
