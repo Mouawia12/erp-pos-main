@@ -32,6 +32,7 @@ class Product extends Model
       'tax',
       'tax_rate',
       'track_quantity',
+      'track_batch',
       'tax_method',
       'price_includes_tax',
       'profit_margin',

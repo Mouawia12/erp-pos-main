@@ -16,6 +16,7 @@ use App\Models\ZatcaDocument;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 class SystemSettingsController extends Controller
@@ -83,78 +84,13 @@ class SystemSettingsController extends Controller
         $subscriberId = Auth::guard('admin-web')->user()?->subscriber_id;
         if($request -> id == 0){
             try {
-                $data = [
-                    'company_name' => $request -> company_name,
-                    'currency_id' => $request -> currency_id,
-                    'email' => $request -> email,
-                    'client_group_id' => $request -> client_group_id,
-                    'nom_of_days_to_edit_bill' => $request -> nom_of_days_to_edit_bill,
-                    'branch_id' => $request -> branch_id,
-                    'cashier_id' => $request -> cashier_id,
-                    'item_tax' => $request -> item_tax,
-                    'item_expired' => $request -> item_expired,
-                    'img_width' => $request -> img_width,
-                    'img_height' => $request -> img_height,
-                    'small_img_width' => $request -> small_img_width,
-                    'small_img_height' => $request -> small_img_height,
-                    'barcode_break' => $request -> barcode_break,
-                    'sell_without_stock' => $request -> sell_without_stock,
-                    'customize_refNumber' => $request -> customize_refNumber,
-                    'item_serial' => $request -> item_serial,
-                    'adding_item_method' => $request -> adding_item_method,
-                    'payment_method' => $request -> payment_method,
-                    'default_product_type' => $request->default_product_type ?? '1',
-                    'default_invoice_type' => $request->default_invoice_type ?? 'tax_invoice',
-                    'invoice_terms' => $request->invoice_terms,
-                    'single_device_login' => $request->single_device_login ?? 0,
-                    'per_user_sequence' => $request->per_user_sequence ? 1 : 0,
-                    'sales_prefix' => $request -> sales_prefix,
-                    'sales_return_prefix' => $request -> sales_return_prefix,
-                    'payment_prefix' => $request -> payment_prefix,
-                    'purchase_payment_prefix' => $request -> purchase_payment_prefix,
-                    'deliver_prefix' => $request -> deliver_prefix,
-                    'purchase_prefix' => $request -> purchase_prefix,
-                    'purchase_return_prefix' => $request -> purchase_return_prefix,
-                    'transaction_prefix' => $request -> transaction_prefix,
-                    'expenses_prefix' => $request -> expenses_prefix,
-                    'store_prefix' => $request -> store_prefix,
-                    'quotation_prefix' => $request -> quotation_prefix,
-                    'update_qnt_prefix' => $request -> update_qnt_prefix,
-                    'fraction_number' => $request -> fraction_number,
-                    'qnt_decimal_point' => $request -> qnt_decimal_point,
-                    'decimal_type' => $request -> decimal_type,
-                    'thousand_type' => $request -> thousand_type,
-                    'show_currency' => $request -> show_currency,
-                    'currency_label' => $request -> currency_label,
-                    'a4_decimal_point' => $request -> a4_decimal_point,
-                    'barcode_type' => $request -> barcode_type,
-                    'barcode_length' => $request -> barcode_length,
-                    'flag_character' => $request -> flag_character,
-                    'barcode_start' => $request -> barcode_start,
-                    'code_length' => $request -> code_length,
-                    'weight_start' => $request -> weight_start,
-                    'weight_length' => $request -> weight_length,
-                    'weight_divider' => $request -> weight_divider,
-                    'email_protocol' => $request -> email_protocol,
-                    'email_host' => $request -> email_host,
-                    'email_user' => $request -> email_user,
-                    'email_password' => $request -> email_password,
-                    'email_port' => $request -> email_port,
-                    'email_encrypt' => $request -> email_encrypt,
-                    'client_value' => $request -> client_value,
-                    'client_points' => $request -> client_points,
-                    'employee_value' => $request -> employee_value,
-                    'employee_points' => $request -> employee_points,
-                    'is_tobacco' => $request -> has('is_tobacco')? 1: 0,
-                    'tobacco_tax' => $request -> tobacco_tax,
-                ];
-
+                $data = $this->validatedSettingsData($request);
                 $data['subscriber_id'] = $subscriberId;
 
                 SystemSettings::create($data);
                 return redirect()->route('system_settings')->with('success' , __('main.created'));
-            } catch(QueryException $ex){
-
+            } catch(QueryException|\Exception $ex){
+                Log::error('system_settings_store_error', ['error' => $ex->getMessage()]);
                 return redirect()->route('system_settings')->with('error' ,  $ex->getMessage());
             }
         } else {
@@ -196,71 +132,7 @@ class SystemSettingsController extends Controller
     {
         $subscriberId = Auth::guard('admin-web')->user()?->subscriber_id;
         try {
-            $data = [
-                'company_name' => $request -> company_name,
-                'currency_id' => $request -> currency_id,
-                'email' => $request -> email,
-                'client_group_id' => $request -> client_group_id,
-                'nom_of_days_to_edit_bill' => $request -> nom_of_days_to_edit_bill,
-                'branch_id' => $request -> branch_id,
-                'cashier_id' => $request -> cashier_id,
-                'item_tax' => $request -> item_tax,
-                'item_expired' => $request -> item_expired,
-                'img_width' => $request -> img_width,
-                'img_height' => $request -> img_height,
-                'small_img_width' => $request -> small_img_width,
-                'small_img_height' => $request -> small_img_height,
-                'barcode_break' => $request -> barcode_break,
-                'sell_without_stock' => $request -> sell_without_stock,
-                'customize_refNumber' => $request -> customize_refNumber,
-                'item_serial' => $request -> item_serial,
-                'adding_item_method' => $request -> adding_item_method,
-                'payment_method' => $request -> payment_method,
-                'default_product_type' => $request->default_product_type ?? '1',
-                'default_invoice_type' => $request->default_invoice_type ?? 'tax_invoice',
-                'invoice_terms' => $request->invoice_terms,
-                'single_device_login' => $request->single_device_login ?? 0,
-                'per_user_sequence' => $request->per_user_sequence ? 1 : 0,
-                'sales_prefix' => $request -> sales_prefix,
-                'sales_return_prefix' => $request -> sales_return_prefix,
-                'payment_prefix' => $request -> payment_prefix,
-                'purchase_payment_prefix' => $request -> purchase_payment_prefix,
-                'deliver_prefix' => $request -> deliver_prefix,
-                'purchase_prefix' => $request -> purchase_prefix,
-                'purchase_return_prefix' => $request -> purchase_return_prefix,
-                'transaction_prefix' => $request -> transaction_prefix,
-                'expenses_prefix' => $request -> expenses_prefix,
-                'store_prefix' => $request -> store_prefix,
-                'quotation_prefix' => $request -> quotation_prefix,
-                'update_qnt_prefix' => $request -> update_qnt_prefix,
-                'fraction_number' => $request -> fraction_number,
-                'qnt_decimal_point' => $request -> qnt_decimal_point,
-                'decimal_type' => $request -> decimal_type,
-                'thousand_type' => $request -> thousand_type,
-                'show_currency' => $request -> show_currency,
-                'currency_label' => $request -> currency_label,
-                'a4_decimal_point' => $request -> a4_decimal_point,
-                'barcode_type' => $request -> barcode_type,
-                'barcode_length' => $request -> barcode_length,
-                'flag_character' => $request -> flag_character,
-                'barcode_start' => $request -> barcode_start,
-                'code_length' => $request -> code_length,
-                'weight_start' => $request -> weight_start,
-                'weight_length' => $request -> weight_length,
-                'weight_divider' => $request -> weight_divider,
-                'email_protocol' => $request -> email_protocol,
-                'email_host' => $request -> email_host,
-                'email_user' => $request -> email_user,
-                'email_password' => $request -> email_password,
-                'email_port' => $request -> email_port,
-                'email_encrypt' => $request -> email_encrypt,
-                'client_value' => $request -> client_value,
-                'client_points' => $request -> client_points,
-                'employee_value' => $request -> employee_value,
-                'employee_points' => $request -> employee_points,
-                'is_tobacco' => $request -> has('is_tobacco')? 1: 0  ,
-                'tobacco_tax' => $request -> tobacco_tax,
-            ];
+            $data = $this->validatedSettingsData($request);
 
             SystemSettings::updateOrCreate(
                 ['subscriber_id' => $subscriberId],
@@ -268,10 +140,97 @@ class SystemSettingsController extends Controller
             );
 
             return redirect()->route('system_settings')->with('success' , __('main.updated'));
-        } catch(QueryException $ex){
-
+        } catch(QueryException|\Exception $ex){
+            Log::error('system_settings_update_error', ['error' => $ex->getMessage()]);
             return redirect()->route('system_settings')->with('error' ,  $ex->getMessage());
         }
+    }
+
+    private function validatedSettingsData(Request $request): array
+    {
+        $validated = $request->validate([
+            'company_name' => ['required','string','max:191'],
+            'currency_id' => ['required','integer'],
+            'email' => ['nullable','email','max:191'],
+            'client_group_id' => ['nullable','integer'],
+            'nom_of_days_to_edit_bill' => ['nullable','integer','min:0'],
+            'branch_id' => ['nullable','integer'],
+            'cashier_id' => ['nullable','integer'],
+            'item_tax' => ['nullable','numeric','min:0'],
+            'item_expired' => ['nullable','numeric','min:0'],
+            'img_width' => ['nullable','numeric','min:0'],
+            'img_height' => ['nullable','numeric','min:0'],
+            'small_img_width' => ['nullable','numeric','min:0'],
+            'small_img_height' => ['nullable','numeric','min:0'],
+            'barcode_break' => ['nullable','integer','min:0'],
+            'sell_without_stock' => ['nullable','integer'],
+            'customize_refNumber' => ['nullable','integer'],
+            'item_serial' => ['nullable','integer'],
+            'adding_item_method' => ['nullable','integer'],
+            'payment_method' => ['nullable','integer'],
+            'default_product_type' => ['nullable','string'],
+            'default_invoice_type' => ['nullable','string','max:191'],
+            'invoice_terms' => ['nullable','string'],
+            'single_device_login' => ['nullable','integer'],
+            'per_user_sequence' => ['nullable'],
+            'enable_vehicle_features' => ['nullable','boolean'],
+            'sales_prefix' => ['nullable','string','max:191'],
+            'sales_return_prefix' => ['nullable','string','max:191'],
+            'payment_prefix' => ['nullable','string','max:191'],
+            'purchase_payment_prefix' => ['nullable','string','max:191'],
+            'deliver_prefix' => ['nullable','string','max:191'],
+            'purchase_prefix' => ['nullable','string','max:191'],
+            'purchase_return_prefix' => ['nullable','string','max:191'],
+            'transaction_prefix' => ['nullable','string','max:191'],
+            'expenses_prefix' => ['nullable','string','max:191'],
+            'store_prefix' => ['nullable','string','max:191'],
+            'quotation_prefix' => ['nullable','string','max:191'],
+            'update_qnt_prefix' => ['nullable','string','max:191'],
+            'fraction_number' => ['nullable','numeric','min:0'],
+            'qnt_decimal_point' => ['nullable','numeric','min:0'],
+            'decimal_type' => ['nullable','string','max:50'],
+            'thousand_type' => ['nullable','string','max:50'],
+            'show_currency' => ['nullable','integer'],
+            'currency_label' => ['nullable','string','max:50'],
+            'a4_decimal_point' => ['nullable','numeric','min:0'],
+            'barcode_type' => ['nullable','string','max:50'],
+            'barcode_length' => ['nullable','numeric','min:0'],
+            'flag_character' => ['nullable','string','max:10'],
+            'barcode_start' => ['nullable','string','max:10'],
+            'code_length' => ['nullable','numeric','min:0'],
+            'weight_start' => ['nullable','string','max:10'],
+            'weight_length' => ['nullable','numeric','min:0'],
+            'weight_divider' => ['nullable','numeric','min:0'],
+            'email_protocol' => ['nullable','string','max:50'],
+            'email_host' => ['nullable','string','max:191'],
+            'email_user' => ['nullable','string','max:191'],
+            'email_password' => ['nullable','string','max:191'],
+            'email_port' => ['nullable','numeric','min:0'],
+            'email_encrypt' => ['nullable','string','max:50'],
+            'client_value' => ['nullable','numeric','min:0'],
+            'client_points' => ['nullable','numeric','min:0'],
+            'employee_value' => ['nullable','numeric','min:0'],
+            'employee_points' => ['nullable','numeric','min:0'],
+            'is_tobacco' => ['nullable'],
+            'tobacco_tax' => ['nullable','numeric','min:0'],
+            'tax_number' => ['nullable','string','max:191'],
+        ]);
+
+        $data = array_merge($validated, [
+            'single_device_login' => $request->single_device_login ?? 0,
+            'per_user_sequence' => $request->boolean('per_user_sequence'),
+            'enable_vehicle_features' => $request->boolean('enable_vehicle_features'),
+            'is_tobacco' => $request->has('is_tobacco') ? 1 : 0,
+        ]);
+
+        // احذف أي حقل غير موجود فعلياً في جدول system_settings لتجنب أخطاء الأعمدة
+        foreach (array_keys($data) as $key) {
+            if (!Schema::hasColumn('system_settings', $key)) {
+                unset($data[$key]);
+            }
+        }
+
+        return $data;
     }
 
     /**

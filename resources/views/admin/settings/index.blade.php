@@ -14,6 +14,12 @@
             {{ session('success') }}
         </div>
     @endif
+    @if (session('error'))
+        <div class="alert alert-danger fade show">
+            <button class="close" data-dismiss="alert" aria-label="Close">×</button>
+            {{ session('error') }}
+        </div>
+    @endif
   
     @can('تعديل الاعدادات')  
  
@@ -366,6 +372,15 @@
                                                         <select class="form-control" name="single_device_login" id="single_device_login">
                                                             <option value="0" @if(!$setting ? true : $setting->single_device_login == 0) selected @endif>{{__('main.disable')}}</option>
                                                             <option value="1" @if($setting? $setting->single_device_login == 1 : false) selected @endif>{{__('main.enable')}}</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="col-4">
+                                                    <div class="form-group">
+                                                        <label>{{ __('main.enable_vehicle_features') }}</label>
+                                                        <select class="form-control" name="enable_vehicle_features" id="enable_vehicle_features">
+                                                            <option value="0" @if(!$setting || !$setting->enable_vehicle_features) selected @endif>{{ __('main.disable') }}</option>
+                                                            <option value="1" @if($setting && $setting->enable_vehicle_features) selected @endif>{{ __('main.enable') }}</option>
                                                         </select>
                                                     </div>
                                                 </div>
@@ -1276,7 +1291,28 @@
 
 <script type="text/javascript">
 
+    function showToast(message, type = 'success'){
+        var toast = document.createElement('div');
+        toast.className = 'toast align-items-center text-white bg-' + (type === 'error' ? 'danger' : 'success') + ' border-0';
+        toast.style.position = 'fixed';
+        toast.style.top = '20px';
+        toast.style.right = '20px';
+        toast.style.zIndex = 9999;
+        toast.role = 'alert';
+        toast.innerHTML = '<div class="d-flex"><div class="toast-body">'+message+'</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button></div>';
+        document.body.appendChild(toast);
+        var bsToast = new bootstrap.Toast(toast,{delay:3000});
+        bsToast.show();
+        toast.addEventListener('hidden.bs.toast',function(){ toast.remove(); });
+    }
+
     $(document).ready(function () {
+        @if(session('success'))
+            showToast(@json(session('success')), 'success');
+        @endif
+        @if(session('error'))
+            showToast(@json(session('error')), 'error');
+        @endif
         $('#invoice_terms_template_selector').on('change', function(){
             const val = $(this).val();
             if(val){

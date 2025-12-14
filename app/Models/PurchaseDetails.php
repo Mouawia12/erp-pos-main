@@ -19,6 +19,7 @@ class PurchaseDetails extends Model
         'warehouse_id',
         'unit_id',
         'batch_no',
+        'production_date',
         'expiry_date',
         'unit_factor',
         'tax',

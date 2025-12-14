@@ -38,6 +38,7 @@
 }
 span strong {font-size:12px;}
 </style>  
+@php $enableVehicleFeatures = $enableVehicleFeatures ?? false; @endphp
     @can('اضافة مبيعات')   
     @if(!empty($allowNegativeStock))
         <div class="alert alert-success small">
@@ -192,24 +193,42 @@ span strong {font-size:12px;}
                                 </select>
                             </div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="form-group">
-                                <label>{{ __('main.vehicle_plate') }}</label>
-                                <input type="text" id="vehicle_plate" name="vehicle_plate"
-                                       class="form-control" list="vehiclePlateOptions"
-                                       placeholder="{{ __('main.vehicle_plate') }}"
-                                       value="{{ old('vehicle_plate') }}">
-                                <datalist id="vehiclePlateOptions"></datalist>
+                        @if($enableVehicleFeatures)
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>{{ __('main.vehicle_plate') }}</label>
+                                    <input type="text" id="vehicle_plate" name="vehicle_plate"
+                                           class="form-control" list="vehiclePlateOptions"
+                                           placeholder="{{ __('main.vehicle_plate') }}"
+                                           value="{{ old('vehicle_plate') }}">
+                                    <datalist id="vehiclePlateOptions"></datalist>
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="form-group">
-                                <label>{{ __('main.vehicle_odometer') }}</label>
-                                <input type="number" step="1" id="vehicle_odometer" name="vehicle_odometer"
-                                       class="form-control" placeholder="{{ __('main.vehicle_odometer') }}"
-                                       value="{{ old('vehicle_odometer') }}">
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>{{ __('main.vehicle_name') }}</label>
+                                    <input type="text" id="vehicle_name" name="vehicle_name"
+                                           class="form-control" placeholder="{{ __('main.vehicle_name') }}"
+                                           value="{{ old('vehicle_name') }}">
+                                </div>
                             </div>
-                        </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>{{ __('main.vehicle_odometer') }}</label>
+                                    <input type="number" step="1" id="vehicle_odometer" name="vehicle_odometer"
+                                           class="form-control" placeholder="{{ __('main.vehicle_odometer') }}"
+                                           value="{{ old('vehicle_odometer') }}">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>{{ __('main.vehicle_color') }}</label>
+                                    <input type="text" id="vehicle_color" name="vehicle_color"
+                                           class="form-control" placeholder="{{ __('main.vehicle_color') }}"
+                                           value="{{ old('vehicle_color') }}">
+                                </div>
+                            </div>
+                        @endif
                     </div> 
                 </div>    
                 <div class="row"> 
@@ -718,6 +737,8 @@ span strong {font-size:12px;}
         paymentMethodSelect = $('#payment_method');
         const vehiclePlateInput = $('#vehicle_plate');
         const vehicleOdometerInput = $('#vehicle_odometer');
+        const vehicleNameInput = $('#vehicle_name');
+        const vehicleColorInput = $('#vehicle_color');
         const vehicleOptionsList = $('#vehiclePlateOptions');
         const walkInCustomerId = Number($('#walk_in_customer_id').val() || 0);
         const $walkInFields = $('#walk_in_fields');
@@ -747,6 +768,14 @@ span strong {font-size:12px;}
                 if(stored !== undefined && stored !== null && stored !== ''){
                     vehicleOdometerInput.val(stored);
                 }
+                var storedName = option.attr('data-name');
+                if(storedName){
+                    vehicleNameInput.val(storedName);
+                }
+                var storedColor = option.attr('data-color');
+                if(storedColor){
+                    vehicleColorInput.val(storedColor);
+                }
             }
         }
 
@@ -760,12 +789,21 @@ span strong {font-size:12px;}
                     return;
                 }
                 var label = vehicle.vehicle_plate;
+                var parts = [];
                 if(vehicle.vehicle_odometer !== undefined && vehicle.vehicle_odometer !== null && vehicle.vehicle_odometer !== ''){
-                    label += ' ('+vehicle.vehicle_odometer+')';
+                    parts.push(vehicle.vehicle_odometer);
+                }
+                if(vehicle.vehicle_color){
+                    parts.push(vehicle.vehicle_color);
+                }
+                if(parts.length){
+                    label += ' ('+parts.join(' - ')+')';
                 }
                 var option = $('<option>')
                     .attr('value', vehicle.vehicle_plate)
-                    .attr('data-odometer', vehicle.vehicle_odometer !== undefined && vehicle.vehicle_odometer !== null ? vehicle.vehicle_odometer : '');
+                    .attr('data-odometer', vehicle.vehicle_odometer !== undefined && vehicle.vehicle_odometer !== null ? vehicle.vehicle_odometer : '')
+                    .attr('data-name', vehicle.vehicle_name || '')
+                    .attr('data-color', vehicle.vehicle_color || '');
                 option.text(label);
                 vehicleOptionsList.append(option);
             });
@@ -866,10 +904,14 @@ span strong {font-size:12px;}
                 }
             }
             toggleWalkInFields($(this).val());
+            @if($enableVehicleFeatures)
             fetchCustomerVehicles($(this).val());
+            @endif
         });
         toggleWalkInFields($('#customer_id').val());
+        @if($enableVehicleFeatures)
         fetchCustomerVehicles($('#customer_id').val());
+        @endif
 
         $(document).on('click' , '.cancel-modal' , function(event) {
             $('#deleteModal').modal("hide");

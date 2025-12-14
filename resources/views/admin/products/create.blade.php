@@ -345,6 +345,19 @@
                                     </div>
                                 </div> 
                             </div> 
+
+                            <div class="row g-3 mt-1">
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label>{{ __('main.enable_batch_tracking') }}</label>
+                                        @php $trackBatch = old('track_batch', '0'); @endphp
+                                        <select id="track_batch" name="track_batch" class="form-control">
+                                            <option value="1" @if($trackBatch==='1') selected @endif>{{ __('main.status1') }}</option>
+                                            <option value="0" @if($trackBatch==='0') selected @endif>{{ __('main.status2') }}</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
                 
                             <div class="row">
                                 <div class="col-md-12">

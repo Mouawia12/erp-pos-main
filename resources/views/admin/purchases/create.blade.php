@@ -214,6 +214,7 @@
                                                             <th class="text-center">{{__('main.unit')}}</th>
                                                             <th class="text-center">{{__('main.quantity')}}</th>
                                                             <th class="text-center">{{__('main.batch_no')}}</th>
+                                                            <th class="text-center">{{__('main.production_date')}}</th>
                                                             <th class="text-center">{{__('main.expiry_date')}}</th>
                                                             <th class="text-center">{{__('main.price.unit')}}</th>
                                                             <th class="text-center">{{__('main.tax_rate')}}</th>
@@ -227,7 +228,7 @@
                                                     <tbody id="tbody"></tbody>  
                                                     <tfoot>
                                                         <tr>
-                                                            <th colspan="8">
+                                                            <th colspan="9">
                                                                 {{__('main.sum')}}
                                                             </th>
                                                             <td class="text-center">
@@ -297,6 +298,38 @@
                         </button>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="batchModal" tabindex="-1" role="dialog" aria-labelledby="batchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-md" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <label class="alertTitle mb-0">{{ __('main.batch_details') }}</label>
+                <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-2" id="batchItemName"></p>
+                <div class="form-group">
+                    <label>{{ __('main.batch_no') }}</label>
+                    <input type="text" class="form-control" id="batch_no_input" placeholder="{{ __('main.batch_no') }}">
+                </div>
+                <div class="form-group">
+                    <label>{{ __('main.production_date') }}</label>
+                    <input type="date" class="form-control" id="production_date_input">
+                </div>
+                <div class="form-group">
+                    <label>{{ __('main.expiry_date') }}</label>
+                    <input type="date" class="form-control" id="expiry_date_input">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="cancelBatchModal">{{ __('main.cancel_btn') }}</button>
+                <button type="button" class="btn btn-primary" id="saveBatchModal">{{ __('main.save_btn') }}</button>
             </div>
         </div>
     </div>
@@ -374,6 +407,7 @@
     var pendingDuplicateItem = null;
     var pendingVariantItem = null;
     var pendingVariantForceDuplicate = false;
+    var pendingBatchItem = null;
 
     $(document).ready(function() { 
         
@@ -526,6 +560,30 @@
             pendingVariantItem = null;
             pendingVariantForceDuplicate = false;
         });
+
+        $('#cancelBatchModal').on('click', function(){
+            pendingBatchItem = null;
+            $('#batchModal').modal('hide');
+        });
+        $('#saveBatchModal').on('click', function(){
+            if(!pendingBatchItem){
+                $('#batchModal').modal('hide');
+                return;
+            }
+            var batchNo = $('#batch_no_input').val().trim();
+            var productionDate = $('#production_date_input').val();
+            var expiryDate = $('#expiry_date_input').val();
+            if(!batchNo || !productionDate || !expiryDate){
+                alert('{{ __('main.batch_required_message') ?? 'Please enter batch number, production and expiry dates.' }}');
+                return;
+            }
+            pendingBatchItem.item.batch_no = batchNo;
+            pendingBatchItem.item.production_date = productionDate;
+            pendingBatchItem.item.expiry_date = expiryDate;
+            $('#batchModal').modal('hide');
+            addItemToTable(pendingBatchItem.item, pendingBatchItem.forceDuplicate, true);
+            pendingBatchItem = null;
+        });
        
         function getBillNo(){
             
@@ -647,8 +705,9 @@ function openDialog(){
       })
 }
 
-    function addItemToTable(item, forceDuplicate){
+    function addItemToTable(item, forceDuplicate, skipBatchPrompt){
         forceDuplicate = forceDuplicate || false;
+        skipBatchPrompt = skipBatchPrompt || false;
         if(count == 1){
             sItems = {};
         } 
@@ -658,9 +717,22 @@ function openDialog(){
             var targetVariantId = item.selected_variant ? item.selected_variant.id : (item.variant_id ?? null);
             return existing.product_id === item.id && String(existingVariantId ?? '') === String(targetVariantId ?? '');
         });
+        if(item.track_batch){
+            isDuplicate = false;
+        }
 
         if(needsVariantSelection(item)){
             openVariantModal(item, forceDuplicate);
+            return;
+        }
+
+        if(!skipBatchPrompt && item.track_batch){
+            pendingBatchItem = {item: item, forceDuplicate: forceDuplicate};
+            $('#batchItemName').text(item.name ? item.name : (item.code || ''));
+            $('#batch_no_input').val(item.batch_no ?? '');
+            $('#production_date_input').val(item.production_date ?? '');
+            $('#expiry_date_input').val(item.expiry_date ?? '');
+            $('#batchModal').modal({backdrop:'static', keyboard:false});
             return;
         }
 
@@ -726,6 +798,10 @@ function openDialog(){
     sItems[key].variant_color = item.selected_variant ? item.selected_variant.color : (item.variant_color ?? null);
     sItems[key].variant_size = item.selected_variant ? item.selected_variant.size : (item.variant_size ?? null);
     sItems[key].variant_barcode = item.selected_variant ? item.selected_variant.barcode : (item.variant_barcode ?? null);
+    sItems[key].track_batch = item.track_batch ? true : false;
+    sItems[key].batch_no = item.batch_no ?? '';
+    sItems[key].production_date = item.production_date ?? '';
+    sItems[key].expiry_date = item.expiry_date ?? '';
 
     if(isDuplicate && !forceDuplicate){
         delete sItems[key];
@@ -844,6 +920,27 @@ function openDialog(){
         loadItems();
     });
 
+    $(document).on('change', '.batchInput', function () {
+        var item_id = $(this).closest('tr').attr('data-item-id');
+        if(sItems[item_id]){
+            sItems[item_id].batch_no = $(this).val();
+        }
+    });
+
+    $(document).on('change', '.productionDateInput', function () {
+        var item_id = $(this).closest('tr').attr('data-item-id');
+        if(sItems[item_id]){
+            sItems[item_id].production_date = $(this).val();
+        }
+    });
+
+    $(document).on('change', '.expiryDateInput', function () {
+        var item_id = $(this).closest('tr').attr('data-item-id');
+        if(sItems[item_id]){
+            sItems[item_id].expiry_date = $(this).val();
+        }
+    });
+
     function is_numeric(mixed_var) {
         var whitespace = ' \n\r\t\f\x0b\xa0\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u3000';
         return (
@@ -897,8 +994,9 @@ function openDialog(){
                 unitSelect += '</select><input type="hidden" name="unit_factor[]" class="unitFactor" value="'+(item.unit_factor ?? 1)+'">';
                 tr_html +='<td>'+unitSelect+'</td>';
                 tr_html +='<td><input type="number" class="form-control iQuantity" name="qnt[]" value="'+item.qnt+'"></td>';
-                tr_html +='<td><input type="text" class="form-control" name="batch_no[]" value="'+escapeHtml(item.batch_no ?? '')+'" placeholder="{{__('main.batch_no') ?? 'Batch'}}"></td>';
-                tr_html +='<td><input type="date" class="form-control" name="expiry_date[]" value="'+(item.expiry_date ?? '')+'"></td>';
+                tr_html +='<td><input type="text" class="form-control batchInput" name="batch_no[]" value="'+escapeHtml(item.batch_no ?? '')+'" placeholder="{{__('main.batch_no') ?? 'Batch'}}"></td>';
+                tr_html +='<td><input type="date" class="form-control productionDateInput" name="production_date[]" value="'+(item.production_date ?? '')+'"></td>';
+                tr_html +='<td><input type="date" class="form-control expiryDateInput" name="expiry_date[]" value="'+(item.expiry_date ?? '')+'"></td>';
                 tr_html +='<td><input type="number" class="form-control iPrice" name="price_without_tax[]" value="'+Number(item.price_withoute_tax ?? 0).toFixed(2)+'"><input type="hidden" class="form-control iPriceWTax" name="price_with_tax[]" value="'+Number(item.price_with_tax ?? 0).toFixed(2)+'"></td>';
                 var taxRateDisplay = Number(item.tax_rate_display ?? 0).toFixed(2) + '%';
                 tr_html +='<td><input type="text" readonly class="form-control-plaintext text-center" value="'+taxRateDisplay+'"></td>';

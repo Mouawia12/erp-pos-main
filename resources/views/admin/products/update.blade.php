@@ -154,6 +154,18 @@
                                                             </div>
                                                         </div>
                                                     </div>
+
+                                                    <div class="row mt-1">
+                                                        <div class="col-md-4">
+                                                            <div class="form-group">
+                                                                <label>{{ __('main.enable_batch_tracking') }}</label>
+                                                                <select id="track_batch" name="track_batch" class="form-control">
+                                                                    <option value="1" @if($product->track_batch) selected @endif>{{ __('main.status1') }}</option>
+                                                                    <option value="0" @if(!$product->track_batch) selected @endif>{{ __('main.status2') }}</option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
 

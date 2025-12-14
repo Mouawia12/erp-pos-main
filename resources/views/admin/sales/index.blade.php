@@ -15,6 +15,7 @@ a.btn {
     margin-left: 5px;
 }
 </style>
+@php $enableVehicleFeatures = $enableVehicleFeatures ?? false; @endphp
     @can('عرض مبيعات') 
     <!-- End Navbar -->
     <div class="container-fluid py-4">
@@ -86,10 +87,20 @@ a.btn {
                                 <label>{{ __('main.item') ?? 'الصنف' }}</label>
                                 <input type="text" class="form-control" id="filter_item_search" name="item_search" placeholder="{{__('main.product_code')}}">
                             </div>
+                            @if($enableVehicleFeatures)
                             <div class="col-md-3 mt-2">
                                 <label>{{ __('main.vehicle_plate') }}</label>
                                 <input type="text" class="form-control" id="filter_vehicle_plate" name="vehicle_plate" placeholder="{{ __('main.vehicle_plate') }}">
                             </div>
+                            <div class="col-md-3 mt-2">
+                                <label>{{ __('main.vehicle_name') }}</label>
+                                <input type="text" class="form-control" id="filter_vehicle_name" name="vehicle_name" placeholder="{{ __('main.vehicle_name') }}">
+                            </div>
+                            <div class="col-md-3 mt-2">
+                                <label>{{ __('main.vehicle_color') }}</label>
+                                <input type="text" class="form-control" id="filter_vehicle_color" name="vehicle_color" placeholder="{{ __('main.vehicle_color') }}">
+                            </div>
+                            @endif
                             <div class="col-md-3 d-flex align-items-end gap-2 mt-2">
                                 <button type="submit" class="btn btn-primary">{{ __('main.search') }}</button>
                                 <button type="button" id="filterReset" class="btn btn-secondary">{{ __('main.reset') ?? 'إعادة تعيين' }}</button>
@@ -108,8 +119,12 @@ a.btn {
                                         <th>{{__('main.branche')}}</th>  
                                         <th>{{__('main.warehouse')}}</th>
                                         <th>{{__('main.customer')}}</th>
-                                        <th>{{ __('main.vehicle_plate') }}</th>
-                                        <th>{{ __('main.vehicle_odometer') }}</th>
+                                        @if($enableVehicleFeatures)
+                                            <th>{{ __('main.vehicle_plate') }}</th>
+                                            <th>{{ __('main.vehicle_name') }}</th>
+                                            <th>{{ __('main.vehicle_color') }}</th>
+                                            <th>{{ __('main.vehicle_odometer') }}</th>
+                                        @endif
                                         <th>{{__('main.invoice.total')}}</th> 
                                         <th>{{__('main.discount')}}</th> 
                                         <th>{{__('main.tax')}}</th>
@@ -166,6 +181,7 @@ a.btn {
                 return fixed.replace(/(\.\d*?[1-9])0+$|\.0+$/,'$1');
             }
 
+            const vehicleEnabled = @json($enableVehicleFeatures);
             var table = $('#salesTable').DataTable({
                 processing: true,
                 //serverSide: true,
@@ -181,7 +197,11 @@ a.btn {
                         d.date_from = $('#filter_date_from').val();
                         d.date_to = $('#filter_date_to').val();
                         d.item_search = $('#filter_item_search').val();
+                        @if($enableVehicleFeatures)
                         d.vehicle_plate = $('#filter_vehicle_plate').val();
+                        d.vehicle_name = $('#filter_vehicle_name').val();
+                        d.vehicle_color = $('#filter_vehicle_color').val();
+                        @endif
                     }
                 },
                 columns: [
@@ -209,14 +229,24 @@ a.btn {
                         data: 'customer_name',
                         name: 'customer_name'
                     },
+                    @if($enableVehicleFeatures)
                     {
                         data: 'vehicle_plate',
                         name: 'vehicle_plate'
                     },
                     {
+                        data: 'vehicle_name',
+                        name: 'vehicle_name'
+                    },
+                    {
+                        data: 'vehicle_color',
+                        name: 'vehicle_color'
+                    },
+                    {
                         data: 'vehicle_odometer',
                         name: 'vehicle_odometer'
                     },
+                    @endif
                     {
                         data: 'net',
                         name: 'net'
@@ -249,17 +279,24 @@ a.btn {
                         searchable: false
                     },
                 ],
-                columnDefs: [
-                    {
-                        targets: [8,9,10,11,12,13],
+                columnDefs: (function(){
+                    var numericIndexes = [];
+                    if(vehicleEnabled){
+                        // net, discount, tax, total, remain, paid
+                        numericIndexes = [10,11,12,13,14,15];
+                    } else {
+                        numericIndexes = [6,7,8,9,10,11];
+                    }
+                    return [{
+                        targets: numericIndexes,
                         render: function(data, type){
                             if(type === 'display' || type === 'filter'){
                                 return formatAmountCell(data);
                             }
                             return data;
                         }
-                    }
-                ],
+                    }];
+                })(),
                 dom: 'lBfrtip',
                 buttons: [
                     "copy", "excel", "print", "colvis"

@@ -19,7 +19,7 @@ class Sales extends Model
         'warehouse_id','note','total','discount','tax','tax_excise','net','paid',
         'sale_status','payment_status','pos','lista','profit','sale_id','created_by',
         'additional_service', 'branch_id','user_id', 'status', 'invoice_type','service_mode','session_location','session_type','reservation_time','reservation_guests','cost_center','tax_mode',
-        'vehicle_plate','vehicle_odometer',
+        'vehicle_plate','vehicle_name','vehicle_color','vehicle_odometer',
         'locked_at','subscriber_id'
     ];
 

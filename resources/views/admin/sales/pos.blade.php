@@ -11,19 +11,15 @@
 @can('اضافة مبيعات')  
  <style>
 .pos-page {
-    position: absolute;
-    top: 8%;
-    right: 7%;
-    -webkit-transition: width .3s linear;
-    transition: width .3s linear;
-    width: 93%;
+    position: relative;
+    width: 100%;
     min-height: 100vh;
-    padding-bottom: 50px
+    padding: 0 15px 60px;
 }
 
 .page.active,.pos-page .page {
     margin-left: 0;
-    width: calc(100%)
+    width: 100%;
 }
 .pos h4{ 
     display: flex;
@@ -302,17 +298,6 @@ label.total {
                                     <div class="form-group">   
                                         <input id="customer_tax_number" name="customer_tax_number" class="form-control pos-input" type="text" placeholder="{{ __('main.tax_number') }}">  
                                     </div>   
-                                </div>
-                                <div class="col-lg-4">
-                                    <div class="form-group">
-                                        <input id="vehicle_plate" name="vehicle_plate" class="form-control pos-input" type="text" list="vehiclePlateOptions" placeholder="{{ __('main.vehicle_plate') }}">
-                                        <datalist id="vehiclePlateOptions"></datalist>
-                                    </div>
-                                </div>
-                                <div class="col-lg-4">
-                                    <div class="form-group">
-                                        <input id="vehicle_odometer" name="vehicle_odometer" class="form-control pos-input" type="number" placeholder="{{ __('main.vehicle_odometer') }}">
-                                    </div>
                                 </div>
                                 <div class="col-lg-4">
                                     <div class="form-group">
@@ -769,80 +754,6 @@ label.total {
         now.setSeconds(null); 
         document.getElementById('bill_date').value = now.toISOString().slice(0, -1);
 
-        const posVehicleInput = $('#vehicle_plate');
-        const posVehicleOdometerInput = $('#vehicle_odometer');
-        const posVehicleOptions = $('#vehiclePlateOptions');
-        const posCustomerVehiclesCache = {};
-
-        function posHydrateVehicleOdometer(){
-            if(!posVehicleInput.length || !posVehicleOdometerInput.length){
-                return;
-            }
-            var currentValue = (posVehicleInput.val() || '').trim();
-            if(!currentValue){
-                return;
-            }
-            var option = posVehicleOptions.find('option').filter(function(){
-                return this.value === currentValue;
-            }).first();
-            if(option.length){
-                var stored = option.attr('data-odometer');
-                if(stored !== undefined && stored !== null && stored !== ''){
-                    posVehicleOdometerInput.val(stored);
-                }
-            }
-        }
-
-        function posRenderVehicleOptions(vehicles){
-            if(!posVehicleOptions.length){
-                return;
-            }
-            posVehicleOptions.empty();
-            (vehicles || []).forEach(function(vehicle){
-                if(!vehicle || !vehicle.vehicle_plate){
-                    return;
-                }
-                var label = vehicle.vehicle_plate;
-                if(vehicle.vehicle_odometer !== undefined && vehicle.vehicle_odometer !== null && vehicle.vehicle_odometer !== ''){
-                    label += ' ('+vehicle.vehicle_odometer+')';
-                }
-                var option = $('<option>')
-                    .attr('value', vehicle.vehicle_plate)
-                    .attr('data-odometer', vehicle.vehicle_odometer !== undefined && vehicle.vehicle_odometer !== null ? vehicle.vehicle_odometer : '');
-                option.text(label);
-                posVehicleOptions.append(option);
-            });
-            posHydrateVehicleOdometer();
-        }
-
-        function posFetchCustomerVehicles(customerId){
-            if(!posVehicleOptions.length){
-                return;
-            }
-            if(!customerId){
-                posRenderVehicleOptions([]);
-                return;
-            }
-            if(posCustomerVehiclesCache[customerId]){
-                posRenderVehicleOptions(posCustomerVehiclesCache[customerId]);
-                return;
-            }
-            var url = "{{ route('customers.vehicles', ['customer' => ':id']) }}";
-            url = url.replace(':id', customerId);
-            $.get(url)
-                .done(function(response){
-                    posCustomerVehiclesCache[customerId] = response || [];
-                    posRenderVehicleOptions(posCustomerVehiclesCache[customerId]);
-                })
-                .fail(function(){
-                    posRenderVehicleOptions([]);
-                });
-        }
-
-        if(posVehicleInput.length){
-            posVehicleInput.on('change blur', posHydrateVehicleOdometer);
-        }
-
         $('#customer_id').on('change', function(){
             const selected = $(this).find(':selected');
             const defaultDiscount = parseFloat(selected.data('default-discount')) || 0;
@@ -875,7 +786,6 @@ label.total {
                 $('#discount_input').val(0);
             }
             updatePosDiscountSummary();
-            posFetchCustomerVehicles($(this).val());
         });
        
         $('input[name=add_item]').change(function() {
@@ -1602,7 +1512,7 @@ label.total {
  
 </script>
 <script src="{{ asset('js/offline-pos.js') }}"></script>
-@endsection 
+<script type="text/javascript">
     function setupNegativeStockQuickEnable(){
         @if(Route::has('system_settings.enable_negative_stock'))
         var enableBtn = document.getElementById('enableNegativeStockBtn');
@@ -1640,3 +1550,5 @@ label.total {
         });
         @endif
     }
+</script>
+@endsection 

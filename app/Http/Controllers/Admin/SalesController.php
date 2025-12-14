@@ -63,6 +63,8 @@ class SalesController extends Controller
             })
             ->when($request->invoice_no, fn($q,$v)=>$q->where('s.invoice_no','like','%'.$v.'%'))
             ->when($request->vehicle_plate, fn($q,$v)=>$q->where('s.vehicle_plate','like','%'.$v.'%'))
+            ->when($request->vehicle_name, fn($q,$v)=>$q->where('s.vehicle_name','like','%'.$v.'%'))
+            ->when($request->vehicle_color, fn($q,$v)=>$q->where('s.vehicle_color','like','%'.$v.'%'))
             ->when($request->customer_id, fn($q,$v)=>$q->where('s.customer_id',$v))
             ->when($request->representative_id, fn($q,$v)=>$q->where('s.representative_id',$v))
             ->when($request->branch_id, fn($q,$v)=>$q->where('s.branch_id',$v))
@@ -140,11 +142,17 @@ class SalesController extends Controller
                 ->make(true);
         } 
  
+        $subscriberId = Auth::user()?->subscriber_id;
+        $settings = SystemSettings::query()
+            ->when($subscriberId, fn ($q) => $q->where('subscriber_id', $subscriberId))
+            ->first();
+        $enableVehicleFeatures = (bool) optional($settings)->enable_vehicle_features;
+
         $customers = Company::where('group_id',3)->get();
         $branches = Branch::where('status',1)->get();
         $representatives = Representative::all();
 
-        return view('admin.sales.index',compact('customers','representatives','branches'));
+        return view('admin.sales.index',compact('customers','representatives','branches','enableVehicleFeatures'));
     
     }
 
@@ -286,13 +294,14 @@ class SalesController extends Controller
         $defaultInvoiceType = $this->resolveDefaultInvoiceType();
         $allowNegativeStock = $siteContrller->allowSellingWithoutStock();
         $walkInCustomer = Company::ensureWalkInCustomer(Auth::user()->subscriber_id ?? null);
+        $enableVehicleFeatures = (bool) optional($settings)->enable_vehicle_features;
         if ($walkInCustomer) {
             $customers = $customers->sortByDesc(function ($customer) use ($walkInCustomer) {
                 return $customer->id === $walkInCustomer->id ? 1 : 0;
             })->values();
         }
 
-        return view('admin.sales.create',compact('warehouses','customers','representatives','settings','branches','defaultInvoiceType','allowNegativeStock','walkInCustomer'));
+        return view('admin.sales.create',compact('warehouses','customers','representatives','settings','branches','defaultInvoiceType','allowNegativeStock','walkInCustomer','enableVehicleFeatures'));
     }
 
     /**
@@ -305,11 +314,31 @@ class SalesController extends Controller
     {
         $request['invoice_no'] = $this->get_sales_pos_no( 1 , $request -> warehouse_id); 
 
-        $validated = $request->validate([
+        $settings = SystemSettings::query()
+            ->when(Auth::user()?->subscriber_id, fn($q,$sub)=>$q->where('subscriber_id',$sub))
+            ->first();
+        $enableVehicleFeatures = (bool) optional($settings)->enable_vehicle_features;
+
+        $baseRules = [
             'invoice_no' => 'required|unique:sales', 
             'customer_id' => 'required',
-            'warehouse_id' => 'required'
-        ]);
+            'warehouse_id' => 'required',
+        ];
+        if($enableVehicleFeatures){
+            $baseRules['vehicle_plate'] = 'nullable|string|max:191';
+            $baseRules['vehicle_name'] = 'nullable|string|max:191';
+            $baseRules['vehicle_color'] = 'nullable|string|max:191';
+            $baseRules['vehicle_odometer'] = 'nullable|numeric|min:0';
+        } else {
+            $request->merge([
+                'vehicle_plate' => null,
+                'vehicle_name' => null,
+                'vehicle_color' => null,
+                'vehicle_odometer' => null,
+            ]);
+        }
+
+        $validated = $request->validate($baseRules);
 
         $billDate = now()->format('Y-m-d H:i:s');
 
@@ -527,6 +556,8 @@ class SalesController extends Controller
             'sale_id' => 0,
             'subscriber_id' => $subscriberId,
             'vehicle_plate' => $request->vehicle_plate ? trim($request->vehicle_plate) : null,
+            'vehicle_name' => $request->vehicle_name ? trim($request->vehicle_name) : null,
+            'vehicle_color' => $request->vehicle_color ? trim($request->vehicle_color) : null,
             'vehicle_odometer' => $request->vehicle_odometer,
         ];
 
@@ -965,7 +996,7 @@ class SalesController extends Controller
         }
 
         $vehicles = Sales::query()
-            ->select('vehicle_plate', 'vehicle_odometer')
+            ->select('vehicle_plate', 'vehicle_odometer','vehicle_name','vehicle_color')
             ->where('customer_id', $customer->id)
             ->whereNotNull('vehicle_plate')
             ->orderByDesc('id')

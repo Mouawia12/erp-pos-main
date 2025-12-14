@@ -76,6 +76,7 @@ class SystemSettings extends Model
         'tax_number',
         'single_device_login',
         'per_user_sequence',
+        'enable_vehicle_features',
         'created_at', 
         'updated_at', 
         'enable_inventory',

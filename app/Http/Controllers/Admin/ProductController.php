@@ -169,6 +169,7 @@ class ProductController extends Controller
                 'tax' => $request->tax ?? 0,
                 'tax_rate' => $request->tax_rate,
                 'track_quantity' => $request->track_quantity ?? 0,
+                'track_batch' => $request->boolean('track_batch'),
                 'tax_method' => $resolvedTaxMethod,
                 'price_includes_tax' => $request->boolean('price_includes_tax'),
                 'profit_margin' => $request->profit_margin,
@@ -382,6 +383,7 @@ class ProductController extends Controller
                     'tax' => $request->tax ?? 0,
                     'tax_rate' => $request->tax_rate,
                     'track_quantity' => $request->track_quantity ?? 0,
+                    'track_batch' => $request->boolean('track_batch'),
                     'tax_method' => $resolvedTaxMethod,
                     'price_includes_tax' => $request->boolean('price_includes_tax'),
                     'profit_margin' => $request->profit_margin,
@@ -488,6 +490,7 @@ class ProductController extends Controller
             'alert_quantity' => ['nullable', 'numeric', 'min:0'],
             'max_order' => ['nullable', 'numeric', 'min:0'],
             'track_quantity' => ['nullable', 'in:0,1'],
+            'track_batch' => ['nullable', 'in:0,1'],
             'tax_excise' => ['nullable', 'numeric', 'min:0'],
             'featured' => ['nullable', 'in:0,1'],
             'city_tax' => ['nullable', 'numeric', 'min:0'],
@@ -688,6 +691,7 @@ class ProductController extends Controller
             return null;
         }
 
+        $product->track_batch = (bool) ($product->track_batch ?? false);
         $product->last_sale_price = $this->getLastSalePrice($product->id);
         $product->units_options = $this->getUnitsForProduct($product->id,$product);
         $product->variants = ProductVariant::where('product_id',$product->id)->get();
