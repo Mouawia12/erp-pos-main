@@ -29,6 +29,10 @@ class SingleDeviceMiddleware
                     $this->invalidatePreviousSession($request, $user->session_id);
                     $user->session_id = $currentSession;
                     $user->save();
+                } elseif (!$this->sessionExists($request, $user->session_id)) {
+                    // Previous session is already gone, adopt the current session instead of forcing a logout loop.
+                    $user->session_id = $currentSession;
+                    $user->save();
                 } else {
                     Auth::guard('admin-web')->logout();
                     $request->session()->invalidate();
@@ -58,5 +62,24 @@ class SingleDeviceMiddleware
         } catch (\Throwable $e) {
             // If we cannot destroy the previous session, continue without blocking the request.
         }
+    }
+
+    private function sessionExists(Request $request, ?string $sessionId): bool
+    {
+        if (!$sessionId) {
+            return false;
+        }
+
+        try {
+            $handler = $request->session()->getHandler();
+
+            if (method_exists($handler, 'read')) {
+                return !empty($handler->read($sessionId));
+            }
+        } catch (\Throwable $e) {
+            // If we cannot read the session, assume it no longer exists.
+        }
+
+        return false;
     }
 }
