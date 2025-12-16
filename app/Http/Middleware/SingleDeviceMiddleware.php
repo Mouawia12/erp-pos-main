@@ -14,11 +14,16 @@ class SingleDeviceMiddleware
      */
     public function handle(Request $request, Closure $next)
     {
-        $settings = SystemSettings::first();
         $user = Auth::guard('admin-web')->user();
         if ($user && $user->exists) {
             $user->refresh();
         }
+        $settings = SystemSettings::withoutGlobalScope('subscriber')
+            ->when(
+                $user && $user->subscriber_id,
+                fn ($query) => $query->where('subscriber_id', $user->subscriber_id)
+            )
+            ->first();
 
         if($settings && $settings->single_device_login && $user){
             $currentSession = $request->session()->getId();
