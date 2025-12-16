@@ -30,7 +30,7 @@ class SingleDeviceMiddleware
                 $user->session_id = $currentSession;
                 $user->save();
             }elseif($user->session_id !== $currentSession){
-                if ($isFreshLogin || Auth::guard('admin-web')->viaRemember()) {
+                if ($isFreshLogin) {
                     $this->invalidatePreviousSession($request, $user->session_id);
                     $user->session_id = $currentSession;
                     $user->save();
