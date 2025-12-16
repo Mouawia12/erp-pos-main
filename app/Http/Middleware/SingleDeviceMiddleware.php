@@ -22,7 +22,12 @@ class SingleDeviceMiddleware
             $handshakeSession = $request->session()->pull('admin_web_session_handshake');
             $isFreshLogin = $request->session()->pull('admin_web_recent_login', false);
 
-            if (!$isFreshLogin && $handshakeSession && $handshakeSession === $currentSession) {
+            if (
+                !$isFreshLogin
+                && $handshakeSession
+                && $handshakeSession === $currentSession
+                && $user->session_id === $currentSession
+            ) {
                 $isFreshLogin = true;
             }
 
