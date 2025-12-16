@@ -19,7 +19,12 @@ class SingleDeviceMiddleware
 
         if($settings && $settings->single_device_login && $user){
             $currentSession = $request->session()->getId();
+            $handshakeSession = $request->session()->pull('admin_web_session_handshake');
             $isFreshLogin = $request->session()->pull('admin_web_recent_login', false);
+
+            if (!$isFreshLogin && $handshakeSession && $handshakeSession === $currentSession) {
+                $isFreshLogin = true;
+            }
 
             if(empty($user->session_id)){
                 $user->session_id = $currentSession;

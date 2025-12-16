@@ -99,8 +99,11 @@ class LoginController extends Controller
 
     protected function authenticated(Request $request, $user)
     {
+        $currentSession = $request->session()->getId();
+        $request->session()->put('admin_web_recent_login', true);
+        $request->session()->put('admin_web_session_handshake', $currentSession);
+
         if($this->singleDeviceEnabled()){
-            $currentSession = $request->session()->getId();
             $previousSession = $user->session_id;
 
             if ($request->filled('password')) {
@@ -111,7 +114,6 @@ class LoginController extends Controller
                 $this->invalidateSession($request, $previousSession);
             }
 
-            $request->session()->put('admin_web_recent_login', true);
             $user->session_id = $currentSession;
             $user->save();
         }
