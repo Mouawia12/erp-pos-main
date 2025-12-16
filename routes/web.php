@@ -86,6 +86,8 @@ Route::group(
         [
             'verify' => false,
             'register' => false,
+            'reset' => false,
+            'confirm' => false,
         ]
     );
 
