@@ -131,6 +131,8 @@ class BranchController extends Controller
 
     public function update(Request $request, $id)
     {
+        $subscriberId = Auth::user()->subscriber_id;
+
         $this->validate($request, [
             'branch_name' => [
                 'required',
@@ -153,7 +155,6 @@ class BranchController extends Controller
         if(!isset($input['status'])){
             $input['status'] = 0;
         }
-        $subscriberId = Auth::user()->subscriber_id;
         $branch = Branch::query()
             ->when($subscriberId, fn ($q) => $q->where('subscriber_id', $subscriberId))
             ->findOrFail($id);
