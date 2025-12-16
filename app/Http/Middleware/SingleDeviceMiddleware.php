@@ -16,6 +16,9 @@ class SingleDeviceMiddleware
     {
         $settings = SystemSettings::first();
         $user = Auth::guard('admin-web')->user();
+        if ($user && $user->exists) {
+            $user->refresh();
+        }
 
         if($settings && $settings->single_device_login && $user){
             $currentSession = $request->session()->getId();
