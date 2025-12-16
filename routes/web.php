@@ -70,6 +70,10 @@ Route::group(
         'middleware' => ['localeSessionRedirect', 'localizationRedirect', 'localeViewPath', 'persist.locale']
     ], function () {
     Route::get('/', function () {
+        if (Auth::guard('admin-web')->check()) {
+            return redirect()->route('admin.home');
+        }
+
         return view('admin.auth.login');
     })->name('index');
 
@@ -96,7 +100,9 @@ Route::group(
         'namespace' => 'Admin'
     ], function () {
 
-    Route::get('/',[LoginController::class, 'showLoginForm' ] );
+    Route::get('/', function () {
+        return redirect()->route('admin.home');
+    });
     Route::get('/home',  [HomeController::class, 'index' ])->name('admin.home');
     Route::get( '/lock-screen', [HomeController::class, 'lock_screen' ] )->name('admin.lock.screen');
     Route::post( 'admin/logout', [LoginController::class, 'logout' ] )->name('admin.logout'); 

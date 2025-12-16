@@ -73,9 +73,7 @@ class LoginController extends Controller
                 return view('admin.auth.login')->with('status', __('تم تسجيل الخروج، يمكنك الآن تسجيل الدخول بحساب آخر.'));
             }
 
-            return view('admin.auth.switch-account', [
-                'user' => $guard->user(),
-            ]);
+            return redirect()->route('admin.home');
         }
 
         return view('admin.auth.login');
@@ -102,7 +100,19 @@ class LoginController extends Controller
     protected function authenticated(Request $request, $user)
     {
         if($this->singleDeviceEnabled()){
-            $user->session_id = $request->session()->getId();
+            $currentSession = $request->session()->getId();
+            $previousSession = $user->session_id;
+
+            if ($request->filled('password')) {
+                Auth::guard('admin-web')->logoutOtherDevices($request->input('password'));
+            }
+
+            if ($previousSession && $previousSession !== $currentSession) {
+                $this->invalidateSession($request, $previousSession);
+            }
+
+            $request->session()->put('admin_web_recent_login', true);
+            $user->session_id = $currentSession;
             $user->save();
         }
 
@@ -124,6 +134,19 @@ class LoginController extends Controller
         $request->session()->regenerateToken();
 
         return redirect('/');
+    }
+
+    private function invalidateSession(Request $request, string $sessionId): void
+    {
+        try {
+            $handler = $request->session()->getHandler();
+
+            if ($sessionId && method_exists($handler, 'destroy')) {
+                $handler->destroy($sessionId);
+            }
+        } catch (\Throwable $e) {
+            // If the driver does not support destroying sessions by id, we simply continue.
+        }
     }
 
     private function singleDeviceEnabled(){
