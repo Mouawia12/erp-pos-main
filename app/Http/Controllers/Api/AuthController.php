@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Models\User; 
 use App\Http\Controllers\Controller;
+use App\Services\SingleDeviceLoginService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;  
@@ -14,6 +15,12 @@ use Validator;
 
 class AuthController extends Controller
 {
+    private SingleDeviceLoginService $singleDeviceLoginService;
+
+    public function __construct(SingleDeviceLoginService $singleDeviceLoginService)
+    {
+        $this->singleDeviceLoginService = $singleDeviceLoginService;
+    }
 
     public function login(Request $request)
     {
@@ -33,18 +40,20 @@ class AuthController extends Controller
             }
 
             $credentials = $request->only(['email', 'password']);
-            if (!Auth::attempt($credentials)) {
+            $guard = Auth::guard('admin-web');
+
+            if (!$guard->attempt($credentials)) {
                 return response()->json([
                     'message' => 'Invalid credentials!'
                 ], Response::HTTP_UNAUTHORIZED);
             }
 
-            $user = Auth::user();
-            $token = $user->createToken('token')->plainTextToken;
-            $cookie = cookie('jwt', $token, 60 * 24); // 1 day 
+            $user = $guard->user();
+            $token = $this->singleDeviceLoginService->issueExclusiveToken($user, 'api-token');
+            $cookie = cookie('jwt', $token->plainTextToken, 60 * 24); // 1 day 
 
             return response()->json([
-                'message' => $token,
+                'message' => $token->plainTextToken,
                 'user'=> $user
             ])->withCookie($cookie);
             /*
@@ -80,15 +89,14 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         try { 
-                
+                $user = Auth::user(); 
                 $cookie = Cookie::forget('jwt'); 
 
-                # Revoke all tokens...
-                //$user->tokens()->delete();
-                # Revoke a specific token...
-                //$user->tokens()->where('id', $tokenId)->delete();
-                Auth::user()->currentAccessToken()->delete(); 
-                //Auth::logout();
+                if ($user) {
+                    optional($user->currentAccessToken())->delete();
+                    $this->singleDeviceLoginService->releaseSessionClaim($user);
+                }
+
                 return response()->json([
                     'message' => 'Success loggedOut'
                 ])->withCookie($cookie);

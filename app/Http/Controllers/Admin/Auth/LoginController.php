@@ -8,7 +8,7 @@ use Illuminate\Http\Response;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Models\SystemSettings;
+use App\Services\SingleDeviceLoginService;
 
 class LoginController extends Controller
 {
@@ -22,13 +22,19 @@ class LoginController extends Controller
     protected $redirectTo = RouteServiceProvider::HOME;
 
     /**
+     * @var SingleDeviceLoginService
+     */
+    private SingleDeviceLoginService $singleDeviceLoginService;
+
+    /**
      * Create a new controller instance.
      *
      * @return void
      */
 
-    public function __construct()
+    public function __construct(SingleDeviceLoginService $singleDeviceLoginService)
     {
+        $this->singleDeviceLoginService = $singleDeviceLoginService;
         $this->middleware('guest:admin-web')->except('logout');
     }
 
@@ -103,20 +109,11 @@ class LoginController extends Controller
         $request->session()->put('admin_web_recent_login', true);
         $request->session()->put('admin_web_session_handshake', $currentSession);
 
-        if($this->singleDeviceEnabled()){
-            $previousSession = $user->session_id;
-
-            if ($request->filled('password')) {
-                Auth::guard('admin-web')->logoutOtherDevices($request->input('password'));
-            }
-
-            if ($previousSession && $previousSession !== $currentSession) {
-                $this->invalidateSession($request, $previousSession);
-            }
-
-            $user->session_id = $currentSession;
-            $user->save();
-        }
+        $this->singleDeviceLoginService->ensureExclusiveWebSession(
+            $request,
+            $user,
+            $request->input('password')
+        );
 
         $locale = $user->preferred_locale ?? config('app.locale');
         $request->session()->put('locale', $locale);
@@ -128,8 +125,8 @@ class LoginController extends Controller
         $user = Auth::guard('admin-web')->user();
         Auth::guard('admin-web')->logout();
 
-        if($this->singleDeviceEnabled() && $user){
-            $user->update(['session_id' => null]);
+        if($user){
+            $this->singleDeviceLoginService->releaseSessionClaim($user);
         }
 
         $request->session()->invalidate();
@@ -138,21 +135,4 @@ class LoginController extends Controller
         return redirect('/');
     }
 
-    private function invalidateSession(Request $request, string $sessionId): void
-    {
-        try {
-            $handler = $request->session()->getHandler();
-
-            if ($sessionId && method_exists($handler, 'destroy')) {
-                $handler->destroy($sessionId);
-            }
-        } catch (\Throwable $e) {
-            // If the driver does not support destroying sessions by id, we simply continue.
-        }
-    }
-
-    private function singleDeviceEnabled(){
-        $settings = SystemSettings::first();
-        return $settings && $settings->single_device_login;
-    }
 }
