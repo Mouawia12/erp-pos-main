@@ -22,10 +22,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 use DataTables;
 use App\Models\WarehouseProducts as WarehouseProductModel;
 use App\Models\WarehouseProducts;
 use Illuminate\Support\Str;
+use App\Models\Brand;
+use App\Models\Unit;
+use App\Models\TaxRates;
 
 class ProductController extends Controller
 {
@@ -98,9 +102,28 @@ class ProductController extends Controller
         $taxRages = $systemController->getAllTaxRates();
         $taxTypes = $systemController->getAllTaxTypes();
         $settings = SystemSettings::first();
+        $exciseEnabled = $this->exciseEnabled();
         $defaultCode = $this->getItemCode();
+        $defaultCategoryId = $this->resolveDefaultCategoryId();
+        $defaultBrandId = $this->resolveDefaultBrandId();
+        $defaultUnitId = $this->resolveDefaultUnitId();
+        $defaultTaxRateId = $this->resolveDefaultTaxRateId();
 
-        return view('admin.products.create',compact('brands','categories','subCategories','taxRages','taxTypes','units','settings','defaultCode'));
+        return view('admin.products.create',compact(
+            'brands',
+            'categories',
+            'subCategories',
+            'taxRages',
+            'taxTypes',
+            'units',
+            'settings',
+            'defaultCode',
+            'exciseEnabled',
+            'defaultCategoryId',
+            'defaultBrandId',
+            'defaultUnitId',
+            'defaultTaxRateId'
+        ));
     }
 
     /**
@@ -112,6 +135,7 @@ class ProductController extends Controller
     public function store(Request $request)
     {
         $request['code'] =  $request->code ? $request->code : $this->getItemCode();
+        $this->applyProductDefaults($request);
 
         $validated = $request->validate(
             $this->productValidationRules(),
@@ -120,16 +144,20 @@ class ProductController extends Controller
         );
         $siteController = new SystemController();
         $settings = SystemSettings::first();
-        $category = Category::find($request->category_id);
-        $tax_excise = $category->tax_excise ?? 0;
-        if ($request->filled('subcategory_id')) {
-            $sub = Category::find($request->subcategory_id);
-            if ($sub && $sub->tax_excise !== null) {
-                $tax_excise = $sub->tax_excise;
+        $exciseEnabled = $this->exciseEnabled();
+        $tax_excise = 0;
+        if ($exciseEnabled) {
+            $category = Category::find($request->category_id);
+            $tax_excise = $category->tax_excise ?? 0;
+            if ($request->filled('subcategory_id')) {
+                $sub = Category::find($request->subcategory_id);
+                if ($sub && $sub->tax_excise !== null) {
+                    $tax_excise = $sub->tax_excise;
+                }
             }
-        }
-        if ($request->filled('tax_excise')) {
-            $tax_excise = (float) $request->tax_excise;
+            if ($request->filled('tax_excise')) {
+                $tax_excise = (float) $request->tax_excise;
+            }
         }
 
         if($request->hasFile('img')) {
@@ -263,9 +291,10 @@ class ProductController extends Controller
             $productUnits = ProductUnit::where('product_id',$id)->get();
             $productTaxes = ProductTax::where('product_id',$id)->pluck('tax_rate_id')->toArray();
             $productVariants = ProductVariant::where('product_id',$id)->get();
+            $exciseEnabled = $this->exciseEnabled();
 
             return view('admin.products.update',
-            compact('product','brands','categories','subCategories','taxRages','taxTypes','units','productUnits','productTaxes','productVariants'));
+            compact('product','brands','categories','subCategories','taxRages','taxTypes','units','productUnits','productTaxes','productVariants','exciseEnabled'));
         }
         }
 
@@ -330,22 +359,27 @@ class ProductController extends Controller
  
         $product = Product::find($id);
         if($product){
+            $this->applyProductDefaults($request, $product);
             $validated = $request->validate(
                 $this->productValidationRules($product->id),
                 $this->productValidationMessages(),
                 $this->productValidationAttributes()
             );
 
-            $category = Category::find($request->category_id);
-            $tax_excise = $category->tax_excise ?? 0;
-            if (!empty($request->subcategory_id)) {
-                $subCategory = Category::find($request->subcategory_id);
-                if ($subCategory && $subCategory->tax_excise !== null) {
-                    $tax_excise = $subCategory->tax_excise;
+            $exciseEnabled = $this->exciseEnabled();
+            $tax_excise = $product->getRawOriginal('tax_excise') ?? 0;
+            if ($exciseEnabled) {
+                $category = Category::find($request->category_id);
+                $tax_excise = $category->tax_excise ?? 0;
+                if (!empty($request->subcategory_id)) {
+                    $subCategory = Category::find($request->subcategory_id);
+                    if ($subCategory && $subCategory->tax_excise !== null) {
+                        $tax_excise = $subCategory->tax_excise;
+                    }
                 }
-            }
-            if ($request->filled('tax_excise')) {
-                $tax_excise = (float) $request->tax_excise;
+                if ($request->filled('tax_excise')) {
+                    $tax_excise = (float) $request->tax_excise;
+                }
             }
 
             if($request->hasFile('img')) {
@@ -515,6 +549,126 @@ class ProductController extends Controller
         }
 
         return $rules;
+    }
+
+    private function exciseEnabled(): bool
+    {
+        $user = Auth::user();
+        $query = SystemSettings::query();
+        if ($user?->subscriber_id) {
+            $query->where('subscriber_id', $user->subscriber_id);
+        }
+
+        $settings = $query->first();
+
+        return (bool) optional($settings)->is_tobacco;
+    }
+
+    private function applyProductDefaults(Request $request, ?Product $product = null): void
+    {
+        $defaultCategoryId = $this->resolveDefaultCategoryId();
+        $defaultBrandId = $this->resolveDefaultBrandId();
+        $defaultUnitId = $this->resolveDefaultUnitId();
+        $defaultTaxRateId = $this->resolveDefaultTaxRateId();
+
+        $request->merge([
+            'category_id' => $this->resolveInputOrDefault(
+                $request->input('category_id'),
+                $product?->category_id,
+                $defaultCategoryId
+            ),
+            'brand' => $this->resolveInputOrDefault(
+                $request->input('brand'),
+                $product?->brand,
+                $defaultBrandId
+            ),
+            'unit' => $this->resolveInputOrDefault(
+                $request->input('unit'),
+                $product?->unit,
+                $defaultUnitId
+            ),
+            'tax_rate' => $this->resolveInputOrDefault(
+                $request->input('tax_rate'),
+                $product?->tax_rate,
+                $defaultTaxRateId
+            ),
+            'cost' => $this->resolveNumericInput($request, 'cost', $product?->cost ?? 0),
+            'price' => $this->resolveNumericInput($request, 'price', $product?->price ?? 0),
+        ]);
+    }
+
+    private function resolveInputOrDefault($input, $current, $fallback)
+    {
+        if ($input !== null && $input !== '') {
+            return $input;
+        }
+
+        if ($current !== null && $current !== '') {
+            return $current;
+        }
+
+        return $fallback;
+    }
+
+    private function resolveNumericInput(Request $request, string $key, $fallback): float
+    {
+        $value = $request->input($key);
+        if ($value === null || $value === '') {
+            return (float) $fallback;
+        }
+
+        return (float) $value;
+    }
+
+    private function resolveDefaultCategoryId(): ?int
+    {
+        $preferred = ['عام', 'عامه', 'معدات عامة', 'مواد عامة'];
+        $category = Category::whereIn('name', $preferred)
+            ->where('parent_id', 0)
+            ->first();
+
+        if (!$category) {
+            $category = Category::orderBy('id')->first();
+        }
+
+        return $category?->id;
+    }
+
+    private function resolveDefaultBrandId(): ?int
+    {
+        $preferred = ['عام', 'عامه', 'بدون ماركة', 'بدون علامة'];
+        $brand = Brand::whereIn('name', $preferred)->first();
+
+        if (!$brand) {
+            $brand = Brand::orderBy('id')->first();
+        }
+
+        return $brand?->id;
+    }
+
+    private function resolveDefaultUnitId(): ?int
+    {
+        $preferred = ['حبة', 'حبه', 'قطعة', 'قطعه', 'Piece', 'piece', 'pcs', 'pc'];
+        $unit = Unit::whereIn('name', $preferred)->first();
+
+        if (!$unit && Schema::hasColumn('units', 'name_ar')) {
+            $unit = Unit::whereIn('name_ar', $preferred)->first();
+        }
+
+        if (!$unit && Schema::hasColumn('units', 'name_en')) {
+            $unit = Unit::whereIn('name_en', $preferred)->first();
+        }
+
+        if (!$unit) {
+            $unit = Unit::orderBy('id')->first();
+        }
+
+        return $unit?->id;
+    }
+
+    private function resolveDefaultTaxRateId(): ?int
+    {
+        return TaxRates::orderBy('id')->value('id');
     }
 
     private function productValidationMessages(): array

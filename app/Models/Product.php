@@ -5,10 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Traits\BelongsToSubscriber;
+use Illuminate\Support\Facades\Auth;
+use App\Models\SystemSettings;
 
 class Product extends Model
 {
     use HasFactory, BelongsToSubscriber;
+
+    protected static array $exciseEnabledCache = [];
 
     protected $fillable = [
       'code',
@@ -70,5 +74,36 @@ class Product extends Model
             ->map(fn($id)=> (float) optional(\App\Models\TaxRates::find($id))->rate)
             ->sum();
         return $base + $additional;
+    }
+
+    public function getTaxExciseAttribute($value): float
+    {
+        if (!self::exciseEnabled()) {
+            return 0.0;
+        }
+
+        return (float) ($value ?? 0);
+    }
+
+    private static function exciseEnabled(): bool
+    {
+        $user = Auth::user();
+        $cacheKey = $user?->subscriber_id ?? 'global';
+
+        if (array_key_exists($cacheKey, self::$exciseEnabledCache)) {
+            return self::$exciseEnabledCache[$cacheKey];
+        }
+
+        $query = SystemSettings::query();
+        if ($user?->subscriber_id) {
+            $query->where('subscriber_id', $user->subscriber_id);
+        }
+
+        $settings = $query->first();
+        $enabled = (bool) optional($settings)->is_tobacco;
+
+        self::$exciseEnabledCache[$cacheKey] = $enabled;
+
+        return $enabled;
     }
 }

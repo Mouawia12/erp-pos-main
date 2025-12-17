@@ -75,7 +75,7 @@
                                                         </div>
                                                         <div class="col-md-4">
                                                             <div class="form-group">
-                                                                <label>{{ __('main.brand') }} <span class="text-danger">*</span></label>
+                                                                <label>{{ __('main.brand') }}</label>
                                                                 <select class="js-example-basic-single w-100 @error('brand') is-invalid @enderror" name="brand">
                                                                     @foreach($brands as $brand)
                                                                         <option value="{{ $brand->id }}" @if($product->brand == $brand->id) selected @endif>{{ $brand->name }}</option>
@@ -86,7 +86,7 @@
                                                         </div>
                                                         <div class="col-md-4">
                                                             <div class="form-group">
-                                                                <label>{{ __('main.categories') }} <span class="text-danger">*</span></label>
+                                                                <label>{{ __('main.categories') }}</label>
                                                                 <select class="js-example-basic-single w-100 @error('category_id') is-invalid @enderror" name="category_id" id="category_id">
                                                                     @foreach($categories as $cat)
                                                                         @if($cat -> isGold == 0)
@@ -108,7 +108,7 @@
                                                         </div>
                                                         <div class="col-md-4">
                                                             <div class="form-group">
-                                                                <label>{{ __('main.units') }} <span class="text-danger">*</span></label>
+                                                                <label>{{ __('main.units') }}</label>
                                                                 <select class="js-example-basic-single w-100 @error('unit') is-invalid @enderror" name="unit">
                                                                     @foreach($units as $unit)
                                                                         <option value="{{ $unit->id }}" @if($product->unit == $unit->id) selected @endif>{{ $unit->name }}</option>
@@ -212,7 +212,7 @@
                                                         </div>
                                                         <div class="col-md-4">
                                                             <div class="form-group">
-                                                                <label>{{ __('main.Product_Tax') }} <span class="text-danger">*</span></label>
+                                                                <label>{{ __('main.Product_Tax') }}</label>
                                                                 <select id="tax_rate" name="tax_rate" class="form-control @error('tax_rate') is-invalid @enderror">
                                                                     @foreach($taxRages as $tax)
                                                                         <option value="{{ $tax->id }}" @if($product->tax_rate == $tax->id) selected @endif>{{ $tax->rate }}</option>
@@ -222,13 +222,15 @@
                                                                 @error('tax_rate')<span class="invalid-feedback">{{ $message }}</span>@enderror
                                                             </div>
                                                         </div>
-                                                        <div class="col-md-4">
-                                                            <div class="form-group">
-                                                                <label>{{ __('main.tax_excise') }}</label>
-                                                                <input type="number" step="0.01" id="tax_excise" name="tax_excise" class="form-control @error('tax_excise') is-invalid @enderror" value="{{ $product->tax_excise }}">
-                                                                @error('tax_excise')<span class="invalid-feedback">{{ $message }}</span>@enderror
+                                                        @if($exciseEnabled)
+                                                            <div class="col-md-4">
+                                                                <div class="form-group">
+                                                                    <label>{{ __('main.tax_excise') }}</label>
+                                                                    <input type="number" step="0.01" id="tax_excise" name="tax_excise" class="form-control @error('tax_excise') is-invalid @enderror" value="{{ $product->tax_excise }}">
+                                                                    @error('tax_excise')<span class="invalid-feedback">{{ $message }}</span>@enderror
+                                                                </div>
                                                             </div>
-                                                        </div>
+                                                        @endif
                                                     </div>
                                                 </div>
                                             </div>

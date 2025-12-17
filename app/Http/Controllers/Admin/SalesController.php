@@ -788,8 +788,6 @@ class SalesController extends Controller
             return redirect()->back();
         }
 
-        $saleItems = $saleItems->toJson();
-
         return view('admin.salesReturn.create',compact('warehouses','customers','saleItems','id','sale'));
     }
 
@@ -934,6 +932,8 @@ class SalesController extends Controller
             'pos' => 0,
             'lista' => $lista * -1,
             'profit'=> $profit * -1,
+            'created_by' => Auth::id(),
+            'status' => 1,
             'branch_id'=> $request->branch_id ?? $siteController->getWarehouseById($request->warehouse_id)->branch_id,
             'user_id'=> Auth::user()->id
         ];
@@ -955,7 +955,8 @@ class SalesController extends Controller
 
         $siteController->saleJournals($sale->id);
 
-        return redirect()->route('sales.return');
+        return redirect()->route('sales.return')
+            ->with('success', 'تم حفظ مرتجع المبيعات بنجاح');
     }
 
     

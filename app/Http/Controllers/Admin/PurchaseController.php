@@ -253,6 +253,7 @@ class PurchaseController extends Controller
             'paid' => 0,
             'purchase_status' => 'completed',
             'payment_status' => 'not_paid',
+            'created_by' => Auth::id(),
             'branch_id'=> $request->branch_id ?? $siteController->getWarehouseById($request->warehouse_id)->branch_id,
             'status'=> 1,
             'user_id'=> Auth::user()->id

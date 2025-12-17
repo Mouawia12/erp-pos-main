@@ -101,8 +101,25 @@ a.btn {
 @endsection 
 @section('js') 
 <script type="text/javascript">  
+    function showToast(message){
+        var toast = document.createElement('div');
+        toast.className = 'toast align-items-center text-white bg-success border-0';
+        toast.style.position = 'fixed';
+        toast.style.top = '20px';
+        toast.style.right = '20px';
+        toast.style.zIndex = 9999;
+        toast.role = 'alert';
+        toast.innerHTML = '<div class="d-flex"><div class="toast-body">'+message+'</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button></div>';
+        document.body.appendChild(toast);
+        var bsToast = new bootstrap.Toast(toast,{delay:3000});
+        bsToast.show();
+        toast.addEventListener('hidden.bs.toast',function(){ toast.remove(); });
+    }
     $(document).ready(function() {
         id = 0;
+        @if(session('success'))
+            showToast(@json(session('success')));
+        @endif
         $(document).on('click', '.deleteBtn', function(event) {
             id = event.currentTarget.value ;
             event.preventDefault();

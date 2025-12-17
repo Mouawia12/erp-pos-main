@@ -36,7 +36,8 @@ class Purchase extends Model
         'tax_mode',
         'invoice_type',
         'payment_method',
-        'subscriber_id'
+        'subscriber_id',
+        'created_by'
     ];
 
     public function branch(){

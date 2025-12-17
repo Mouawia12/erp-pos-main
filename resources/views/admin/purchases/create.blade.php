@@ -213,9 +213,9 @@
                                                             <th class="col-md-3 text-center">{{__('main.item_name_code')}}</th>
                                                             <th class="text-center">{{__('main.unit')}}</th>
                                                             <th class="text-center">{{__('main.quantity')}}</th>
-                                                            <th class="text-center">{{__('main.batch_no')}}</th>
-                                                            <th class="text-center">{{__('main.production_date')}}</th>
-                                                            <th class="text-center">{{__('main.expiry_date')}}</th>
+                                                            <th class="text-center batch-col">{{__('main.batch_no')}}</th>
+                                                            <th class="text-center batch-col">{{__('main.production_date')}}</th>
+                                                            <th class="text-center batch-col">{{__('main.expiry_date')}}</th>
                                                             <th class="text-center">{{__('main.price.unit')}}</th>
                                                             <th class="text-center">{{__('main.tax_rate')}}</th>
                                                             <th class="text-center">{{__('main.tax_total')}}</th>
@@ -994,9 +994,15 @@ function openDialog(){
                 unitSelect += '</select><input type="hidden" name="unit_factor[]" class="unitFactor" value="'+(item.unit_factor ?? 1)+'">';
                 tr_html +='<td>'+unitSelect+'</td>';
                 tr_html +='<td><input type="number" class="form-control iQuantity" name="qnt[]" value="'+item.qnt+'"></td>';
-                tr_html +='<td><input type="text" class="form-control batchInput" name="batch_no[]" value="'+escapeHtml(item.batch_no ?? '')+'" placeholder="{{__('main.batch_no') ?? 'Batch'}}"></td>';
-                tr_html +='<td><input type="date" class="form-control productionDateInput" name="production_date[]" value="'+(item.production_date ?? '')+'"></td>';
-                tr_html +='<td><input type="date" class="form-control expiryDateInput" name="expiry_date[]" value="'+(item.expiry_date ?? '')+'"></td>';
+                if(item.track_batch){
+                    tr_html +='<td class="batch-col"><input type="text" class="form-control batchInput" name="batch_no[]" value="'+escapeHtml(item.batch_no ?? '')+'" placeholder="{{__('main.batch_no') ?? 'Batch'}}"></td>';
+                    tr_html +='<td class="batch-col"><input type="date" class="form-control productionDateInput" name="production_date[]" value="'+(item.production_date ?? '')+'"></td>';
+                    tr_html +='<td class="batch-col"><input type="date" class="form-control expiryDateInput" name="expiry_date[]" value="'+(item.expiry_date ?? '')+'"></td>';
+                } else {
+                    tr_html +='<td class="batch-col"><input type="hidden" name="batch_no[]" value=""></td>';
+                    tr_html +='<td class="batch-col"><input type="hidden" name="production_date[]" value=""></td>';
+                    tr_html +='<td class="batch-col"><input type="hidden" name="expiry_date[]" value=""></td>';
+                }
                 tr_html +='<td><input type="number" class="form-control iPrice" name="price_without_tax[]" value="'+Number(item.price_withoute_tax ?? 0).toFixed(2)+'"><input type="hidden" class="form-control iPriceWTax" name="price_with_tax[]" value="'+Number(item.price_with_tax ?? 0).toFixed(2)+'"></td>';
                 var taxRateDisplay = Number(item.tax_rate_display ?? 0).toFixed(2) + '%';
                 tr_html +='<td><input type="text" readonly class="form-control-plaintext text-center" value="'+taxRateDisplay+'"></td>';
@@ -1016,6 +1022,11 @@ function openDialog(){
             tax_total_val +=  Number(item.item_tax ?? 0)  * Number(item.qnt ?? 0); 
 			net_val += ((Number(item.price_withoute_tax ?? 0) + Number(item.item_tax ?? 0))*Number(item.qnt ?? 0));
         }); 
+
+        var hasBatchItems = Object.values(sItems).some(function(item){
+            return item.track_batch;
+        });
+        $('#sTable .batch-col').css('display', hasBatchItems ? '' : 'none');
 
         document.getElementById('total-text').innerHTML = first_total_val.toFixed(2);
         document.getElementById('tax-text').innerHTML =  tax_total_val.toFixed(2);
