@@ -736,9 +736,10 @@ function openDialog(){
             return;
         }
 
-    var price = item.cost;
-    var taxType = item.tax_method;
-    var taxRate = item.tax_rate == 1 ? 0 : 15;
+    // always use purchase cost, not sale price
+    var price = item.cost ?? 0;
+    var taxType = item.tax_method; // 1 => inclusive, else exclusive
+    var taxRate = parseFloat(item.total_tax_rate ?? item.tax_rate ?? 0) || 0;
     var itemTax = 0;
     var priceWithoutTax = 0;
     var priceWithTax = 0;
@@ -749,9 +750,6 @@ function openDialog(){
     if(item.units_options && item.units_options.length){
         var firstUnit = item.units_options.find(function(u){ return u.unit_id == defaultUnit; }) || item.units_options[0];
         defaultFactor = firstUnit.conversion_factor ?? 1;
-        if(firstUnit.price){
-            price = firstUnit.price;
-        }
     }
 
     if(taxType == 1){
@@ -764,19 +762,6 @@ function openDialog(){
         itemTax = price * (taxRate/100);
         priceWithoutTax = price;
         priceWithTax = price + itemTax;
-    }
-
-    if(item.selected_variant && item.selected_variant.price){
-        price = item.selected_variant.price;
-        if(taxType == 1){
-            priceWithTax = price;
-            priceWithoutTax = (price / (1+(taxRate/100)));
-            itemTax = priceWithTax - priceWithoutTax;
-        }else{
-            itemTax = price * (taxRate/100);
-            priceWithoutTax = price;
-            priceWithTax = price + itemTax;
-        }
     }
 
     var key = (item.selected_variant ? 'v'+item.selected_variant.id : 'p'+item.id) + '_' + itemKey;
@@ -792,6 +777,8 @@ function openDialog(){
     sItems[key].selected_unit_id = defaultUnit;
     sItems[key].unit_factor = defaultFactor;
     sItems[key].units_options = item.units_options ?? [];
+    sItems[key].base_cost = priceWithoutTax;
+    sItems[key].tax_method = taxType;
     sItems[key].note = item.note ?? '';
     sItems[key].tax_rate_display = taxRate;
     sItems[key].variant_id = item.selected_variant ? item.selected_variant.id : (item.variant_id ?? null);
@@ -905,13 +892,22 @@ function openDialog(){
     $(document).on('change','.selectUnit',function () {
         var row = $(this).closest('tr');
         var item_id = row.attr('data-item-id');
-        var selectedPrice = parseFloat($(this).find(':selected').data('price')) || sItems[item_id].price_withoute_tax;
         var factor = parseFloat($(this).find(':selected').data('factor')) || 1;
-
+        var basePrice = sItems[item_id].base_cost ?? sItems[item_id].price_withoute_tax;
+        var taxRate = parseFloat(sItems[item_id].tax_rate_display ?? 0) || 0;
         var item_tax = 0;
-        var priceWithTax = selectedPrice * 1.15;
-        item_tax = selectedPrice * 0.15;
-        sItems[item_id].price_withoute_tax= selectedPrice;
+        var priceWithoutTax = basePrice;
+        var priceWithTax = basePrice;
+        if(sItems[item_id].tax_method == 1){
+            priceWithTax = basePrice;
+            priceWithoutTax = (basePrice / (1+(taxRate/100)));
+            item_tax = priceWithTax - priceWithoutTax;
+        } else {
+            item_tax = basePrice * (taxRate/100);
+            priceWithoutTax = basePrice;
+            priceWithTax = basePrice + item_tax;
+        }
+        sItems[item_id].price_withoute_tax= priceWithoutTax;
         sItems[item_id].price_with_tax= priceWithTax;
         sItems[item_id].item_tax= item_tax;
         sItems[item_id].selected_unit_id = $(this).val();

@@ -62,16 +62,11 @@ class PurchaseController extends Controller
        
         $settings = SystemSettings::all();
         $prefix = "";
-        if(count($settings) > 0){
-            if($settings[0] -> purchase_prefix)
-                $prefix = $settings[0] -> purchase_prefix;
-            else
-                $prefix = "" ;
-        } else {
-            $prefix = "";
+        if(count($settings) > 0 && $settings[0]->purchase_prefix){
+            $prefix = $settings[0]->purchase_prefix;
         }
-
-        $prefix = $prefix .'-'.$branch_id.'-';
+        $prefixParts = array_filter([$prefix, $branch_id]);
+        $prefix = ($prefixParts ? implode('-', $prefixParts) . '-' : '');
  
         if($type == 1){
             $no = $prefix . str_pad($id + 1, 6 , '0' , STR_PAD_LEFT);
@@ -98,16 +93,11 @@ class PurchaseController extends Controller
        
         $settings = SystemSettings::all();
         $prefix = "";
-        if(count($settings) > 0){
-            if($settings[0] -> purchase_return_prefix)
-                $prefix = $settings[0] -> purchase_return_prefix ;
-            else
-                $prefix = "" ;
-        } else {
-            $prefix = "";
+        if(count($settings) > 0 && $settings[0]->purchase_return_prefix){
+            $prefix = $settings[0]->purchase_return_prefix;
         }
-
-        $prefix = $prefix .'-'.$branch_id.'-';
+        $prefixParts = array_filter([$prefix, $branch_id]);
+        $prefix = ($prefixParts ? implode('-', $prefixParts) . '-' : '');
  
         if($type == 1){
             $no = $prefix . str_pad($id + 1, 6 , '0' , STR_PAD_LEFT);
