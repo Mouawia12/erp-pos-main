@@ -73,10 +73,10 @@
                                             <td class="text-center">{{$company -> name}}</td>
                                             <td class="text-center">{{$company -> phone}}</td>
                                             <td class="text-center">{{$company -> email}}</td>
-                                            @if($type == 3)
-                                            <td class="text-center">{{ $company -> group ? $company -> group -> name : '---'}}</td>
-                                            @endif
-                                            <td class="text-center">{{$company -> vat_no}}</td>
+                                        @if($type == 3)
+                                        <td class="text-center">{{ $company -> group ? $company -> group -> name : '---'}}</td>
+                                        @endif
+                                        <td class="text-center">{{$company->tax_number ?? $company->vat_no}}</td>
                                             <td class="text-center">{{$company -> deposit_amount}}</td>
                                             <td class="text-center"> 
                                                 
@@ -229,10 +229,10 @@
                         <div class="col-4" >
                             <div class="form-group">
                                 <label>{{ __('main.vat_no') }} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
-                                <input type="text"  id="vat_no" name="vat_no"
-                                       class="form-control @error('vat_no') is-invalid @enderror"
-                                       placeholder="{{ __('main.vat_no') }}"  value="{{ old('vat_no') }}" />
-                                @error('vat_no')<span class="invalid-feedback">{{ $message }}</span>@enderror
+                                <input type="text"  id="tax_number" name="tax_number"
+                                       class="form-control @error('tax_number') is-invalid @enderror"
+                                       placeholder="{{ __('main.vat_no') }}"  value="{{ old('tax_number') }}" />
+                                @error('tax_number')<span class="invalid-feedback">{{ $message }}</span>@enderror
                             </div>
                         </div>
                         <div class="col-4" >
@@ -374,7 +374,7 @@
                             $(".modal-body #phone").val( "" );
                             $(".modal-body #email").val( "" );
                             $(".modal-body #account_id").val( "" ).trigger("change");
-                            $(".modal-body #vat_no").val( "" );
+                            $(".modal-body #tax_number").val( "" );
                             $(".modal-body #opening_balance").val( "0" );
                             try {
                                 $(".modal-body #customer_group_id").val( response.client_group_id ).trigger("change");
@@ -468,7 +468,7 @@
                             $(".modal-body #phone").val( response.phone );
                             $(".modal-body #email").val( response.email );
                             $(".modal-body #account_id").val( response.account_id ).trigger("change");
-                            $(".modal-body #vat_no").val( response.vat_no );
+                            $(".modal-body #tax_number").val( response.tax_number ?? response.vat_no );
                             $(".modal-body #cr_number").val( response.cr_number );
                             $(".modal-body #parent_company_id").val( response.parent_company_id ).trigger('change');
                             $(".modal-body #price_level_id").val( response.price_level_id ).trigger('change');

@@ -466,19 +466,21 @@ class SalesController extends Controller
             $discountPerUnit = $manualDiscount + $promoDiscount['discount_unit'];
             $basePrice = max($basePrice - $promoDiscount['discount_unit'], 0);
             $qty = $request->qnt[$index];
-            $taxRate = $productDetails->price_includes_tax ? 0 : $productDetails->totalTaxRate();
-            $exciseRate = $productDetails->price_includes_tax ? 0 : (float)($productDetails->tax_excise ?? 0);
+            $taxRate = $productDetails->totalTaxRate();
+            $exciseRate = (float)($productDetails->tax_excise ?? 0);
 
-            $lineBase = $basePrice * $qty;
-            $lineTaxExcise = $lineBase * ($exciseRate / 100);
+            $lineBaseInput = $basePrice * $qty; // user-entered price (may be tax-inclusive)
             if($productDetails->price_includes_tax){
-                $lineTax = 0;
-                $lineTotal = $lineBase;
-                $linePriceWithTax = $lineBase;
+                $effectiveRate = $taxRate + $exciseRate;
+                $lineTotal = $effectiveRate > 0 ? $lineBaseInput / (1 + ($effectiveRate/100)) : $lineBaseInput;
+                $lineTaxExcise = $lineTotal * ($exciseRate / 100);
+                $lineTax = $lineTotal * ($taxRate / 100);
+                $linePriceWithTax = $lineBaseInput;
             } else {
-                $lineTax = $lineBase * ($taxRate/100);
-                $lineTotal = $lineBase;
-                $linePriceWithTax = $lineBase + $lineTax;
+                $lineTotal = $lineBaseInput;
+                $lineTaxExcise = $lineTotal * ($exciseRate / 100);
+                $lineTax = $lineTotal * ($taxRate/100);
+                $linePriceWithTax = $lineTotal + $lineTax;
             }
             $lineNet = $linePriceWithTax;
             $product = [
@@ -497,7 +499,7 @@ class SalesController extends Controller
                 'warehouse_id' => $request->warehouse_id,
                 'unit_id' => $unitId,
                 'unit_factor' => $unitFactor,
-                'tax' => $lineTaxExcise > 0 ? $lineTax - $lineTaxExcise:$lineTax,
+                'tax' => $lineTax,
                 'tax_excise' => $lineTaxExcise, 
                 'total' => $lineTotal,
                 'lista' => 0,
@@ -860,19 +862,21 @@ class SalesController extends Controller
             $unitFactor = $request->unit_factor[$index] ?? 1;
             $qty = $request->qnt[$index];
             $basePrice = $request->price_unit[$index];
-            $taxRate = $productDetails->price_includes_tax ? 0 : $productDetails->totalTaxRate();
-            $exciseRate = $productDetails->price_includes_tax ? 0 : (float)($productDetails->tax_excise ?? 0);
+            $taxRate = $productDetails->totalTaxRate();
+            $exciseRate = (float)($productDetails->tax_excise ?? 0);
 
-            $lineBase = $basePrice * $qty;
-            $lineTaxExcise = $lineBase * ($exciseRate / 100);
+            $lineBaseInput = $basePrice * $qty;
             if($productDetails->price_includes_tax){
-                $lineTax = 0;
-                $linePriceWithTax = $lineBase;
-                $lineTotal = $lineBase;
+                $effectiveRate = $taxRate + $exciseRate;
+                $lineTotal = $effectiveRate > 0 ? $lineBaseInput / (1 + ($effectiveRate/100)) : $lineBaseInput;
+                $lineTaxExcise = $lineTotal * ($exciseRate / 100);
+                $lineTax = $lineTotal * ($taxRate/100);
+                $linePriceWithTax = $lineBaseInput;
             } else {
-                $lineTax = $lineBase * ($taxRate/100);
-                $lineTotal = $lineBase;
-                $linePriceWithTax = $lineBase + $lineTax;
+                $lineTotal = $lineBaseInput;
+                $lineTaxExcise = $lineTotal * ($exciseRate / 100);
+                $lineTax = $lineTotal * ($taxRate/100);
+                $linePriceWithTax = $lineTotal + $lineTax;
             }
             $product = [
                 'sale_id' => 0,

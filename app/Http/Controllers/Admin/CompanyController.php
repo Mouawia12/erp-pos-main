@@ -86,8 +86,9 @@ class CompanyController extends Controller
 
         if ($request -> id == 0){
             $validated = $request->validate([
-                'company' => ['required','string','max:191'], 
-                'opening_balance' => ['required','numeric'], 
+                'company' => ['required','string','max:191'],
+                'name' => ['required','string','max:191'],
+                'opening_balance' => ['required','numeric'],
                 'type' => ['required','integer'],
                 'customer_group_id' => ['nullable','integer'],
                 'cr_number' => ['nullable','string','max:191'],
@@ -97,6 +98,7 @@ class CompanyController extends Controller
                 'default_discount' => ['nullable','numeric','min:0'],
                 'email' => ['nullable','email','max:191'],
                 'phone' => ['nullable','string','max:50'],
+                'account_id' => ['required','integer','exists:accounts_trees,id'],
             ]);
             try {
                 $exists = Company::query()
@@ -110,14 +112,14 @@ class CompanyController extends Controller
                         'group_name' => '',
                         'customer_group_id' => $validated['customer_group_id'] ?? 0 ,
                         'customer_group_name' => '',
-                        'name' => $validated['company'],
+                        'name' => $validated['name'] ?? $validated['company'],
                         'company' => $validated['company'],
                         'cr_number' => $validated['cr_number'] ?? null,
                         'tax_number' => $validated['tax_number'] ?? null,
                         'parent_company_id' => $validated['parent_company_id'] ?? null,
                         'price_level_id' => $validated['price_level_id'] ?? null,
                         'default_discount' => $validated['default_discount'] ?? 0,
-                        'vat_no' => $validated['tax_number'] ?? '',
+                        'vat_no' => $request->tax_number ?? $validated['tax_number'] ?? '',
                         'address' => $request-> address ?? '',
                         'city' => '' ,
                         'state' => '',
@@ -132,7 +134,7 @@ class CompanyController extends Controller
                         'opening_balance' => $request -> opening_balance ?? 0 ,
                         'credit_amount' => $request -> credit_amount ?? 0 ,
                         'stop_sale' =>$request -> has('stop_sale')? 1: 0 ,
-                        'account_id' => 0,
+                        'account_id' => $request->account_id ?? 0,
                         'user_id' => Auth::user() -> id,
                         'representative_id_' => $request->representative_id_ ?? 0,
                         'subscriber_id' => $subscriberId,
@@ -253,13 +255,11 @@ class CompanyController extends Controller
                     'group_name' => '',
                     'customer_group_id' => $request -> customer_group_id ? $request -> customer_group_id : $company -> customer_group_id,
                     'customer_group_name' => '',
-                    'name' => $request->company,
-                    'company' => $request->company,
+                    'name' => $request->name ?? $company->name,
+                    'company' => $request->company ?? $company->company,
                     'cr_number' => $request->cr_number ?? $company->cr_number,
                     'tax_number' => $request->tax_number ?? $company->tax_number,
-                    'vat_no' => $request->vat_no ?? 0,
-                    'cr_number' => $request->cr_number ?? $company->cr_number,
-                    'tax_number' => $request->tax_number ?? $company->tax_number,
+                    'vat_no' => $request->tax_number ?? $request->vat_no ?? $company->vat_no,
                     'address' => $request-> address ?? '',
                     'city' => '' ,
                     'state' => '',
@@ -282,10 +282,12 @@ class CompanyController extends Controller
 
                 ]);
 
-                if($company ->vat_no > 1){
-                    $account = AccountsTree::find($company ->account_id);
-                    $account ->name =  $request->company;
-                    $account -> save();
+                if($company->vat_no > 1 && $company->account_id){
+                    $account = AccountsTree::find($company->account_id);
+                    if($account){
+                        $account->name = $request->company ?? $company->company;
+                        $account->save();
+                    }
                 }
 
                 return redirect()->route('clients' , $request -> type)->with('success', __('main.updated'));

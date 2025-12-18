@@ -88,7 +88,7 @@
                                                     data-representative="{{$supplier->representative_id_ ?? ''}}"
                                                     data-phone="{{$supplier->phone ?? ''}}"
                                                     data-address="{{$supplier->address ?? ''}}"
-                                                    data-tax="{{$supplier->tax_number ?? ''}}"
+                                                    data-tax="{{$supplier->tax_number ?? $supplier->vat_no ?? ''}}"
                                                     data-name="{{$supplier->name}}">
                                                     {{ $supplier -> name}}
                                                 </option>

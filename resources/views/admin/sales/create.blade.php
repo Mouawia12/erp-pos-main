@@ -1234,8 +1234,11 @@ span strong {font-size:12px;}
             price = Math.max(price - Number(item.promo_discount_unit), 0);
         }
         var taxType = item.tax_method;
-        var includesTax = Number(item.price_includes_tax ?? 0) === 1 || Number(taxType ?? 0) === 1;
-        var zeroTaxInclusive = includesTax; // Always treat inclusive items as already tax-paid
+        var includesTax = Number(item.price_includes_tax ?? 0) === 1;
+        if(item.price_includes_tax === undefined || item.price_includes_tax === null){
+            includesTax = Number(taxType ?? 0) === 1;
+        }
+        var zeroTaxInclusive = false; // we still need to show embedded tax when price is inclusive
         var taxRate = item.tax;
         var itemTax = 0;
         var priceWithoutTax = 0;
@@ -1252,23 +1255,21 @@ span strong {font-size:12px;}
             }
         }
 
+        var Excise = item.tax_excise;
+        var totalRate = (taxRate || 0) + (Excise || 0);
+
         if(includesTax){
-            // Inclusive prices are considered final (no VAT added)
+            // price already includes tax: extract embedded taxes
             priceWithTax = price;
-            priceWithoutTax = price;
-            itemTax = 0;
+            priceWithoutTax = totalRate > 0 ? (price / (1 + (totalRate/100))) : price;
+            itemTax = priceWithTax - priceWithoutTax;
         }else{
             //excluded
-            itemTax = price * (taxRate/100); 
             priceWithoutTax = price;
-            priceWithTax = price + itemTax;
-        }
-        //update 19-04-2024
-        var Excise = item.tax_excise;
-        var taxExcise = 0;
-        if(Excise > 0 && !zeroTaxInclusive){    
-            taxExcise = (priceWithoutTax * (Excise/100));
-            itemTax = itemTax + taxExcise;
+            var vatPart = priceWithoutTax * (taxRate/100);
+            var excisePart = priceWithoutTax * ((Excise || 0)/100);
+            itemTax = vatPart + excisePart;
+            priceWithTax = priceWithoutTax + itemTax;
         }
         
         var uniqueKey = item.selected_variant ? ('v'+item.selected_variant.id) : ('p'+item.id);
@@ -1433,11 +1434,15 @@ span strong {font-size:12px;}
         effectivePrice = Math.max(effectivePrice || 0, 0);
         var tax_rate = parseFloat(item.tax_rate ?? 0) || 0;
         var tax_excise = parseFloat(item.tax_excise ?? 0) || 0;
-        var includesTax = Number(item.price_includes_tax ?? 0) === 1 || Number(item.tax_method ?? 0) === 1;
-        var zeroTaxInclusive = includesTax;
+        var includesTax = Number(item.price_includes_tax ?? 0) === 1;
+        if(item.price_includes_tax === undefined || item.price_includes_tax === null){
+            includesTax = Number(item.tax_method ?? 0) === 1;
+        }
         if(includesTax){
-            item.price_withoute_tax = effectivePrice;
-            item.item_tax = 0;
+            var totalRate = tax_rate + tax_excise;
+            var base = totalRate > 0 ? (effectivePrice / (1 + (totalRate/100))) : effectivePrice;
+            item.price_withoute_tax = base;
+            item.item_tax = effectivePrice - base;
             item.price_with_tax = effectivePrice;
             return;
         }

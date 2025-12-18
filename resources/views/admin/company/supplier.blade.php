@@ -6,6 +6,16 @@
             {{ session('success') }}
         </div>
     @endif
+    @if ($errors->any())
+        <div class="alert alert-danger fade show">
+            <button class="close" data-dismiss="alert" aria-label="Close">×</button>
+            <ul class="mb-0">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
   
     @can('عرض مورد') 
  
@@ -69,7 +79,7 @@
                                             @if($type == 3)
                                             <td class="text-center">{{ $company -> group ? $company -> group -> name : '---'}}</td>
                                             @endif
-                                            <td class="text-center">{{$company -> vat_no}}</td>
+                                            <td class="text-center">{{$company->tax_number ?? $company->vat_no}}</td>
                                             <td class="text-center">{{$company -> deposit_amount}}</td>
                                             <td class="text-center">
                                                
@@ -193,8 +203,8 @@
                             <div class="form-group">
                                 <label>{{ __('main.account') }} <span class="text-danger">*</span> </label>
                                 <select class="js-example-basic-single w-100"
-                                        name="account_id" id="account_id">
-                                    <option selected value ="0">اختر مما يلي</option>
+                                        name="account_id" id="account_id" required>
+                                    <option selected value ="0">{{ __('main.choose') }}</option>
                                     @foreach ($accounts as $account)
                                         <option value="{{$account -> id}}"> {{ $account -> name}}</option>
                                     @endforeach
@@ -206,7 +216,7 @@
                         <div class="col-6 " >
                             <div class="form-group">
                                 <label>{{ __('main.vat_no') }} <span class="text-danger">*</span> </label>
-                                <input type="text"  id="vat_no" name="vat_no"
+                                <input type="text"  id="tax_number" name="tax_number"
                                        class="form-control"
                                        placeholder="{{ __('main.vat_no') }}"  />
                             </div>
@@ -333,7 +343,7 @@
                             $(".modal-body #phone").val( "" );
                             $(".modal-body #email").val( "" );
                             $(".modal-body #account_id").val( "" ).trigger("change");
-                            $(".modal-body #vat_no").val( "" );
+                            $(".modal-body #tax_number").val( "" );
                             $(".modal-body #opening_balance").val( "0" );
                             try {
                                 $(".modal-body #customer_group_id").val( response.client_group_id );
@@ -427,7 +437,7 @@
                             $(".modal-body #phone").val(  response.phone );
                             $(".modal-body #email").val(  response.email );
                             $(".modal-body #account_id").val(  response.account_id ).trigger("change");
-                            $(".modal-body #vat_no").val(  response.vat_no );
+                            $(".modal-body #tax_number").val(  response.tax_number ?? response.vat_no );
                             $(".modal-body #cr_number").val(  response.cr_number );
                             $(".modal-body #representative_id_").val(  response.representative_id_ ).trigger('change');
                             $(".modal-body #opening_balance").val(  response.opening_balance );
