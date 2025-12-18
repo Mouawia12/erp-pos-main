@@ -546,6 +546,7 @@ class PurchaseController extends Controller
         if(($request->tax_mode ?? 'inclusive') === 'exclusive'){
             $netCalc += $taxForInvoice;
         }
+        $subscriberId = Auth::user()->subscriber_id;
 
         $return = Purchase::create([
             'returned_bill_id' => $billid,
@@ -566,7 +567,13 @@ class PurchaseController extends Controller
             'purchase_status' => 'completed',
             'payment_status' => 'not_paid',
             'branch_id'=> $request->branch_id ?? $siteController->getWarehouseById($request->warehouse_id)->branch_id,
-            'user_id'=> Auth::user()->id
+            'user_id'=> Auth::user()->id,
+            'created_by'=> Auth::user()->id,
+            'subscriber_id'=> $subscriberId,
+            'status' => 1,
+            'tax_mode' => $request->tax_mode ?? 'inclusive',
+            'invoice_type' => $request->invoice_type ?? 'tax_invoice',
+            'payment_method' => $request->payment_method ?? 'credit',
         ]);
 
         foreach ($products as $product){
