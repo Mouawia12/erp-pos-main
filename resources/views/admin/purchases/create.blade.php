@@ -736,10 +736,14 @@ function openDialog(){
             return;
         }
 
-    // always use purchase cost, not sale price
-    var price = item.cost ?? 0;
+    // always use purchase cost (fallback to item price only if cost is missing)
     var taxType = item.tax_method; // 1 => inclusive, else exclusive
     var taxRate = parseFloat(item.total_tax_rate ?? item.tax_rate ?? 0) || 0;
+    var price = parseFloat(item.cost ?? 0) || 0;
+    if(price <= 0 && item.price){
+        var candidate = parseFloat(item.price) || 0;
+        price = taxType == 1 ? (candidate / (1+(taxRate/100))) : candidate;
+    }
     var itemTax = 0;
     var priceWithoutTax = 0;
     var priceWithTax = 0;
