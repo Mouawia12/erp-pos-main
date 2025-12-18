@@ -947,7 +947,12 @@ span strong {font-size:12px;}
 
             if(client > 0 && warehouse_id > 0){
                 if (rows > 0){ 
-                    addPayments(net_after_discount);
+                    if((paymentMethodSelect.val() || '').toLowerCase() === 'credit'){
+                        // لا حاجة لفتح نافذة الدفع في حالة الدائن
+                        document.getElementById('salesform').submit();
+                    } else {
+                        addPayments(net_after_discount);
+                    }
                 } else {
                     alert($('<div>{{__('main.invoice_details_required')}}</div>').text());
                 }

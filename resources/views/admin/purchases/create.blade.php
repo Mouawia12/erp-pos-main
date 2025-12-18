@@ -22,6 +22,7 @@
                             @csrf 
                             @php
                                 $invoiceTypeDefault = $defaultInvoiceType ?? optional($setting)->default_invoice_type ?? 'tax_invoice';
+                                $invoiceTypeDefault = in_array($invoiceTypeDefault, ['tax_invoice','non_tax_invoice']) ? $invoiceTypeDefault : 'tax_invoice';
                             @endphp
                             <div class="row g-3">
                                 <div class="col-md-2">
@@ -44,7 +45,6 @@
                                         <label>{{ __('main.invoice_type') }}</label>
                                         <select class="form-control" name="invoice_type" id="invoice_type">
                                             <option value="tax_invoice" @if($invoiceTypeDefault==='tax_invoice') selected @endif>{{ __('main.invoice_type_tax') }}</option>
-                                            <option value="simplified_tax_invoice" @if($invoiceTypeDefault==='simplified_tax_invoice') selected @endif>{{ __('main.invoice_type_simplified') }}</option>
                                             <option value="non_tax_invoice" @if($invoiceTypeDefault==='non_tax_invoice') selected @endif>{{ __('main.invoice_type_nontax') }}</option>
                                         </select>
                                     </div>
@@ -850,16 +850,25 @@ function openDialog(){
                 return;
             }
 
-            var newQty = parseFloat($(this).val()),
-                item_id = row.attr('data-item-id'); 
-            var item_tax =sItems[item_id].item_tax;
-            var priceWithTax = newQty;
-            
-            if(item_tax > 0){
-                priceWithTax = newQty * 1.15;
-                item_tax = newQty * 0.15;
+            var entered = parseFloat($(this).val());
+            var item_id = row.attr('data-item-id');
+            var taxRate = parseFloat(sItems[item_id].tax_rate_display ?? 0) || 0;
+            var taxMethod = sItems[item_id].tax_method; // 1 inclusive, else exclusive
+            var priceWithoutTax = entered;
+            var priceWithTax = entered;
+            var item_tax = 0;
+
+            if(taxMethod == 1){
+                priceWithTax = entered;
+                priceWithoutTax = entered / (1 + (taxRate/100));
+                item_tax = priceWithTax - priceWithoutTax;
+            } else {
+                priceWithoutTax = entered;
+                item_tax = entered * (taxRate/100);
+                priceWithTax = entered + item_tax;
             }
-            sItems[item_id].price_withoute_tax= newQty;
+
+            sItems[item_id].price_withoute_tax= priceWithoutTax;
             sItems[item_id].price_with_tax= priceWithTax;
             sItems[item_id].item_tax= item_tax;
             loadItems();
@@ -878,17 +887,26 @@ function openDialog(){
                 return;
             }
 
-            var newQty = parseFloat($(this).val()),
-                item_id = row.attr('data-item-id');
+            var entered = parseFloat($(this).val());
+            var item_id = row.attr('data-item-id');
+            var taxRate = parseFloat(sItems[item_id].tax_rate_display ?? 0) || 0;
+            var taxMethod = sItems[item_id].tax_method; // 1 inclusive, else exclusive
+            var priceWithoutTax = entered;
+            var priceWithTax = entered;
+            var item_tax = 0;
 
-            var item_tax =sItems[item_id].item_tax;
-            var priceWithoutTax = newQty;
-            if(item_tax > 0){
-                priceWithoutTax = newQty / 1.15;
-                item_tax = priceWithoutTax * 0.15;
+            if(taxMethod == 1){
+                priceWithTax = entered;
+                priceWithoutTax = entered / (1 + (taxRate/100));
+                item_tax = priceWithTax - priceWithoutTax;
+            } else {
+                priceWithTax = entered;
+                priceWithoutTax = entered / (1 + (taxRate/100));
+                item_tax = entered - priceWithoutTax;
             }
+
             sItems[item_id].price_withoute_tax= priceWithoutTax;
-            sItems[item_id].price_with_tax= newQty;
+            sItems[item_id].price_with_tax= priceWithTax;
             sItems[item_id].item_tax= item_tax;
             loadItems();
         });

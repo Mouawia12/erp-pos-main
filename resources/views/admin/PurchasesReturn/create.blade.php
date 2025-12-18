@@ -91,13 +91,14 @@
                                                 <thead>
                                                     <tr>
                                                         <th class="col-md-3 text-center">{{__('main.item_name_code')}}</th>
-                                                        <th class="col-md-1">{{__('main.price.unit')}}</th>
-                                                        <th class="col-md-1" hidden>{{__('main.price_with_tax')}}</th>
-                                                        <th class="col-md-1">{{__('main.quantity')}} </th>
-                                                        <th class="col-md-1">{{__('main.returned_qnt')}} </th>
-                                                        <th class="col-md-2">{{__('main.mount')}}</th>
-                                                        <th class="col-md-2">{{__('main.tax')}}</th>
-                                                        <th class="col-md-2">{{__('main.net')}}</th> 
+                                                        <th class="col-md-1">{{__('main.unit')}}</th>
+                                                        <th class="col-md-1">{{__('main.price_without_tax')}}</th>
+                                                        <th class="col-md-1">{{__('main.price_with_tax')}}</th>
+                                                        <th class="col-md-1">{{__('main.quantity')}}</th>
+                                                        <th class="col-md-1">{{__('main.returned_qnt')}}</th>
+                                                        <th class="col-md-1">{{__('main.total_without_tax')}}</th>
+                                                        <th class="col-md-1">{{__('main.tax')}}</th>
+                                                        <th class="col-md-1">{{__('main.total_with_tax')}}</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody id="tbody"></tbody> 
@@ -213,8 +214,8 @@
                 return;
             }
 
-            $('#qty').val(newQty);
-            sItems[item_id].returned_qnt= newQty; 
+            sItems[item_id].returned_qnt = newQty;
+            updateTotalReturned();
             loadItems(); 
         });
  
@@ -265,9 +266,9 @@
                 var tr_html = '<td><input type="hidden" name="product_id[]" value="' + item.product_id + '"> <span>' + item.product_name + '---' + (item.product_code) + '</span> </td>';
                     tr_html +='<td>'+unitSelect+'</td>';
                     tr_html +='<td><input type="text" class="form-control" readonly name="price_without_tax[]" value="' + priceWithoutTax.toFixed(2) + '"></td>';
-                    tr_html +='<td hidden><input type="hidden" class="form-control" readonly name="price_with_tax[]" value="' + priceWithTax.toFixed(2) + '"></td>';
+                    tr_html +='<td><input type="text" class="form-control" readonly name="price_with_tax[]" value="' + priceWithTax.toFixed(2) + '"></td>';
                     tr_html +='<td><input readonly type="text" class="form-control" name="all_qnt[]" value="' + parseFloat(item.quantity) + '"></td>';
-                    tr_html +='<td><input type="number" class="form-control iQuantity" name="qnt[]" value="' + item.returned_qnt + '"></td>';
+                    tr_html +='<td><input type="number" class="form-control iQuantity" min="0" max="' + parseFloat(item.quantity) + '" name="qnt[]" value="' + item.returned_qnt + '"></td>';
                     tr_html +='<td><input type="text" readonly="readonly" class="form-control" name="total[]" value="' + (priceWithoutTax * parseFloat(item.returned_qnt)).toFixed(2) + '"></td>';
                     tr_html +='<td><input type="text" readonly="readonly" class="form-control" name="tax[]" value="' + (taxPerUnit * parseFloat(item.returned_qnt)).toFixed(2) + '"></td>';
                     tr_html +='<td><input type="text" readonly="readonly" class="form-control" name="net[]" value="' + (priceWithTax * parseFloat(item.returned_qnt)).toFixed(2) + '"></td>';
@@ -277,6 +278,15 @@
             }
         }); 
         $('#add_item').focus();
+        updateTotalReturned();
+    }
+
+    function updateTotalReturned(){
+        var totalReturned = 0;
+        Object.values(sItems).forEach(function(item){
+            totalReturned += parseFloat(item.returned_qnt || 0);
+        });
+        $('#qty').val(totalReturned);
     }
 
     $(document).on('change','.selectUnit',function () {
