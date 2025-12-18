@@ -86,37 +86,45 @@ class CompanyController extends Controller
 
         if ($request -> id == 0){
             $validated = $request->validate([
-                'company' => 'required', 
-                'opening_balance' => 'required', 
-                'type' => 'required'
+                'company' => ['required','string','max:191'], 
+                'opening_balance' => ['required','numeric'], 
+                'type' => ['required','integer'],
+                'customer_group_id' => ['nullable','integer'],
+                'cr_number' => ['nullable','string','max:191'],
+                'tax_number' => ['nullable','string','max:191'],
+                'parent_company_id' => ['nullable','integer'],
+                'price_level_id' => ['nullable','integer'],
+                'default_discount' => ['nullable','numeric','min:0'],
+                'email' => ['nullable','email','max:191'],
+                'phone' => ['nullable','string','max:50'],
             ]);
             try {
                 $exists = Company::query()
-                    ->where('company', $request->company)
+                    ->where('company', $validated['company'])
                     ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId));
 
                 if ($exists->doesntExist()) {
                    
                     $company = Company::create([
-                        'group_id' => $request -> type,
+                        'group_id' => $validated['type'],
                         'group_name' => '',
-                        'customer_group_id' => $request -> customer_group_id ? $request -> customer_group_id : 0 ,
+                        'customer_group_id' => $validated['customer_group_id'] ?? 0 ,
                         'customer_group_name' => '',
-                        'name' => $request->company,
-                        'company' => $request->company,
-                        'cr_number' => $request->cr_number ?? null,
-                        'tax_number' => $request->tax_number ?? null,
-                        'parent_company_id' => $request->parent_company_id ?? null,
-                        'price_level_id' => $request->price_level_id ?? null,
-                        'default_discount' => $request->default_discount ?? 0,
-                        'vat_no' => $request->vat_no ?? '',
+                        'name' => $validated['company'],
+                        'company' => $validated['company'],
+                        'cr_number' => $validated['cr_number'] ?? null,
+                        'tax_number' => $validated['tax_number'] ?? null,
+                        'parent_company_id' => $validated['parent_company_id'] ?? null,
+                        'price_level_id' => $validated['price_level_id'] ?? null,
+                        'default_discount' => $validated['default_discount'] ?? 0,
+                        'vat_no' => $validated['tax_number'] ?? '',
                         'address' => $request-> address ?? '',
                         'city' => '' ,
                         'state' => '',
                         'postal_code' => '',
                         'country' => '',
-                        'email' => $request -> email ?? '',
-                        'phone' => $request -> phone ?? '',
+                        'email' => $validated['email'] ?? '',
+                        'phone' => $validated['phone'] ?? '',
                         'invoice_footer' => '',
                         'logo' => '',
                         'award_points' => 0 ,
@@ -134,41 +142,39 @@ class CompanyController extends Controller
     
                     if($company->group_id == 4){
                         
-                        if (AccountsTree::where('parent_code', 2101)
+                        $parentAccount = AccountsTree::where('code',2101)->first();
+                        if ($parentAccount && AccountsTree::where('parent_code', 2101)
                             ->where('name', $company->company)
                             ->doesntExist()) { 
-    
-                            $parent_id = AccountsTree::where('code',2101)->first()->id;
 
                             $id = AccountsTree::create([
                                 'code' => $code,
                                 'name' => $company->company,
                                 'type' => 2,
-                                'parent_id' => $parent_id,
+                                'parent_id' => $parentAccount->id,
                                 'parent_code' => 2101,
                                 'level' => 4,
                                 'list' => 2,
                                 'department' => 1,
                                 'side' => 2,
                             ])->id; 
-    
+
                             $company->account_id = $id;
                             $company->save(); 
                         }
     
                     }else if($company->group_id == 3){
     
-                        if (AccountsTree::where('parent_code', 1107)
+                        $parentAccount = AccountsTree::where('code',1107)->first();
+                        if ($parentAccount && AccountsTree::where('parent_code', 1107)
                             ->where('name', $company->company)
                             ->doesntExist()) { 
-
-                            $parent_id = AccountsTree::where('code',1107)->first()->id;
 
                             $id = AccountsTree::create([
                                 'code' => $code,
                                 'name' => $company->company,
                                 'type' => 2,
-                                'parent_id' => $parent_id,
+                                'parent_id' => $parentAccount->id,
                                 'parent_code' => 1107,
                                 'level' => 4,
                                 'list' => 1,

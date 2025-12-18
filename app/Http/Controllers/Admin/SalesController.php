@@ -466,14 +466,14 @@ class SalesController extends Controller
             $discountPerUnit = $manualDiscount + $promoDiscount['discount_unit'];
             $basePrice = max($basePrice - $promoDiscount['discount_unit'], 0);
             $qty = $request->qnt[$index];
-            $taxRate = $productDetails->totalTaxRate();
-            $exciseRate = (float)($productDetails->tax_excise ?? 0);
+            $taxRate = $productDetails->price_includes_tax ? 0 : $productDetails->totalTaxRate();
+            $exciseRate = $productDetails->price_includes_tax ? 0 : (float)($productDetails->tax_excise ?? 0);
 
             $lineBase = $basePrice * $qty;
             $lineTaxExcise = $lineBase * ($exciseRate / 100);
             if($productDetails->price_includes_tax){
-                $lineTax = $lineBase - ($lineBase / (1 + ($taxRate/100)));
-                $lineTotal = $lineBase - $lineTax;
+                $lineTax = 0;
+                $lineTotal = $lineBase;
                 $linePriceWithTax = $lineBase;
             } else {
                 $lineTax = $lineBase * ($taxRate/100);
@@ -860,15 +860,15 @@ class SalesController extends Controller
             $unitFactor = $request->unit_factor[$index] ?? 1;
             $qty = $request->qnt[$index];
             $basePrice = $request->price_unit[$index];
-            $taxRate = $productDetails->totalTaxRate();
-            $exciseRate = (float)($productDetails->tax_excise ?? 0);
+            $taxRate = $productDetails->price_includes_tax ? 0 : $productDetails->totalTaxRate();
+            $exciseRate = $productDetails->price_includes_tax ? 0 : (float)($productDetails->tax_excise ?? 0);
 
             $lineBase = $basePrice * $qty;
             $lineTaxExcise = $lineBase * ($exciseRate / 100);
             if($productDetails->price_includes_tax){
-                $lineTax = $lineBase - ($lineBase / (1 + ($taxRate/100)));
+                $lineTax = 0;
                 $linePriceWithTax = $lineBase;
-                $lineTotal = $lineBase - $lineTax;
+                $lineTotal = $lineBase;
             } else {
                 $lineTax = $lineBase * ($taxRate/100);
                 $lineTotal = $lineBase;

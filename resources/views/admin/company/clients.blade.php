@@ -6,6 +6,16 @@
             {{ session('success') }}
         </div>
     @endif 
+    @if ($errors->any())
+        <div class="alert alert-danger fade show">
+            <button class="close" data-dismiss="alert" aria-label="Close">×</button>
+            <ul class="mb-0">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
     @can('عرض عميل')
     <!-- End Navbar -->
     <div class="container-fluid py-4">
@@ -128,20 +138,21 @@
                             <div class="form-group">
                                 <label>{{ __('main.company') }} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
                                 <input type="text"  id="company" name="company"
-                                       class="form-control"
-                                       placeholder="{{ __('main.company') }}"  /> 
+                                       class="form-control @error('company') is-invalid @enderror"
+                                       placeholder="{{ __('main.company') }}"  value="{{ old('company') }}" /> 
+                                @error('company')<span class="invalid-feedback">{{ $message }}</span>@enderror
                             </div>
                         </div>
                         <div class="col-8" >
                             <div class="form-group">
                                 <label>{{ __('main.name') }} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
                                 <input type="text"  id="name" name="name"
-                                       class="form-control"
-                                       placeholder="{{ __('main.name') }}"  />
+                                       class="form-control @error('name') is-invalid @enderror"
+                                       placeholder="{{ __('main.name') }}"  value="{{ old('name') }}" />
                                 <input type="text"  id="type" name="type"
                                        class="form-control" value="{{$type}}"
                                        placeholder="{{ __('main.name') }}"  hidden />
-
+                                @error('name')<span class="invalid-feedback">{{ $message }}</span>@enderror
                             </div>
                         </div>
                     </div>
@@ -151,22 +162,25 @@
                             <div class="form-group">
                                 <label>{{ __('main.phone') }} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
                                 <input type="text"  id="phone" name="phone"
-                                       class="form-control"
-                                       placeholder="{{ __('main.phone') }}"  />
+                                       class="form-control @error('phone') is-invalid @enderror"
+                                       placeholder="{{ __('main.phone') }}"  value="{{ old('phone') }}" />
+                                @error('phone')<span class="invalid-feedback">{{ $message }}</span>@enderror
                             </div>
                         </div>
                         <div class="col-4" >
                             <div class="form-group">
                                 <label>{{ __('main.email') }} <span style="color:red; font-size:20px; font-weight:bold;"></span> </label>
                                 <input type="text"  id="email" name="email"
-                                       class="form-control"
-                                       placeholder="{{ __('main.email') }}"  />
+                                       class="form-control @error('email') is-invalid @enderror"
+                                       placeholder="{{ __('main.email') }}"  value="{{ old('email') }}" />
+                                @error('email')<span class="invalid-feedback">{{ $message }}</span>@enderror
                             </div>
                         </div>
                         <div class="col-4" >
                             <div class="form-group">
                                 <label>{{ __('main.address') }} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
-                                <textarea type="text"  id="address" name="address" class="form-control" placeholder="{{ __('main.address') }}"></textarea>
+                                <textarea type="text"  id="address" name="address" class="form-control @error('address') is-invalid @enderror" placeholder="{{ __('main.address') }}">{{ old('address') }}</textarea>
+                                @error('address')<span class="invalid-feedback">{{ $message }}</span>@enderror
                             </div>
                         </div> 
                         <div class="col-4">
@@ -187,12 +201,13 @@
                                     <label>{{ __('main.c_groups') }} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
                                     <select class="js-example-basic-single w-100"
                                             name="customer_group_id" id="customer_group_id">
-                                        <option selected value ="0">حدد الاختيار</option>
+                                        <option value="0">{{ __('main.choose') }}</option>
                                         @foreach ($groups as $item)
-                                            <option value="{{$item -> id}}"> {{ $item -> name}}</option>
+                                            <option value="{{$item -> id}}" @if(old('customer_group_id')==$item->id) selected @endif> {{ $item -> name}}</option>
 
                                         @endforeach
                                     </select>
+                                    @error('customer_group_id')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                                 </div>
                             </div>
                         @endif
@@ -202,20 +217,22 @@
                                 <label>{{ __('main.account') }} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
                                 <select class="js-example-basic-single w-100"
                                         name="account_id" id="account_id">
-                                    <option selected value ="0">حدد الاختيار</option>
+                                    <option value ="0">{{ __('main.choose') }}</option>
                                     @foreach ($accounts as $account)
-                                        <option value="{{$account -> id}}"> {{ $account -> name}}</option>
+                                        <option value="{{$account -> id}}" @if(old('account_id')==$account->id) selected @endif> {{ $account -> name}}</option>
 
                                     @endforeach
                                 </select>
+                                @error('account_id')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                             </div>
                         </div>  
                         <div class="col-4" >
                             <div class="form-group">
                                 <label>{{ __('main.vat_no') }} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
                                 <input type="text"  id="vat_no" name="vat_no"
-                                       class="form-control"
-                                       placeholder="{{ __('main.vat_no') }}"  />
+                                       class="form-control @error('vat_no') is-invalid @enderror"
+                                       placeholder="{{ __('main.vat_no') }}"  value="{{ old('vat_no') }}" />
+                                @error('vat_no')<span class="invalid-feedback">{{ $message }}</span>@enderror
                             </div>
                         </div>
                         <div class="col-4" >
@@ -230,8 +247,9 @@
                             <div class="form-group">
                                 <label>{{ __('main.opening_balance') }} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
                                 <input type="number" step="any"  id="opening_balance" name="opening_balance"
-                                       class="form-control"
-                                       placeholder="{{ __('main.opening_balance') }}"  />
+                                       class="form-control @error('opening_balance') is-invalid @enderror"
+                                       placeholder="{{ __('main.opening_balance') }}"  value="{{ old('opening_balance') }}" />
+                                @error('opening_balance')<span class="invalid-feedback">{{ $message }}</span>@enderror
                             </div>
                         </div> 
                     @if($type == 3) 
@@ -239,8 +257,9 @@
                             <div class="form-group">
                                 <label>{{ __('main.credit_limit') }} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
                                 <input type="text"  id="credit_amount" name="credit_amount"
-                                       class="form-control"
-                                       placeholder="{{ __('main.credit_limit') }}"  />
+                                       class="form-control @error('credit_amount') is-invalid @enderror"
+                                       placeholder="{{ __('main.credit_limit') }}"  value="{{ old('credit_amount') }}" />
+                                @error('credit_amount')<span class="invalid-feedback">{{ $message }}</span>@enderror
                             </div>
                         </div>
                         <div class="col-4" >
@@ -327,6 +346,9 @@
     let id = 0 ;
     $(document).ready(function()
     {
+        @if($errors->any())
+            $('#createModal').modal({backdrop:'static', keyboard:false});
+        @endif
         id = 0 ;
         $(document).on('click', '#createButton', function(event) {
             id = 0 ;

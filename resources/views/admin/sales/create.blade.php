@@ -1234,6 +1234,8 @@ span strong {font-size:12px;}
             price = Math.max(price - Number(item.promo_discount_unit), 0);
         }
         var taxType = item.tax_method;
+        var includesTax = Number(item.price_includes_tax ?? 0) === 1 || Number(taxType ?? 0) === 1;
+        var zeroTaxInclusive = includesTax; // Always treat inclusive items as already tax-paid
         var taxRate = item.tax;
         var itemTax = 0;
         var priceWithoutTax = 0;
@@ -1250,11 +1252,11 @@ span strong {font-size:12px;}
             }
         }
 
-        if(taxType == 1){
-            //included
+        if(includesTax){
+            // Inclusive prices are considered final (no VAT added)
             priceWithTax = price;
-            priceWithoutTax = (price / (1+(taxRate/100))); 
-            itemTax = priceWithTax - priceWithoutTax;
+            priceWithoutTax = price;
+            itemTax = 0;
         }else{
             //excluded
             itemTax = price * (taxRate/100); 
@@ -1264,7 +1266,7 @@ span strong {font-size:12px;}
         //update 19-04-2024
         var Excise = item.tax_excise;
         var taxExcise = 0;
-        if(Excise > 0){    
+        if(Excise > 0 && !zeroTaxInclusive){    
             taxExcise = (priceWithoutTax * (Excise/100));
             itemTax = itemTax + taxExcise;
         }
@@ -1281,6 +1283,7 @@ span strong {font-size:12px;}
         sItems[key].item_tax = itemTax;
         sItems[key].tax_rate = taxRate;
         sItems[key].tax_excise = Excise; 
+        sItems[key].zero_tax_inclusive = zeroTaxInclusive;
         sItems[key].qnt = 1;
         sItems[key].discount = 0;
         sItems[key].note = '';
@@ -1430,6 +1433,14 @@ span strong {font-size:12px;}
         effectivePrice = Math.max(effectivePrice || 0, 0);
         var tax_rate = parseFloat(item.tax_rate ?? 0) || 0;
         var tax_excise = parseFloat(item.tax_excise ?? 0) || 0;
+        var includesTax = Number(item.price_includes_tax ?? 0) === 1 || Number(item.tax_method ?? 0) === 1;
+        var zeroTaxInclusive = includesTax;
+        if(includesTax){
+            item.price_withoute_tax = effectivePrice;
+            item.item_tax = 0;
+            item.price_with_tax = effectivePrice;
+            return;
+        }
         var vatAmount = effectivePrice * (tax_rate/100);
         var exciseAmount = effectivePrice * (tax_excise/100);
         item.price_withoute_tax = effectivePrice;

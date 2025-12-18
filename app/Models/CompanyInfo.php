@@ -13,6 +13,8 @@ class CompanyInfo extends Model
     protected $fillable = [
         'name_ar',
         'name_en',
+        'faild_ar',
+        'faild_en',
         'phone',
         'phone2',
         'fax',

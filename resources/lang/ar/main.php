@@ -18,6 +18,8 @@ return [
     'product_name_en' => 'اسم الصنف (إنجليزي)',
     'unit_name_ar' => 'اسم الوحدة (عربي)',
     'unit_name_en' => 'اسم الوحدة (إنجليزي)',
+    'field_ar' => 'المجال (عربي)',
+    'field_en' => 'المجال (إنجليزي)',
     'actions' => 'العمليات',
     'feature_disabled' => 'تم تعطيل هذه الميزة حالياً.',
     'could_not_find_record' => 'لا يوجد سجل مطابق.',

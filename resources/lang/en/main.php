@@ -17,6 +17,8 @@ return [
     'product_name_en' => 'Product Name (English)',
     'unit_name_ar' => 'Unit Name (Arabic)',
     'unit_name_en' => 'Unit Name (English)',
+    'field_ar' => 'Field (Arabic)',
+    'field_en' => 'Field (English)',
     'actions' => 'Actions',
     'feature_disabled' => 'This feature is currently disabled.',
     'could_not_find_record' => 'Unable to find a matching record.',

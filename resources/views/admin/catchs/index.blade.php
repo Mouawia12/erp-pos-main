@@ -6,6 +6,16 @@
             {{ session('success') }}
         </div>
     @endif
+    @if ($errors->any())
+        <div class="alert alert-danger fade show">
+            <button class="close" data-dismiss="alert" aria-label="Close">×</button>
+            <ul class="mb-0">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
 <!-- row opened -->
 <style>
         table.display.w-100.text-nowrap.table-bordered.dataTable.dtr-inline {
@@ -119,18 +129,21 @@
                             <div class="form-group">
                                 <label>{{ __('main.basedon_no') }} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
                                 <input type="text" id="docNumber" name="docNumber"
-                                    class="form-control" readonly
+                                    class="form-control @error('docNumber') is-invalid @enderror" readonly
                                     placeholder="{{__('0')}}"/>
+                                @error('docNumber')<span class="invalid-feedback">{{ $message }}</span>@enderror
                             </div>
                         </div>
                         <div class="col-3">
                             <div class="form-group">
                                 <label>{{ __('main.date') }} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
                                 <input type="date" id="date" name="date"
-                                    class="form-control"  readonly/>
+                                    class="form-control @error('date') is-invalid @enderror"
+                                    value="{{ old('date', now()->format('Y-m-d')) }}" />
                                 <input type="text" id="id" name="id"
                                     class="form-control"
                                     placeholder="{{ __('main.code') }}"  hidden=""/>
+                                @error('date')<span class="invalid-feedback">{{ $message }}</span>@enderror
                             </div>
                         </div>
                         <div class="col-6">
@@ -170,13 +183,14 @@
                         <div class="col-6" >
                             <div class="form-group">
                                 <label>{{ __('الحساب') }} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
-                                <select id="account_id" name="account_id" class="form-control select2">
+                                <select id="account_id" name="account_id" class="form-control select2 @error('account_id') is-invalid @enderror">
                                     @foreach($accounts as $account)
-                                        <option  value="{{$account -> id}}">
+                                        <option  value="{{$account -> id}}" @if(old('account_id')==$account->id) selected @endif>
                                             {{$account -> name}}
                                         </option>
                                     @endforeach 
                                 </select>
+                                @error('account_id')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                             </div>
                         </div>
                     </div> 
@@ -184,17 +198,19 @@
                         <div class="col-6">
                             <div class="form-group">
                                 <label>{{ __('main.money') }} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
-                                <input class="form-control" id="amount" name="amount" type="number">
+                                <input class="form-control @error('amount') is-invalid @enderror" id="amount" name="amount" type="number" value="{{ old('amount') }}">
+                                @error('amount')<span class="invalid-feedback">{{ $message }}</span>@enderror
 
                             </div>
                         </div>
                         <div class="col-6 " >
                             <div class="form-group">
                                 <label>{{ __('main.payment_method') }} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
-                                <select class="form-control" name="payment_type" id="payment_type">
-                                    <option value="0"> {{__('main.cash')}} </option>
-                                    <option value="1"> {{__('main.visa')}} </option> 
+                                <select class="form-control @error('payment_type') is-invalid @enderror" name="payment_type" id="payment_type">
+                                    <option value="0" @if(old('payment_type')==='0') selected @endif> {{__('main.cash')}} </option>
+                                    <option value="1" @if(old('payment_type')==='1') selected @endif> {{__('main.visa')}} </option> 
                                 </select> 
+                                @error('payment_type')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                             </div>
                         </div> 
                     </div>
@@ -202,7 +218,8 @@
                         <div class="col-12 " >
                             <div class="form-group">
                                 <label>{{ __('main.notes') }} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
-                                <textarea type="text"  id="notes" name="notes" class="form-control" placeholder="{{ __('main.notes') }}"></textarea>
+                                <textarea type="text"  id="notes" name="notes" class="form-control @error('notes') is-invalid @enderror" placeholder="{{ __('main.notes') }}">{{ old('notes') }}</textarea>
+                                @error('notes')<span class="invalid-feedback">{{ $message }}</span>@enderror
                             </div>
                         </div> 
                     </div>
@@ -270,6 +287,14 @@
     let id = 0 ;
     $(document).ready(function()
     {
+        @if($errors->any())
+            $('#createModal').modal({backdrop:'static', keyboard:false});
+        @endif
+        const $createModal = $('#createModal');
+        const select2Options = { dropdownParent: $createModal, width: '100%' };
+        $('#account_id').select2({ ...select2Options, placeholder: '{{ __("main.choose") ?? "اختر الحساب" }}', allowClear: true });
+        $('#parent_code').select2(select2Options);
+        $('#branch_id').select2(select2Options);
         var now = new Date();
         var day = ("0" + now.getDate()).slice(-2);
         var month = ("0" + (now.getMonth() + 1)).slice(-2);
@@ -277,6 +302,12 @@
         id = 0 ;
         getBillNo(); 
         document.title = "{{__('main.catches')}}";
+        const oldParent = "{{ old('parent_code') }}";
+        const oldAccount = "{{ old('account_id') }}";
+        if (oldParent) {
+            $('#parent_code').val(oldParent).trigger('change');
+            loadAccounts(oldParent, oldAccount);
+        }
 
         $(document).on('change', '#branch_id', function () {
             getBillNo(); 
@@ -316,8 +347,8 @@
             $(".modal-body #notes").val("");
             $(".modal-body #docNumber").val(response); 
             $(".modal-body #id").val(0);  
-            $(".modal-body #account_id").val(0).trigger("change");  
-            $(".modal-body #parent_code").val(0); 
+            $(".modal-body #account_id").val('').trigger("change");  
+            $(".modal-body #parent_code").val('').trigger('change'); 
             $(".modal-body #amount").val(0);
             $(".modal-body #payment_type").val(0); 
             $(".modal-body #date").attr('readOnly' , false);
@@ -328,22 +359,29 @@
             $(".modal-body #printtBtn").hide(); 
         });
 
-        $('#parent_code').change(function (){ 
+        function loadAccounts(parentCode, selectedId = '') {
+            if (!parentCode) {
+                $('#account_id').empty().append('<option value=""></option>').val('').trigger('change');
+                return;
+            }
             $.ajax({
                 type: 'get',
-                url: 'getSupplierAccount' + '/' + this.value,
-                dataType: 'json', 
+                url: 'getSupplierAccount' + '/' + parentCode,
+                dataType: 'json',
                 success: function (response) {
-                    console.log(response);
+                    $('#account_id').empty().append('<option value=""></option>');
                     if (response) {
-                        $('#account_id').empty();
-                        $('#account_id').append('<option value="0">select ..</option>');
-                        for (let i = 0; i < response.length; i++){
-                            $('#account_id').append('<option value="'+response[i].id+'">'+response[i].name + '</option>');
+                        for (let i = 0; i < response.length; i++) {
+                            $('#account_id').append('<option value="' + response[i].id + '">' + response[i].name + '</option>');
                         }
                     }
+                    $('#account_id').val(selectedId).trigger('change');
                 }
             });
+        }
+
+        $('#parent_code').change(function (){
+            loadAccounts(this.value);
         });   
 
         $(document).on('click', '.editBtn', function(event) {
@@ -371,8 +409,8 @@
                                 $(".modal-body #notes").val(response.notes);
                                 $(".modal-body #docNumber").val(response.docNumber); 
                                 $(".modal-body #id").val( response.id );
-                                $(".modal-body #parent_code").val(response.parent_code);
-                                $(".modal-body #account_id").val(response.to_account).trigger("change");
+                                $(".modal-body #parent_code").val(response.parent_code).trigger('change');
+                                loadAccounts(response.parent_code, response.to_account);
                                 $(".modal-body #amount").val(response.amount); 
                                 $(".modal-body #payment_type").val(response.payment_type); 
                                 $(".modal-body #date").attr('readOnly' , true);
@@ -441,13 +479,6 @@
             document.location.href = url;
         });  
         
-        //Initialize Select2 Elements
-        $('.select2').select2()
-	    
-        //Initialize Select2 Elements
-        $('.select2bs4').select2({
-            theme: 'bootstrap4'
-        });
     });
     function printPage(){ 
         var css = '@page { size:A4 portrait; }',
@@ -525,5 +556,3 @@
 </script>  
 @endsection 
  
-
-

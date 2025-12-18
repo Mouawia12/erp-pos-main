@@ -239,7 +239,7 @@
                                         <label>{{ __('main.Cost') }}</label>
                                         <input type="number"  id="cost" name="cost"
                                                class="form-control @error('cost') is-invalid @enderror" step="0.01"
-                                               placeholder="{{ __('main.Cost') }}" value="{{ old('cost') }}" />
+                                               placeholder="{{ __('main.Cost') }}" value="{{ old('cost', 0) }}" />
                                         @error('cost')
                                         <span class="invalid-feedback" role="alert">
                                             <strong>{{ $message }}</strong>
@@ -253,7 +253,7 @@
                                         <label>{{ __('main.Sale_Price') }}</label>
                                         <input type="number"  id="price" name="price"
                                                class="form-control @error('price') is-invalid @enderror" step="0.01"
-                                               placeholder="{{ __('main.Sale_Price') }}" value="{{ old('price') }}" />
+                                               placeholder="{{ __('main.Sale_Price') }}" value="{{ old('price', 0) }}" />
                                         @error('price')
                                         <span class="invalid-feedback" role="alert">
                                             <strong>{{ $message }}</strong>
