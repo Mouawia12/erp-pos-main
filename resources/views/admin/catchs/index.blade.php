@@ -307,6 +307,10 @@
         if (oldParent) {
             $('#parent_code').val(oldParent).trigger('change');
             loadAccounts(oldParent, oldAccount);
+        } else {
+            const defaultParent = '2101';
+            $('#parent_code').val(defaultParent).trigger('change');
+            loadAccounts(defaultParent, '');
         }
 
         $(document).on('change', '#branch_id', function () {
@@ -348,7 +352,9 @@
             $(".modal-body #docNumber").val(response); 
             $(".modal-body #id").val(0);  
             $(".modal-body #account_id").val('').trigger("change");  
-            $(".modal-body #parent_code").val('').trigger('change'); 
+            const defaultParent = '2101';
+            $(".modal-body #parent_code").val(defaultParent).trigger('change'); 
+            loadAccounts(defaultParent, '');
             $(".modal-body #amount").val(0);
             $(".modal-body #payment_type").val(0); 
             $(".modal-body #date").attr('readOnly' , false);
