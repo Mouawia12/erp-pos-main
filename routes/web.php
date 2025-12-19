@@ -293,6 +293,7 @@ Route::group(
     Route::post('/products/delete', [ProductController::class, 'delete'])->name('product.delete');
     Route::get('/getProduct/{code}', [ProductController::class, 'getProduct'])->name('getProduct');
     Route::get('/get-product-warehouse/{warehouse_id}/{code}', [ProductController::class, 'get_product_warehouse'])->name('get.product.warehouse');
+    Route::get('/get-product-batches/{warehouse_id}/{product_id}', [ProductController::class, 'getProductBatches'])->name('get.product.batches');
     Route::get('/products/{id}/locations', [ProductController::class, 'locations'])->name('products.locations');
     Route::get('/products/print_barcode', [ProductController::class, 'print_barcode'])->name('print_barcode');
     Route::post('/products/print_barcode', [ProductController::class, 'do_print_barcode'])->name('preview_barcode');

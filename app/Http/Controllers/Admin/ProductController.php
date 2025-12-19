@@ -1245,4 +1245,25 @@ class ProductController extends Controller
             'locations' => $locations,
         ]);
     }
+
+    public function getProductBatches($warehouseId, $productId)
+    {
+        $batches = DB::table('purchase_details as pd')
+            ->join('purchases as p', 'pd.purchase_id', '=', 'p.id')
+            ->select(
+                'pd.batch_no',
+                'pd.production_date',
+                'pd.expiry_date',
+                DB::raw('SUM(pd.quantity) as quantity')
+            )
+            ->where('p.warehouse_id', $warehouseId)
+            ->where('pd.product_id', $productId)
+            ->whereNotNull('pd.batch_no')
+            ->groupBy('pd.batch_no', 'pd.production_date', 'pd.expiry_date')
+            ->having('quantity', '>', 0)
+            ->orderBy('pd.expiry_date')
+            ->get();
+
+        return response()->json($batches);
+    }
 }

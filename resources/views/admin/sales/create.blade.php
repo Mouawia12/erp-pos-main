@@ -275,6 +275,9 @@ span strong {font-size:12px;}
                                                             <th class="text-center">{{__('main.cost')}}</th>
                                                             <th class="text-center">{{__('main.last_sale_price')}}</th>
                                                             <th class="text-center">{{ __('main.unit') }}</th>
+                                                            <th class="text-center batch-col">{{ __('main.batch_no') }}</th>
+                                                            <th class="text-center batch-col">{{ __('main.production_date') }}</th>
+                                                            <th class="text-center batch-col">{{ __('main.expiry_date') }}</th>
                                                             <th class="text-center">{{ __('main.quantity') }}</th>
                                                             <th class="text-center">{{__('main.price.unit')}}</th>
                                                             <th class="text-center">{{__('main.discount')}}</th> 
@@ -467,6 +470,52 @@ span strong {font-size:12px;}
     </div>
 </div>
 
+<div class="modal fade" id="batchModal" tabindex="-1" role="dialog" aria-labelledby="batchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-md" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <label class="alertTitle mb-0">{{ __('main.batch_details') }}</label>
+                <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-2" id="batchItemName"></p>
+                <div class="table-responsive mb-3" id="batchOptionsWrapper" style="display:none;">
+                    <table class="table table-bordered text-center">
+                        <thead>
+                            <tr>
+                                <th>{{ __('main.batch_no') }}</th>
+                                <th>{{ __('main.production_date') }}</th>
+                                <th>{{ __('main.expiry_date') }}</th>
+                                <th>{{ __('main.available_qty') }}</th>
+                                <th>{{ __('main.choose') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody id="batchOptionsBody"></tbody>
+                    </table>
+                </div>
+                <div class="form-group">
+                    <label>{{ __('main.batch_no') }}</label>
+                    <input type="text" class="form-control" id="batch_no_input" placeholder="{{ __('main.batch_no') }}">
+                </div>
+                <div class="form-group">
+                    <label>{{ __('main.production_date') }}</label>
+                    <input type="date" class="form-control" id="production_date_input">
+                </div>
+                <div class="form-group">
+                    <label>{{ __('main.expiry_date') }}</label>
+                    <input type="date" class="form-control" id="expiry_date_input">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="cancelBatchSelection">{{ __('main.cancel_btn') }}</button>
+                <button type="button" class="btn btn-primary" id="confirmBatchSelection">{{ __('main.save_btn') }}</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @if(Route::has('system_settings.enable_negative_stock'))
 <div class="modal fade" id="enableNegativeStockModal" tabindex="-1" role="dialog" aria-labelledby="enableNegativeStockLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
@@ -533,6 +582,7 @@ span strong {font-size:12px;}
     var itemKey = 1;
     const itemNotePlaceholder = @json(__('main.line_note_hint'));
     let pendingDuplicateItem = null;
+    let pendingBatchItem = null;
     const allowNegativeStock = {{ !empty($allowNegativeStock) ? 'true' : 'false' }};
     const insufficientTemplate = "{{ __('main.insufficient_stock', ['item' => '__ITEM__']) }}";
 
@@ -1082,6 +1132,42 @@ span strong {font-size:12px;}
             $('input[name="variant_choice"]').prop('checked', false);
         });
 
+        $('#cancelBatchSelection').on('click', function(){
+            pendingBatchItem = null;
+            $('#batchModal').modal('hide');
+        });
+
+        $('#confirmBatchSelection').on('click', function(){
+            if(!pendingBatchItem){
+                $('#batchModal').modal('hide');
+                return;
+            }
+            var choice = $('input[name="batch_choice"]:checked').val();
+            var batchNo = $('#batch_no_input').val().trim();
+            var productionDate = $('#production_date_input').val();
+            var expiryDate = $('#expiry_date_input').val();
+            if(choice){
+                var selected = (pendingBatchItem.batches || []).find(function(b){
+                    return String(b.batch_no) === String(choice);
+                });
+                if(selected){
+                    batchNo = selected.batch_no || '';
+                    productionDate = selected.production_date || '';
+                    expiryDate = selected.expiry_date || '';
+                }
+            }
+            if(!batchNo){
+                alert('{{ __('main.batch_no') }}');
+                return;
+            }
+            pendingBatchItem.item.batch_no = batchNo;
+            pendingBatchItem.item.production_date = productionDate;
+            pendingBatchItem.item.expiry_date = expiryDate;
+            $('#batchModal').modal('hide');
+            finalizeAddItem(pendingBatchItem.item, pendingBatchItem.forceDuplicate);
+            pendingBatchItem = null;
+        });
+
         NetAfterDiscount();
 
     });
@@ -1218,6 +1304,57 @@ span strong {font-size:12px;}
             return;
         }
 
+        if(item.track_batch){
+            var warehouseId = $('#warehouse_id').val();
+            var url = '{{ route('get.product.batches', [':warehouse', ':product']) }}';
+            url = url.replace(':warehouse', warehouseId || 0).replace(':product', item.id);
+            $('#batchOptionsBody').empty();
+            $('#batchOptionsWrapper').hide();
+            $('#batch_no_input').val(item.batch_no ?? '');
+            $('#production_date_input').val(item.production_date ?? '');
+            $('#expiry_date_input').val(item.expiry_date ?? '');
+            $('#batchItemName').text(item.name ? item.name : (item.code || ''));
+            $.ajax({
+                type:'get',
+                url:url,
+                dataType:'json',
+                success:function(response){
+                    renderBatchOptions(response || []);
+                    pendingBatchItem = {item:item, batches: response || [], forceDuplicate: forceDuplicate};
+                    $('#batchModal').modal({backdrop:'static', keyboard:false});
+                },
+                error:function(){
+                    pendingBatchItem = {item:item, batches: [], forceDuplicate: forceDuplicate};
+                    $('#batchModal').modal({backdrop:'static', keyboard:false});
+                }
+            });
+            return;
+        }
+
+        finalizeAddItem(item, forceDuplicate);
+    }
+
+    function renderBatchOptions(batches){
+        const body = $('#batchOptionsBody');
+        body.empty();
+        if(batches && batches.length){
+            $('#batchOptionsWrapper').show();
+            batches.forEach(function(batch){
+                var row = `<tr>
+                    <td>${escapeHtml(batch.batch_no ?? '')}</td>
+                    <td>${escapeHtml(batch.production_date ?? '')}</td>
+                    <td>${escapeHtml(batch.expiry_date ?? '')}</td>
+                    <td>${Number(batch.quantity ?? 0)}</td>
+                    <td><input type="radio" name="batch_choice" value="${escapeHtml(batch.batch_no ?? '')}"></td>
+                </tr>`;
+                body.append(row);
+            });
+        } else {
+            $('#batchOptionsWrapper').hide();
+        }
+    }
+
+    function finalizeAddItem(item, forceDuplicate){
         var targetVariantId = item.selected_variant ? item.selected_variant.id : null;
         var duplicateExists = Object.values(sItems).some(function(existing){
             var existingVariantId = existing.variant_id ?? (existing.selected_variant ? existing.selected_variant.id : null);
@@ -1304,6 +1441,10 @@ span strong {font-size:12px;}
         sItems[key].variant_size = item.selected_variant ? item.selected_variant.size : (item.variant_size ?? null);
         sItems[key].variant_barcode = item.selected_variant ? item.selected_variant.barcode : (item.variant_barcode ?? null);
         sItems[key].promo_discount_unit = item.promo_discount_unit ?? 0;
+        sItems[key].track_batch = item.track_batch ? true : false;
+        sItems[key].batch_no = item.batch_no ?? '';
+        sItems[key].production_date = item.production_date ?? '';
+        sItems[key].expiry_date = item.expiry_date ?? '';
 
         if(!isQuantityValid(sItems[key])){
             alert(formatInsufficientMessage(item));
@@ -1479,6 +1620,7 @@ span strong {font-size:12px;}
         var tax_total_val =0 ;
         var discount_total_val = 0;
         var net_sales_val = 0 ; 
+        var hasBatchItems = false;
 
         $('#sTable tbody').empty();
         $.each(sItems,function (i,item) {
@@ -1512,6 +1654,9 @@ span strong {font-size:12px;}
                 var qtyInput = '<div class="mt-2"><input type="number" step="0.01" min="0" class="form-control form-control-sm iQuantity" name="qnt[]" value="'+item.qnt+'"></div>';
 
                 tr_html +='<td>'+unitSelect+'</td>';
+                tr_html +='<td class="batch-col"><input type="hidden" name="batch_no[]" value="'+escapeHtml(item.batch_no ?? '')+'"><span class="text-nowrap d-block">'+escapeHtml(item.batch_no ?? '')+'</span></td>';
+                tr_html +='<td class="batch-col"><input type="hidden" name="production_date[]" value="'+(item.production_date ?? '')+'"><span class="text-nowrap d-block">'+escapeHtml(item.production_date ?? '')+'</span></td>';
+                tr_html +='<td class="batch-col"><input type="hidden" name="expiry_date[]" value="'+(item.expiry_date ?? '')+'"><span class="text-nowrap d-block">'+escapeHtml(item.expiry_date ?? '')+'</span></td>';
                 tr_html +='<td>'+qtyInput+'</td>';
                 tr_html +='<td><input type="number" step="0.01" class="form-control iPrice" name="price_unit[]" value="'+Number(item.price_withoute_tax ?? 0).toFixed(2)+'"><input type="hidden" name="original_price[]" value="'+Number(item.original_price ?? 0).toFixed(2)+'"></td>';
                 tr_html +='<td><input type="number" class="form-control iDiscount" name="discount_unit[]" value="'+Number(item.discount ?? 0).toFixed(2)+'"></td>';
@@ -1536,9 +1681,14 @@ span strong {font-size:12px;}
             tax_total_val +=  Number(item.item_tax ?? 0)  * Number(item.qnt)  ;
             discount_total_val += Number(item.discount ?? 0) * Number(item.qnt ?? 0);
 			net_sales_val += (((Number(item.price_withoute_tax ?? 0)) + Number(item.item_tax ?? 0))*item.qnt);
+            if(item.batch_no || item.production_date || item.expiry_date || item.track_batch){
+                hasBatchItems = true;
+            }
 
 
         });
+
+        $('.batch-col').css('display', hasBatchItems ? '' : 'none');
 
         document.getElementById('discount-text').innerHTML = (discount_total_val).toFixed(2);
         document.getElementById('total-text').innerHTML = first_total_val.toFixed(2);
