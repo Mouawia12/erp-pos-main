@@ -968,19 +968,9 @@ class SalesController extends Controller
     
     public function get_sale_no($branch_id){
         $subscriberId = Auth::user()?->subscriber_id;
-        $lastInvoice = Sales::where('sale_id', 0)
+        $settings = SystemSettings::query()
             ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
-            ->where('branch_id', $branch_id)
-            ->orderByDesc('id')
-            ->value('invoice_no');
-
-        $lastNumber = 0;
-        if ($lastInvoice && preg_match('/(\d+)$/', $lastInvoice, $m)) {
-            $lastNumber = (int) $m[1];
-        }
-        $id = $lastNumber;
-
-        $settings = SystemSettings::all();
+            ->get();
         $prefix = "";
 
         if(count($settings) > 0){
@@ -994,8 +984,28 @@ class SalesController extends Controller
 
         $prefixParts = array_filter([$prefix, $branch_id]);
         $prefix = $prefixParts ? implode('-', $prefixParts).'-' : '';
+
+        // ابحث عن آخر رقم لنفس الـ prefix (دون فلترة المشترك لضمان تفادي التكرار)
+        $lastInvoice = Sales::where('sale_id', 0)
+            ->where('invoice_no', 'like', $prefix.'%')
+            ->orderByDesc('id')
+            ->value('invoice_no');
+
+        $lastNumber = 0;
+        if ($lastInvoice && preg_match('/(\d+)$/', $lastInvoice, $m)) {
+            $lastNumber = (int) $m[1];
+        }
+
+        $candidate = $lastNumber + 1;
+        do {
+            $noStr = $prefix . str_pad($candidate, 6 , '0' , STR_PAD_LEFT);
+            $exists = Sales::where('invoice_no', $noStr)->exists();
+            if($exists){
+                $candidate++;
+            }
+        } while($exists);
    
-        $no = json_encode($prefix . str_pad($id + 1, 6 , '0' , STR_PAD_LEFT)) ;
+        $no = json_encode($noStr) ;
          echo $no ;
          exit;
     }
