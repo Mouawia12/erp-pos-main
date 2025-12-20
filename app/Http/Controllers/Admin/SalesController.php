@@ -987,7 +987,8 @@ class SalesController extends Controller
             $prefix = "";
         }
 
-        $prefix = $prefix .'-'.$branch_id.'-';
+        $prefixParts = array_filter([$prefix, $branch_id]);
+        $prefix = $prefixParts ? implode('-', $prefixParts).'-' : '';
    
         $no = json_encode($prefix . str_pad($id + 1, 6 , '0' , STR_PAD_LEFT)) ;
          echo $no ;
