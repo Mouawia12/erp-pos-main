@@ -254,7 +254,9 @@ class SalesController extends Controller
             $id = 0 ;
         }
        
-        $settings = SystemSettings::all();
+        $settings = SystemSettings::query()
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->get();
         $prefix = "";
         if(count($settings) > 0){
             if($settings[0] -> sales_return_prefix)
@@ -964,8 +966,10 @@ class SalesController extends Controller
     }
 
     
-    public function get_sale_no($branch_id){ 
+    public function get_sale_no($branch_id){
+        $subscriberId = Auth::user()?->subscriber_id;
         $lastInvoice = Sales::where('sale_id', 0)
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
             ->where('branch_id', $branch_id)
             ->orderByDesc('id')
             ->value('invoice_no');
