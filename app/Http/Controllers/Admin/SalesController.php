@@ -965,16 +965,17 @@ class SalesController extends Controller
 
     
     public function get_sale_no($branch_id){ 
-        $bills = Sales::where('sale_id' , 0 )
-                    ->where('branch_id',$branch_id) 
-                    ->count();
+        $lastInvoice = Sales::where('sale_id', 0)
+            ->where('branch_id', $branch_id)
+            ->orderByDesc('id')
+            ->value('invoice_no');
 
-        if($bills > 0){
-            $id = $bills ;
-        } else{
-            $id = 0 ;
+        $lastNumber = 0;
+        if ($lastInvoice && preg_match('/(\d+)$/', $lastInvoice, $m)) {
+            $lastNumber = (int) $m[1];
         }
-            
+        $id = $lastNumber;
+
         $settings = SystemSettings::all();
         $prefix = "";
 
