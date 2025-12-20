@@ -1014,6 +1014,7 @@ span strong {font-size:12px;}
         
         $('#branch_id').change(function (){
             getWarehouse();
+            getSaleNo();
         });
 
         function getWarehouse(){
@@ -1043,6 +1044,25 @@ span strong {font-size:12px;}
             });
         }
 
+        function getSaleNo(){
+            var branch = $('#branch_id').val() || '{{ Auth::user()->branch_id ?? '' }}';
+            if(!branch){
+                return;
+            }
+            var url = '{{ route('get.sale.no',':id') }}';
+            url = url.replace(':id', branch);
+            $.ajax({
+                type:'get',
+                url:url,
+                dataType:'json',
+                success:function(response){
+                    if(response){
+                        $('#invoice_no').val(response);
+                    }
+                }
+            });
+        }
+
         $(document).on('change', '#warehouse_id', function () { 
             $('#products_suggestions').empty();
             $('#sTable tbody').empty();
@@ -1068,6 +1088,7 @@ span strong {font-size:12px;}
         document.getElementById('net_sales').value = 0; 
         document.getElementById('net_after_discount').value = 0;   
 
+        getSaleNo();
         $(document).on('change', '#discount_type', function () {
             NetAfterDiscount(); 
         });
