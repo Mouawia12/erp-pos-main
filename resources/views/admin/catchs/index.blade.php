@@ -173,17 +173,20 @@
                         <div class="col-6">
                             <div class="form-group">
                                 <label>{{ __('نوع الحساب') }} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
-                                <select id="parent_code" name="parent_code" class="form-control"> 
-                                    <option value="">حدد الاختيار</option>
-                                    <option value="2101">الموردين</option>
-                                    <option value="1107">العملاء</option>
+                                <select id="parent_code" name="parent_code" class="form-control select2" required>
+                                    <option value="">{{ __('main.choose') ?? 'حدد الاختيار' }}</option>
+                                    <option value="0">{{ __('main.Root') }}</option>
+                                    <option value="1">{{ __('main.General') }}</option>
+                                    <option value="2">{{ __('main.Branch') }}</option>
+                                    <option value="3">{{ __('main.Branch_Ledger') }}</option>
                                 </select> 
                             </div>
                         </div>
                         <div class="col-6" >
                             <div class="form-group">
                                 <label>{{ __('الحساب') }} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
-                                <select id="account_id" name="account_id" class="form-control select2 @error('account_id') is-invalid @enderror">
+                                <select id="account_id" name="account_id" class="form-control select2 @error('account_id') is-invalid @enderror" required>
+                                    <option value=""></option>
                                     @foreach($accounts as $account)
                                         <option  value="{{$account -> id}}" @if(old('account_id')==$account->id) selected @endif>
                                             {{$account -> name}}
@@ -292,9 +295,19 @@
         @endif
         const $createModal = $('#createModal');
         const select2Options = { dropdownParent: $createModal, width: '100%' };
-        $('#account_id').select2({ ...select2Options, placeholder: '{{ __("main.choose") ?? "اختر الحساب" }}', allowClear: true });
-        $('#parent_code').select2(select2Options);
-        $('#branch_id').select2(select2Options);
+        function initCatchSelects() {
+            if (!$.fn || !$.fn.select2) {
+                setTimeout(initCatchSelects, 150);
+                return;
+            }
+            $('#account_id').select2({ ...select2Options, placeholder: '{{ __("main.choose") ?? "اختر الحساب" }}', allowClear: true });
+            $('#parent_code').select2({ ...select2Options, placeholder: '{{ __("main.choose") ?? "حدد الاختيار" }}', allowClear: true });
+            $('#branch_id').select2(select2Options);
+        }
+        initCatchSelects();
+        const catchNoUrl = "{{ route('get.catch.recipt.no', ['branch_id' => 'BRANCH_ID']) }}";
+        const supplierAccountsUrl = "{{ route('getSupplierAccount', ['id' => 'ACCOUNT_TYPE']) }}";
+        const getCatchUrl = "{{ route('getCatch', ['id' => 'CATCH_ID']) }}";
         var now = new Date();
         var day = ("0" + now.getDate()).slice(-2);
         var month = ("0" + (now.getMonth() + 1)).slice(-2);
@@ -308,7 +321,7 @@
             $('#parent_code').val(oldParent).trigger('change');
             loadAccounts(oldParent, oldAccount);
         } else {
-            const defaultParent = '2101';
+            const defaultParent = '3';
             $('#parent_code').val(defaultParent).trigger('change');
             loadAccounts(defaultParent, '');
         }
@@ -327,10 +340,15 @@
         function getBillNo() {
             let bill_number = document.getElementById('docNumber');  
             let branch_id = document.getElementById('branch_id').value;
+
+            if (!branch_id) {
+                bill_number.value = '';
+                return;
+            }
     
             $.ajax({
                 type: 'get',
-                url: 'get-catch-recipt-no/' + branch_id,
+                url: catchNoUrl.replace('BRANCH_ID', branch_id),
                 dataType: 'json',
                 success: function (response) {
                     console.log(response);
@@ -349,10 +367,10 @@
             $('#createModal').modal("show");
             $(".modal-body #date").val(today );
             $(".modal-body #notes").val("");
-            $(".modal-body #docNumber").val(response); 
+            getBillNo();
             $(".modal-body #id").val(0);  
             $(".modal-body #account_id").val('').trigger("change");  
-            const defaultParent = '2101';
+            const defaultParent = '3';
             $(".modal-body #parent_code").val(defaultParent).trigger('change'); 
             loadAccounts(defaultParent, '');
             $(".modal-body #amount").val(0);
@@ -372,7 +390,7 @@
             }
             $.ajax({
                 type: 'get',
-                url: 'getSupplierAccount' + '/' + parentCode,
+                url: supplierAccountsUrl.replace('ACCOUNT_TYPE', parentCode),
                 dataType: 'json',
                 success: function (response) {
                     $('#account_id').empty().append('<option value=""></option>');
@@ -386,7 +404,7 @@
             });
         }
 
-        $('#parent_code').change(function (){
+        $('#parent_code').on('change select2:select', function (){
             loadAccounts(this.value);
         });   
 
@@ -396,47 +414,28 @@
             event.preventDefault();
             $.ajax({
                 type:'get',
-                url:'getCatch' + '/' + id,
+                url: getCatchUrl.replace('CATCH_ID', id),
                 dataType: 'json',
 
                 success:function(response){
                     console.log(response.payment_type);
                     if(response){
-                        let href = $(this).attr('data-attr');
-                        $.ajax({
-                            url: href,
-                            beforeSend: function() {
-                                $('#loader').show();
-                            },
-                            // return the result
-                            success: function(result) {
-                                $('#createModal').modal("show");
-                                $(".modal-body #date").val(response.date );
-                                $(".modal-body #notes").val(response.notes);
-                                $(".modal-body #docNumber").val(response.docNumber); 
-                                $(".modal-body #id").val( response.id );
-                                $(".modal-body #parent_code").val(response.parent_code).trigger('change');
-                                loadAccounts(response.parent_code, response.to_account);
-                                $(".modal-body #amount").val(response.amount); 
-                                $(".modal-body #payment_type").val(response.payment_type); 
-                                $(".modal-body #date").attr('readOnly' , true);
-                                $(".modal-body #amount").attr('readOnly' , true); 
-                                $(".modal-body #notes").attr('disabled' , true); 
-                                $(".modal-body #payment_type").attr('disabled' , true); 
-                                $(".modal-body #submitBtn").hide();
-                                $(".modal-body #printtBtn").show();
-
-                            },
-                            complete: function() {
-                                $('#loader').hide();
-                            },
-                            error: function(jqXHR, testStatus, error) {
-                                console.log(error);
-                                alert("Page " + href + " cannot open. Error:" + error);
-                                $('#loader').hide();
-                            },
-                            timeout: 8000
-                        })
+                        $('#createModal').modal("show");
+                        $(".modal-body #date").val(response.date );
+                        $(".modal-body #notes").val(response.notes);
+                        $(".modal-body #docNumber").val(response.docNumber); 
+                        $(".modal-body #id").val( response.id );
+                        const selectedType = response.account_type ?? response.parent_code;
+                        $(".modal-body #parent_code").val(selectedType).trigger('change');
+                        loadAccounts(selectedType, response.to_account);
+                        $(".modal-body #amount").val(response.amount); 
+                        $(".modal-body #payment_type").val(response.payment_type); 
+                        $(".modal-body #date").attr('readOnly' , true);
+                        $(".modal-body #amount").attr('readOnly' , true); 
+                        $(".modal-body #notes").attr('disabled' , true); 
+                        $(".modal-body #payment_type").attr('disabled' , true); 
+                        $(".modal-body #submitBtn").hide();
+                        $(".modal-body #printtBtn").show();
                     } 
                 }
             });

@@ -51,7 +51,11 @@ class AccountsTreeController extends Controller
      */
     public function create()
     {
-        $accounts = AccountsTree::all();
+        $accounts = AccountsTree::query()
+            ->when(\Schema::hasColumn('accounts_trees', 'is_active'), function ($q) {
+                $q->where('is_active', 1);
+            })
+            ->get();
         return view('admin.accounts.create',compact('accounts'));
     }
 
@@ -74,8 +78,19 @@ class AccountsTreeController extends Controller
 
         $parentId = $request->parent_id;
         $parentCode = '';
+        $parentLevel = 0;
+        $parentList = $request->list;
+        $parentDepartment = $request->department;
+        $parentSide = $request->side;
         if($parentId > 0){
-            $parentCode = AccountsTree::find($parentId)->code;
+            $parent = AccountsTree::find($parentId);
+            if ($parent) {
+                $parentCode = $parent->code;
+                $parentLevel = $parent->level;
+                $parentList = $parent->list;
+                $parentDepartment = $parent->department;
+                $parentSide = $parent->side;
+            }
         }
 
         AccountsTree::create([
@@ -84,10 +99,11 @@ class AccountsTreeController extends Controller
             'type' => $request->type,
             'parent_id' => $parentId,
             'parent_code' => $parentCode,
-            'level' => $request->level,
-            'list' => $request->list,
-            'department' => $request->department,
-            'side' => $request->side
+            'level' => $parentId > 0 ? $parentLevel + 1 : $request->level,
+            'list' => $parentList,
+            'department' => $parentDepartment,
+            'side' => $parentSide,
+            'is_active' => $request->input('is_active', 1),
         ]);
 
         return redirect()->route('accounts_list');
@@ -113,7 +129,11 @@ class AccountsTreeController extends Controller
      */
     public function edit($id)
     {
-        $accounts = AccountsTree::all();
+        $accounts = AccountsTree::query()
+            ->when(\Schema::hasColumn('accounts_trees', 'is_active'), function ($q) {
+                $q->where('is_active', 1);
+            })
+            ->get();
         $account = AccountsTree::find($id); 
 
         return view('admin.accounts.update',compact('accounts','account'));
@@ -141,8 +161,19 @@ class AccountsTreeController extends Controller
 
         $parentId = $request->parent_id;
         $parentCode = '';
+        $parentLevel = 0;
+        $parentList = $request->list;
+        $parentDepartment = $request->department;
+        $parentSide = $request->side;
         if($parentId > 0){
-            $parentCode = AccountsTree::find($parentId)->code;
+            $parent = AccountsTree::find($parentId);
+            if ($parent) {
+                $parentCode = $parent->code;
+                $parentLevel = $parent->level;
+                $parentList = $parent->list;
+                $parentDepartment = $parent->department;
+                $parentSide = $parent->side;
+            }
         } 
 
         $account->update([
@@ -151,10 +182,11 @@ class AccountsTreeController extends Controller
           'type' => $request->type,
           'parent_id' => $parentId,
           'parent_code' => $parentCode,
-          'level' => $request->level,
-          'list' => $request->list,
-          'department' => $request->department,
-          'side' => $request->side
+          'level' => $parentId > 0 ? $parentLevel + 1 : $request->level,
+          'list' => $parentList,
+          'department' => $parentDepartment,
+          'side' => $parentSide,
+          'is_active' => $request->input('is_active', $account->is_active ?? 1),
         ]);
 
         return redirect()->route('accounts_list');
@@ -253,6 +285,9 @@ class AccountsTreeController extends Controller
         }else{
             $product = AccountsTree::where('code' , 'like' , '%'.$code.'%')
                 ->orWhere('name','like' , '%'.$code.'%')
+                ->when(\Schema::hasColumn('accounts_trees', 'is_active'), function ($q) {
+                    $q->where('is_active', 1);
+                })
                 ->limit(5)
                 -> get();
             echo json_encode ($product);
@@ -263,8 +298,13 @@ class AccountsTreeController extends Controller
 
     private function getSingleAccount($code){
 
-        return AccountsTree::where('code' , '=' , $code)
-            ->orWhere('name','=' , $code)
+        return AccountsTree::where(function ($query) use ($code) {
+                $query->where('code', '=', $code)
+                    ->orWhere('name', '=', $code);
+            })
+            ->when(\Schema::hasColumn('accounts_trees', 'is_active'), function ($q) {
+                $q->where('is_active', 1);
+            })
             ->first();
     }
     

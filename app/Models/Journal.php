@@ -10,6 +10,15 @@ class Journal extends Model
 {
     use HasFactory, BelongsToSubscriber;
 
-    protected $fillable = ['baseon_text'];
+    protected $fillable = [
+        'branch_id',
+        'date',
+        'basedon_no',
+        'basedon_id',
+        'baseon_text',
+        'total_credit',
+        'total_debit',
+        'notes',
+    ];
 
 }

@@ -31,6 +31,7 @@ use Database\Factories\JournalFactory;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Log;
 
 class SystemController extends Controller
 {
@@ -280,13 +281,9 @@ class SystemController extends Controller
         //credit for details
         //حساب الصندوق - الخصم
         if($saleInvoice->discount > 0){
-            $detailsData[] = [
-                'account_id' => $settings->sales_discount_account,
-                'debit' => $saleInvoice->discount,
-                'credit' => 0, 
-                'ledger_id' => 0,
-                'notes' => ''
-            ];
+            if (!$this->pushDetail($detailsData, $settings->sales_discount_account, $saleInvoice->discount, 0, 0, '')) {
+                return;
+            }
         }
 
         if($saleInvoice->net > 0){
@@ -294,84 +291,55 @@ class SystemController extends Controller
             $remain = $saleInvoice->net;
 
             if($remain > 0){
-                $customerAccount = $this->getClientById($saleInvoice->customer_id)->account_id;
-                $detailsData[] = [
-                    'account_id' => $customerAccount,
-                    'debit' => $remain,
-                    'credit' => 0, 
-                    'ledger_id' => $saleInvoice->customer_id,
-                    'notes' => ''
-                ];
+                $customerAccount = $this->getCompanyAccountId($saleInvoice->customer_id);
+                if (!$customerAccount) {
+                    return;
+                }
+                if (!$this->pushDetail($detailsData, $customerAccount, $remain, 0, $saleInvoice->customer_id, '')) {
+                    return;
+                }
             }
         }
         //debit for details
         //الضريبة - المبيعات
         if($saleInvoice->total > 0){
-            $detailsData[] = [
-                'account_id' => $settings->sales_account,
-                'debit' => 0,
-                'credit' => $saleInvoice->total,
-                'ledger_id' => 0,
-                'notes' => ''
-            ];
+            if (!$this->pushDetail($detailsData, $settings->sales_account, 0, $saleInvoice->total, 0, '')) {
+                return;
+            }
         }
 
         if($saleInvoice->tax > 0){
-            $detailsData[] = [
-                'account_id' => $settings->sales_tax_account,
-                'debit' => 0,
-                'credit' => $saleInvoice->tax,
-                'ledger_id' => 0,
-                'notes' => ''
-            ];
+            if (!$this->pushDetail($detailsData, $settings->sales_tax_account, 0, $saleInvoice->tax, 0, '')) {
+                return;
+            }
         }
 
         if($saleInvoice->tax_excise > 0){
-            $detailsData[] = [
-                'account_id' => $settings->sales_tax_excise_account,
-                'debit' => 0,
-                'credit' => $saleInvoice->tax_excise,
-                'ledger_id' => 0,
-                'notes' => ''
-            ];
+            if (!$this->pushDetail($detailsData, $settings->sales_tax_excise_account, 0, $saleInvoice->tax_excise, 0, '')) {
+                return;
+            }
         }
 
         if($saleInvoice->total > 0 && $settings->profit_account > 0 && $settings->cost_account > 0){
 
             // هيدخل هنا في التكلفة وفي الارباح
-            $detailsData[] = [
-                'account_id' => $settings->profit_account,
-                'debit' => $saleInvoice->profit,
-                'credit' => 0, 
-                'ledger_id' => 0,
-                'notes' => ''
-            ];
-
-            if($settings->reverse_profit_account > 0){
-                $detailsData[] = [
-                    'account_id' => $settings->reverse_profit_account,
-                    'debit' => 0,
-                    'credit' => $saleInvoice->profit,
-                    'ledger_id' => 0,
-                    'notes' => ''
-                ];
+            if (!$this->pushDetail($detailsData, $settings->profit_account, $saleInvoice->profit, 0, 0, '')) {
+                return;
             }
 
-            $detailsData[] = [
-                'account_id' => $settings->cost_account,
-                'debit' => $saleInvoice->total - $saleInvoice->profit,
-                'credit' => 0, 
-                'ledger_id' => 0,
-                'notes' => ''
-            ];
+            if($settings->reverse_profit_account > 0){
+                if (!$this->pushDetail($detailsData, $settings->reverse_profit_account, 0, $saleInvoice->profit, 0, '')) {
+                    return;
+                }
+            }
 
-            $detailsData[] = [
-                'account_id' => $settings->stock_account,
-                'debit' => 0,
-                'credit' => $saleInvoice->total - $saleInvoice->profit,
-                'ledger_id' => 0,
-                'notes' => ''
-            ];
+            if (!$this->pushDetail($detailsData, $settings->cost_account, $saleInvoice->total - $saleInvoice->profit, 0, 0, '')) {
+                return;
+            }
+
+            if (!$this->pushDetail($detailsData, $settings->stock_account, 0, $saleInvoice->total - $saleInvoice->profit, 0, '')) {
+                return;
+            }
 
         }
 
@@ -404,94 +372,61 @@ class SystemController extends Controller
         //credit for details
         //حساب الصندوق - الخصم
         if($saleInvoice->discount <> 0){
-            $detailsData[] = [
-                'account_id' => $settings->sales_discount_account,
-                'debit' => 0,
-                'credit' => $saleInvoice->discount*-1,
-                'ledger_id' => 0,
-                'notes' => ''
-            ];
+            if (!$this->pushDetail($detailsData, $settings->sales_discount_account, 0, $saleInvoice->discount * -1, 0, '')) {
+                return;
+            }
         }
 
         if($saleInvoice->net <> 0){
 
-            $customerAccount = $this->getClientById($saleInvoice->customer_id)->account_id;
-            $detailsData[] = [
-                'account_id' => $customerAccount,
-                'debit' => 0,
-                'credit' => $saleInvoice->net * -1,
-                'ledger_id' => $saleInvoice->customer_id,
-                'notes' => ''
-            ]; 
+            $customerAccount = $this->getCompanyAccountId($saleInvoice->customer_id);
+            if (!$customerAccount) {
+                return;
+            }
+            if (!$this->pushDetail($detailsData, $customerAccount, 0, $saleInvoice->net * -1, $saleInvoice->customer_id, '')) {
+                return;
+            }
         }
         //debit for details
         //الضريبة - المبيعات
         if($saleInvoice->total <>0){
-            $detailsData[] = [
-                'account_id' => $settings->return_sales_account,
-                'debit' => $saleInvoice->total*-1,
-                'credit' => 0, 
-                'ledger_id' => 0,
-                'notes' => ''
-            ];
+            if (!$this->pushDetail($detailsData, $settings->return_sales_account, $saleInvoice->total * -1, 0, 0, '')) {
+                return;
+            }
         }
 
         if($saleInvoice->tax <>0){
-            $detailsData[] = [
-                'account_id' => $settings->sales_tax_account,
-                'debit' => $saleInvoice->tax*-1,
-                'credit' => 0, 
-                'ledger_id' => 0,
-                'notes' => ''
-            ];
+            if (!$this->pushDetail($detailsData, $settings->sales_tax_account, $saleInvoice->tax * -1, 0, 0, '')) {
+                return;
+            }
         }
 
         if($saleInvoice->tax_excise <> 0){
-            $detailsData[] = [
-                'account_id' => $settings->sales_tax_excise_account,
-                'debit' => $saleInvoice->tax_excise*-1,
-                'credit' => 0,
-                'ledger_id' => 0,
-                'notes' => ''
-            ];
+            if (!$this->pushDetail($detailsData, $settings->sales_tax_excise_account, $saleInvoice->tax_excise * -1, 0, 0, '')) {
+                return;
+            }
         }
 
         if($saleInvoice->total <> 0 && $settings->profit_account > 0 && $settings->cost_account > 0){
 
             // هيدخل هنا في التكلفة وفي الارباح
-            $detailsData[] = [
-                'account_id' => $settings->profit_account, 
-                'debit' => 0,
-                'credit' => $saleInvoice->profit * -1,
-                'ledger_id' => 0,
-                'notes' => ''
-            ];
-        
-            if($settings->reverse_profit_account > 0){
-                $detailsData[] = [ 
-                    'account_id' => $settings->reverse_profit_account,
-                    'debit' => $saleInvoice->profit * -1,
-                    'credit' => 0, 
-                    'ledger_id' => 0,
-                    'notes' => ''
-                ];
+            if (!$this->pushDetail($detailsData, $settings->profit_account, 0, $saleInvoice->profit * -1, 0, '')) {
+                return;
             }
         
-            $detailsData[] = [ 
-                'account_id' => $settings->cost_account,
-                'debit' => 0,
-                'credit' => ($saleInvoice->total - $saleInvoice->profit)*-1,
-                'ledger_id' => 0,
-                'notes' => ''
-            ];
+            if($settings->reverse_profit_account > 0){
+                if (!$this->pushDetail($detailsData, $settings->reverse_profit_account, $saleInvoice->profit * -1, 0, 0, '')) {
+                    return;
+                }
+            }
         
-            $detailsData[] = [ 
-                'account_id' => $settings->stock_account,
-                'debit' => ($saleInvoice->total - $saleInvoice->profit) *-1,
-                'credit' => 0, 
-                'ledger_id' => 0,
-                'notes' => ''
-            ];
+            if (!$this->pushDetail($detailsData, $settings->cost_account, 0, ($saleInvoice->total - $saleInvoice->profit) * -1, 0, '')) {
+                return;
+            }
+        
+            if (!$this->pushDetail($detailsData, $settings->stock_account, ($saleInvoice->total - $saleInvoice->profit) * -1, 0, 0, '')) {
+                return;
+            }
      
         }
 
@@ -528,65 +463,44 @@ class SystemController extends Controller
         //credit for details
         //حساب الصندوق - الخصم
         if($purchaseInvoice->discount > 0){
-            $detailsData[] = [
-                'account_id' => $settings->purchase_discount_account,
-                'debit' => 0,
-                'credit' => $purchaseInvoice->discount,
-                'ledger_id' => 0,
-                'notes' => ''
-            ];
+            if (!$this->pushDetail($detailsData, $settings->purchase_discount_account, 0, $purchaseInvoice->discount, 0, '')) {
+                return;
+            }
         }
 
         ////log_message('error','F6 :'.$id);
 
         if($purchaseInvoice->net > 0){
-            $customerAccount = $this->getClientById($purchaseInvoice->customer_id)->account_id;;
-            $detailsData[] = [
-                'account_id' => $customerAccount,
-                'debit' => 0,
-                'credit' => $purchaseInvoice->net,
-                'ledger_id' => $purchaseInvoice->customer_id,
-                'notes' => ''
-            ];
+            $customerAccount = $this->getCompanyAccountId($purchaseInvoice->customer_id);
+            if (!$customerAccount) {
+                return;
+            }
+            if (!$this->pushDetail($detailsData, $customerAccount, 0, $purchaseInvoice->net, $purchaseInvoice->customer_id, '')) {
+                return;
+            }
         }
 
         ////log_message('error','F7 :'.$id);
         //debit for details  
         if($purchaseInvoice->total > 0){
-            $detailsData[] = [
-                'account_id' => $settings->purchase_account,
-                'debit' => $purchaseInvoice->total,
-                'credit' => 0, 
-                'ledger_id' => 0,
-                'notes' => ''
-            ];
+            if (!$this->pushDetail($detailsData, $settings->purchase_account, $purchaseInvoice->total, 0, 0, '')) {
+                return;
+            }
             
-            $detailsData[] = [
-                'account_id' => $settings->stock_account,
-                'debit' => $purchaseInvoice->total,
-                'credit' => 0, 
-                'ledger_id' => 0,
-                'notes' => ''
-            ];
+            if (!$this->pushDetail($detailsData, $settings->stock_account, $purchaseInvoice->total, 0, 0, '')) {
+                return;
+            }
             
-            $detailsData[] = [
-                'account_id' => $settings->cost_account,
-                'debit' => 0,
-                'credit' => $purchaseInvoice->total,
-                'ledger_id' => 0,
-                'notes' => ''
-            ];
+            if (!$this->pushDetail($detailsData, $settings->cost_account, 0, $purchaseInvoice->total, 0, '')) {
+                return;
+            }
              
         }
 
         if($purchaseInvoice->tax > 0){
-            $detailsData[] = [
-                'account_id' => $settings->purchase_tax_account,
-                'debit' => $purchaseInvoice->tax,
-                'credit' => 0, 
-                'ledger_id' => 0,
-                'notes' => ''
-            ];
+            if (!$this->pushDetail($detailsData, $settings->purchase_tax_account, $purchaseInvoice->tax, 0, 0, '')) {
+                return;
+            }
         }
 
         $this->insertJournal($headerData,$detailsData);
@@ -619,60 +533,39 @@ class SystemController extends Controller
         //credit for details
         //حساب الصندوق - الخصم
         if($purchaseInvoice->order_discount < 0){
-            $detailsData[] = [
-                'account_id' => $settings->purchase_discount_account,
-                'debit' => 0,
-                'credit' => $purchaseInvoice->order_discount*-1,
-                'ledger_id' => 0,
-                'notes' => ''
-            ];
+            if (!$this->pushDetail($detailsData, $settings->purchase_discount_account, 0, $purchaseInvoice->order_discount * -1, 0, '')) {
+                return;
+            }
         }
 
         if($purchaseInvoice->net < 0){ 
-                $customerAccount = $this->getClientById($purchaseInvoice->customer_id)->account_id;
-                $detailsData[] = [
-                    'account_id' => $customerAccount,
-                    'debit' => $purchaseInvoice->net *-1,
-                    'credit' => 0, 
-                    'ledger_id' => $purchaseInvoice->customer_id,
-                    'notes' => ''
-                ];
+                $customerAccount = $this->getCompanyAccountId($purchaseInvoice->customer_id);
+                if (!$customerAccount) {
+                    return;
+                }
+                if (!$this->pushDetail($detailsData, $customerAccount, $purchaseInvoice->net * -1, 0, $purchaseInvoice->customer_id, '')) {
+                    return;
+                }
         }
         //debit for details 
         if($purchaseInvoice->total < 0){
-            $detailsData[] = [
-                'account_id' => $settings->return_purchase_account,
-                'debit' => 0,
-                'credit' => $purchaseInvoice->total*-1,
-                'ledger_id' => 0,
-                'notes' => ''
-            ];
+            if (!$this->pushDetail($detailsData, $settings->return_purchase_account, 0, $purchaseInvoice->total * -1, 0, '')) {
+                return;
+            }
 
-            $detailsData[] = [
-                'account_id' => $settings->stock_account,
-                'debit' => 0,
-                'credit' => $purchaseInvoice->total*-1,
-                'ledger_id' => 0,
-                'notes' => ''
-            ];
+            if (!$this->pushDetail($detailsData, $settings->stock_account, 0, $purchaseInvoice->total * -1, 0, '')) {
+                return;
+            }
 
-            $detailsData[] = [
-                'account_id' => $settings->cost_account,
-                'debit' => $purchaseInvoice->total*-1,
-                'credit' => 0,  
-                'ledger_id' => 0,
-                'notes' => ''
-            ];
+            if (!$this->pushDetail($detailsData, $settings->cost_account, $purchaseInvoice->total * -1, 0, 0, '')) {
+                return;
+            }
         }
 
         if($purchaseInvoice->tax < 0){
-            $detailsData[] = [
-                'account_id' => $settings->purchase_tax_account,
-                'debit' => 0,
-                'credit' => $purchaseInvoice->tax*-1,
-                'ledger_id' => 0,
-                'notes' => ''
-            ];
+            if (!$this->pushDetail($detailsData, $settings->purchase_tax_account, 0, $purchaseInvoice->tax * -1, 0, '')) {
+                return;
+            }
         }
 
         $this->insertJournal($headerData,$detailsData);
@@ -706,24 +599,19 @@ class SystemController extends Controller
             ];
 
             $detailsData = []; 
-            $customerAccount = Company::find($bill->company_id)->account_id;
+            $customerAccount = $this->getCompanyAccountId($bill->company_id);
+            if (!$customerAccount) {
+                return;
+            }
              
             //حساب العميل  نقدا - الي حساب الصندوق نقدا
-            $detailsData[] = [
-                'account_id' => $accountId,
-                'debit' => $bill -> amount ,
-                'credit' => 0,
-                'ledger_id' => 0,
-                'notes' => ''
-            ];
+            if (!$this->pushDetail($detailsData, $accountId, $bill->amount, 0, 0, '')) {
+                return;
+            }
 
-            $detailsData[] = [
-                'account_id' => $customerAccount,
-                'debit' => 0,
-                'credit' => $bill -> amount,
-                'ledger_id' => 0,
-                'notes' => ''
-            ];
+            if (!$this->pushDetail($detailsData, $customerAccount, 0, $bill->amount, $bill->company_id, '')) {
+                return;
+            }
 
             $this->insertJournal($headerData, $detailsData);
         }
@@ -759,24 +647,19 @@ class SystemController extends Controller
             ];
 
             $detailsData = []; 
-            $customerAccount = Company::find($bill->company_id)->account_id;
+            $customerAccount = $this->getCompanyAccountId($bill->company_id);
+            if (!$customerAccount) {
+                return;
+            }
              
             //من حساب الصندوق او البنك - الى حساب المورد 
-            $detailsData[] = [
-                'account_id' => $customerAccount,
-                'debit' => $bill -> amount,
-                'credit' => 0,
-                'ledger_id' => 0,
-                'notes' => ''
-            ];
+            if (!$this->pushDetail($detailsData, $customerAccount, $bill->amount, 0, $bill->company_id, '')) {
+                return;
+            }
 
-            $detailsData[] = [
-                'account_id' => $accountId,
-                'debit' => 0,
-                'credit' => $bill -> amount,
-                'ledger_id' => 0,
-                'notes' => ''
-            ];
+            if (!$this->pushDetail($detailsData, $accountId, 0, $bill->amount, 0, '')) {
+                return;
+            }
 
             $this->insertJournal($headerData, $detailsData);
         }
@@ -803,34 +686,25 @@ class SystemController extends Controller
 
             $detailsData = [];
 
-            $from_account = AccountsTree::find($bill->from_account)->id;
-            $to_account = AccountsTree::find($bill->to_account)->id;
+            $from_account = $this->resolveAccountId($bill->from_account);
+            $to_account = $this->resolveAccountId($bill->to_account);
+            if (!$from_account || !$to_account) {
+                return;
+            }
             $taxAccount = $settings->purchase_tax_account ?? $settings->sales_tax_account ?? null;
             $taxAmount = $bill->tax_amount ?? 0;
             $totalOut = $bill->amount + $taxAmount;
 
-            $detailsData[] = [
-                'account_id' => $from_account,
-                'debit' =>  0,
-                'credit' => $totalOut,
-                'ledger_id' => 0,
-                'notes' => ''
-            ];
-            $detailsData[] = [
-                'account_id' => $to_account,
-                'debit' => $bill -> amount,
-                'credit' => 0,
-                'ledger_id' => 0,
-                'notes' => ''
-            ];
+            if (!$this->pushDetail($detailsData, $from_account, 0, $totalOut, 0, '')) {
+                return;
+            }
+            if (!$this->pushDetail($detailsData, $to_account, $bill->amount, 0, 0, '')) {
+                return;
+            }
             if($taxAccount && $taxAmount > 0){
-                $detailsData[] = [
-                    'account_id' => $taxAccount,
-                    'debit' => $taxAmount,
-                    'credit' => 0,
-                    'ledger_id' => 0,
-                    'notes' => 'ضريبة مصروف'
-                ];
+                if (!$this->pushDetail($detailsData, $taxAccount, $taxAmount, 0, 0, 'ضريبة مصروف')) {
+                    return;
+                }
             }
             $this->insertJournal($headerData, $detailsData);
 
@@ -858,23 +732,18 @@ class SystemController extends Controller
 
             $detailsData = [];
 
-            $from_account = AccountsTree::find($bill->from_account)->id;
-            $to_account = AccountsTree::find($bill->to_account)->id;
+            $from_account = $this->resolveAccountId($bill->from_account);
+            $to_account = $this->resolveAccountId($bill->to_account);
+            if (!$from_account || !$to_account) {
+                return;
+            }
 
-            $detailsData[] = [
-                'account_id' => $from_account,
-                'credit' =>  0,
-                'debit' => $bill -> amount,
-                'ledger_id' => 0,
-                'notes' => ''
-            ];
-            $detailsData[] = [
-                'account_id' => $to_account,
-                'credit' => $bill -> amount,
-                'debit' => 0,
-                'ledger_id' => 0,
-                'notes' => ''
-            ];
+            if (!$this->pushDetail($detailsData, $from_account, $bill->amount, 0, 0, '')) {
+                return;
+            }
+            if (!$this->pushDetail($detailsData, $to_account, 0, $bill->amount, 0, '')) {
+                return;
+            }
             $this->insertJournal($headerData, $detailsData);
 
         }
@@ -899,38 +768,55 @@ class SystemController extends Controller
     }
 
     public function insertJournal($header,$details,$manual = 0){
+        $header = $this->normalizeJournalHeader($header, $details);
+        if (!$header) {
+            return false;
+        }
 
-        if($id = $this->getJournal($header)){
-            dd($id);
-            $journal = Journal::find($id);
-            $journal->update($header);
+        $details = $this->normalizeJournalDetails($details);
+        if (empty($details)) {
+            return false;
+        }
 
-            $oldDetails = $this->getOldDetails($id);
-            ////log_message('error',$id);
-            foreach($oldDetails as $oldDetail){
-                $this->updateAccountBalance($oldDetail->account_id,-1*$oldDetail->credit,-1*$oldDetail->debit,$header['date'],$id);
-            }
+        $totals = $this->calculateJournalTotals($details);
+        if (!$totals) {
+            return false;
+        }
+        $header['total_debit'] = $totals['total_debit'];
+        $header['total_credit'] = $totals['total_credit'];
 
-            DB::table('journal_details')
-                ->where('journal_id' ,$id)
-                ->delete();
+        return DB::transaction(function () use ($header, $details, $manual) {
+            if($id = $this->getJournal($header)){
+                $journal = Journal::find($id);
+                if ($journal) {
+                    $journal->update($header);
+                }
 
-            DB::table('account_movements')
-                ->where('journal_id' ,$id)
-                ->delete();
-
-
-            foreach($details as $detail){
-                $detail['journal_id'] = $id;
+                $oldDetails = $this->getOldDetails($id);
+                foreach($oldDetails as $oldDetail){
+                    $this->updateAccountBalance($oldDetail->account_id,-1*$oldDetail->credit,-1*$oldDetail->debit,$header['date'],$id);
+                }
 
                 DB::table('journal_details')
-                    ->insert($detail);
+                    ->where('journal_id' ,$id)
+                    ->delete();
 
-                $this->updateAccountBalance($detail['account_id'],$detail['credit'],$detail['debit'],$header['date'],$id);
+                DB::table('account_movements')
+                    ->where('journal_id' ,$id)
+                    ->delete();
+
+                foreach($details as $detail){
+                    $detail['journal_id'] = $id;
+
+                    DB::table('journal_details')
+                        ->insert($detail);
+
+                    $this->updateAccountBalance($detail['account_id'],$detail['credit'],$detail['debit'],$header['date'],$id);
+                }
+
+                return true;
             }
 
-            return true;
-        }else{
             $journal_id = DB::table('journals')
                 ->insertGetId($header);
             if ($journal_id) {
@@ -950,10 +836,7 @@ class SystemController extends Controller
                 }
             }
             return true;
-        }
-
-        return false;
-
+        });
     }
 
 
@@ -987,7 +870,142 @@ class SystemController extends Controller
             $id = 0;
         }
 
-        return AccountsTree::find($id);
+        return $this->accountQueryForSubscriber()->where('id', $id)->first();
+    }
+
+    private function resolveAccountId($accountId): ?int
+    {
+        if (!$accountId) {
+            return null;
+        }
+
+        $query = $this->accountQueryForSubscriber()->where('id', $accountId);
+        if (Schema::hasColumn('accounts_trees', 'is_active')) {
+            $query->where('is_active', 1);
+        }
+
+        $account = $query->first();
+        return $account ? $account->id : null;
+    }
+
+    private function accountQueryForSubscriber()
+    {
+        $subscriberId = Auth::user()?->subscriber_id;
+
+        return AccountsTree::withoutGlobalScope('subscriber')
+            ->when($subscriberId !== null, function ($q) use ($subscriberId) {
+                $q->where(function ($query) use ($subscriberId) {
+                    $query->whereNull('subscriber_id')
+                        ->orWhere('subscriber_id', 0)
+                        ->orWhere('subscriber_id', $subscriberId);
+                });
+            });
+    }
+
+    private function getCompanyAccountId($companyId): ?int
+    {
+        if (!$companyId) {
+            return null;
+        }
+
+        $company = Company::find($companyId);
+        if (!$company) {
+            return null;
+        }
+
+        $account = $company->ensureAccount();
+        return $account?->id;
+    }
+
+    private function pushDetail(array &$details, $accountId, $debit, $credit, $ledgerId = 0, $notes = ''): bool
+    {
+        $resolvedAccount = $this->resolveAccountId($accountId);
+        if (!$resolvedAccount) {
+            Log::warning('Accounting detail skipped: invalid account', [
+                'account_id' => $accountId,
+            ]);
+            return false;
+        }
+
+        $debit = (float) $debit;
+        $credit = (float) $credit;
+        if ($debit == 0.0 && $credit == 0.0) {
+            return true;
+        }
+
+        $details[] = [
+            'account_id' => $resolvedAccount,
+            'debit' => $debit,
+            'credit' => $credit,
+            'ledger_id' => $ledgerId ?? 0,
+            'notes' => $notes ?? '',
+        ];
+
+        return true;
+    }
+
+    private function normalizeJournalDetails(array $details): array
+    {
+        $normalized = [];
+        foreach ($details as $detail) {
+            $accountId = $this->resolveAccountId($detail['account_id'] ?? null);
+            if (!$accountId) {
+                Log::warning('Accounting detail dropped: missing account', ['detail' => $detail]);
+                continue;
+            }
+
+            $debit = (float) ($detail['debit'] ?? 0);
+            $credit = (float) ($detail['credit'] ?? 0);
+            if ($debit == 0.0 && $credit == 0.0) {
+                continue;
+            }
+
+            $normalized[] = [
+                'account_id' => $accountId,
+                'debit' => $debit,
+                'credit' => $credit,
+                'ledger_id' => $detail['ledger_id'] ?? 0,
+                'notes' => $detail['notes'] ?? '',
+            ];
+        }
+
+        return $normalized;
+    }
+
+    private function calculateJournalTotals(array $details): ?array
+    {
+        $totalDebit = 0;
+        $totalCredit = 0;
+        foreach ($details as $detail) {
+            $totalDebit += (float) ($detail['debit'] ?? 0);
+            $totalCredit += (float) ($detail['credit'] ?? 0);
+        }
+
+        if (abs($totalDebit - $totalCredit) > 0.0001) {
+            Log::warning('Unbalanced journal detected', [
+                'total_debit' => $totalDebit,
+                'total_credit' => $totalCredit,
+            ]);
+            return null;
+        }
+
+        return [
+            'total_debit' => $totalDebit,
+            'total_credit' => $totalCredit,
+        ];
+    }
+
+    private function normalizeJournalHeader(array $header, array $details): ?array
+    {
+        if (!isset($header['branch_id'])) {
+            $header['branch_id'] = Auth::user()?->branch_id ?? 0;
+        }
+
+        if (!isset($header['date'])) {
+            $header['date'] = date('Y-m-d');
+        }
+
+        return $header;
     }
 
     private function getJournalForDelete($data){

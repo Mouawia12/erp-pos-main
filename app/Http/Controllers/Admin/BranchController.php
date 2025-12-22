@@ -254,7 +254,8 @@ class BranchController extends Controller
                                 'level' => $account_tree -> level,
                                 'list' => $account_tree -> list,
                                 'department' => $account_tree -> department,
-                                'side' => $account_tree -> side 
+                                'side' => $account_tree -> side,
+                                'is_active' => 1,
                             ]);
         
                             if($account_setting_branch[$account_setting[$i]] == 0){
@@ -281,7 +282,8 @@ class BranchController extends Controller
                                     'level' => $sub_account -> level,
                                     'list' => $sub_account -> list,
                                     'department' => $sub_account -> department,
-                                    'side' => $sub_account -> side 
+                                    'side' => $sub_account -> side,
+                                    'is_active' => 1,
                                 ]);
             
                                 if($account_setting_branch[$account_setting[$i+$j]] == 0){
@@ -304,7 +306,8 @@ class BranchController extends Controller
                                 'level' => $account_tree -> level,
                                 'list' => $account_tree -> list,
                                 'department' => $account_tree -> department,
-                                'side' => $account_tree -> side 
+                                'side' => $account_tree -> side,
+                                'is_active' => 1,
                             ]);
                             
                             if($account_setting_branch[$account_setting[$i]] == 0){
@@ -344,7 +347,8 @@ class BranchController extends Controller
                     'level' => $account_tree -> level,
                     'list' => $account_tree -> list,
                     'department' => $account_tree -> department,
-                    'side' => $account_tree -> side,  
+                    'side' => $account_tree -> side,
+                    'is_active' => 1,
                 ]); 
             }
             $j = 1;
@@ -374,7 +378,8 @@ class BranchController extends Controller
                         'level' => $account_tree -> level,
                         'list' => $account_tree -> list,
                         'department' => $account_tree -> department,
-                        'side' => $account_tree -> side,  
+                        'side' => $account_tree -> side,
+                        'is_active' => 1,
                     ]);
                 } 
             }

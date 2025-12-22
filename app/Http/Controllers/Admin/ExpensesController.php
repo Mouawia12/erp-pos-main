@@ -36,17 +36,35 @@ class ExpensesController extends Controller
 
             if ($settings) {
                 $accountIds = array_filter([$settings->safe_account, $settings->bank_account]);
-                $faccounts = AccountsTree::whereIn('id', $accountIds)->get();
+                $faccounts = AccountsTree::whereIn('id', $accountIds)
+                    ->when(\Schema::hasColumn('accounts_trees', 'is_active'), function ($q) {
+                        $q->where('is_active', 1);
+                    })
+                    ->get();
             } else {
-                $faccounts = AccountsTree::where('parent_code',1101)->orWhere('parent_code',1102)->get();
+                $faccounts = AccountsTree::where('parent_code',1101)
+                    ->orWhere('parent_code',1102)
+                    ->when(\Schema::hasColumn('accounts_trees', 'is_active'), function ($q) {
+                        $q->where('is_active', 1);
+                    })
+                    ->get();
             }
         } else{
-            $faccounts = AccountsTree::where('parent_code',1101)->orWhere('parent_code',1102)->get();
+            $faccounts = AccountsTree::where('parent_code',1101)
+                ->orWhere('parent_code',1102)
+                ->when(\Schema::hasColumn('accounts_trees', 'is_active'), function ($q) {
+                    $q->where('is_active', 1);
+                })
+                ->get();
         }  
 
         $branches = Branch::where('status',1)->get();
        
-        $accounts = AccountsTree::all();  
+        $accounts = AccountsTree::query()
+            ->when(\Schema::hasColumn('accounts_trees', 'is_active'), function ($q) {
+                $q->where('is_active', 1);
+            })
+            ->get();  
 
         return view('admin.Expenses.index' , compact( 'bills','accounts','branches','faccounts'));
 

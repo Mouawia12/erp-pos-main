@@ -164,6 +164,15 @@
                                             @enderror
                                         </div>
                                     </div>
+                                    <div class="col-6">
+                                        <div class="form-group">
+                                            <label>{{ __('main.status') }}</label>
+                                            <select class="form-control" id="is_active" name="is_active">
+                                                <option value="1" @if(($account -> is_active ?? 1) == 1) selected @endif>{{__('main.status1')}}</option>
+                                                <option value="0" @if(($account -> is_active ?? 1) == 0) selected @endif>{{__('main.status2')}}</option>
+                                            </select>
+                                        </div>
+                                    </div>
                                 </div>
 
 

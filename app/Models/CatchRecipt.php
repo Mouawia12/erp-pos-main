@@ -20,7 +20,8 @@ class CatchRecipt extends Model
         'date',
         'docNumber',
         'payment_type',
-        'user_id'
+        'user_id',
+        'subscriber_id'
     ];
     
     public function branch(){

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AccountsTree;
 use App\Models\AccountMovement;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 class FinancialReportController extends Controller
 {
@@ -16,6 +17,9 @@ class FinancialReportController extends Controller
 
         $accounts = AccountsTree::select('accounts_trees.id','accounts_trees.code','accounts_trees.name')
             ->leftJoin('account_movements', 'account_movements.account_id','=','accounts_trees.id')
+            ->when(Schema::hasColumn('accounts_trees', 'is_active'), function ($q) {
+                $q->where('accounts_trees.is_active', 1);
+            })
             ->whereBetween('account_movements.date', [$start, $end])
             ->groupBy('accounts_trees.id','accounts_trees.code','accounts_trees.name')
             ->selectRaw('COALESCE(SUM(account_movements.debit),0) as debit')
@@ -32,7 +36,12 @@ class FinancialReportController extends Controller
         $end = $request->end_date ?? now()->toDateString();
         $accountId = $request->account_id;
 
-        $accounts = AccountsTree::orderBy('code')->get();
+        $accounts = AccountsTree::query()
+            ->when(Schema::hasColumn('accounts_trees', 'is_active'), function ($q) {
+                $q->where('accounts_trees.is_active', 1);
+            })
+            ->orderBy('code')
+            ->get();
 
         $movements = AccountMovement::with('account')
             ->when($accountId, fn($q,$v)=>$q->where('account_id',$v))
@@ -47,6 +56,9 @@ class FinancialReportController extends Controller
     {
         $accounts = AccountsTree::query()
             ->leftJoin('account_movements','account_movements.account_id','=','accounts_trees.id')
+            ->when(Schema::hasColumn('accounts_trees', 'is_active'), function ($q) {
+                $q->where('accounts_trees.is_active', 1);
+            })
             ->select('accounts_trees.*')
             ->selectRaw('COALESCE(SUM(account_movements.debit),0) as debit')
             ->selectRaw('COALESCE(SUM(account_movements.credit),0) as credit')

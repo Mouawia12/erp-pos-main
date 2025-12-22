@@ -20,22 +20,31 @@ class AccountSettingController extends Controller
     public function index()
     {
         $accounts = AccountSetting::all();
+        $subscriberId = auth()->user()?->subscriber_id;
         
         foreach ($accounts as $account){
-            $account->branch_name = Branch::find($account->branch_id)->branch_name;
-            $account->safe_account_name = AccountsTree::find($account->safe_account)->name;
-            $account->sales_account_name = AccountsTree::find($account->sales_account)->name;
-            $account->purchase_account_name = AccountsTree::find($account->purchase_account)->name;
-            $account->return_sales_account_name = AccountsTree::find($account->return_sales_account)->name;
-            $account->return_purchase_account_name = AccountsTree::find($account->return_purchase_account)->name;
-            $account->stock_account_name = AccountsTree::find($account->stock_account)->name;
-            $account->sales_discount_account_name = AccountsTree::find($account->sales_discount_account)->name;
-            $account->sales_tax_account_name = AccountsTree::find($account->sales_tax_account)->name;
-            $account->purchase_discount_account_name = AccountsTree::find($account->purchase_discount_account)->name;
-            $account->purchase_tax_account_name = AccountsTree::find($account->purchase_tax_account)->name;
-            $account->cost_account_name = AccountsTree::find($account->cost_account)->name;
-            $account->profit_account_name = AccountsTree::find($account->profit_account)->name;
-            $account->reverse_profit_account_name = AccountsTree::find($account->reverse_profit_account)->name;
+            $accountLookup = AccountsTree::withoutGlobalScope('subscriber')
+                ->when($subscriberId !== null, function ($q) use ($subscriberId) {
+                    $q->where(function ($query) use ($subscriberId) {
+                        $query->whereNull('subscriber_id')
+                            ->orWhere('subscriber_id', 0)
+                            ->orWhere('subscriber_id', $subscriberId);
+                    });
+                });
+            $account->branch_name = optional(Branch::find($account->branch_id))->branch_name;
+            $account->safe_account_name = optional((clone $accountLookup)->where('id', $account->safe_account)->first())->name;
+            $account->sales_account_name = optional((clone $accountLookup)->where('id', $account->sales_account)->first())->name;
+            $account->purchase_account_name = optional((clone $accountLookup)->where('id', $account->purchase_account)->first())->name;
+            $account->return_sales_account_name = optional((clone $accountLookup)->where('id', $account->return_sales_account)->first())->name;
+            $account->return_purchase_account_name = optional((clone $accountLookup)->where('id', $account->return_purchase_account)->first())->name;
+            $account->stock_account_name = optional((clone $accountLookup)->where('id', $account->stock_account)->first())->name;
+            $account->sales_discount_account_name = optional((clone $accountLookup)->where('id', $account->sales_discount_account)->first())->name;
+            $account->sales_tax_account_name = optional((clone $accountLookup)->where('id', $account->sales_tax_account)->first())->name;
+            $account->purchase_discount_account_name = optional((clone $accountLookup)->where('id', $account->purchase_discount_account)->first())->name;
+            $account->purchase_tax_account_name = optional((clone $accountLookup)->where('id', $account->purchase_tax_account)->first())->name;
+            $account->cost_account_name = optional((clone $accountLookup)->where('id', $account->cost_account)->first())->name;
+            $account->profit_account_name = optional((clone $accountLookup)->where('id', $account->profit_account)->first())->name;
+            $account->reverse_profit_account_name = optional((clone $accountLookup)->where('id', $account->reverse_profit_account)->first())->name;
         }
 
         return view('admin.accounts.settings',compact('accounts'));
@@ -48,7 +57,12 @@ class AccountSettingController extends Controller
      */
     public function create()
     {
-        $accounts = AccountsTree::query()->where('type','>',1)->get();
+        $accounts = AccountsTree::query()
+            ->where('type','>',1)
+            ->when(\Schema::hasColumn('accounts_trees', 'is_active'), function ($q) {
+                $q->where('is_active', 1);
+            })
+            ->get();
         $warehouses = Warehouse::all();
 
         return view('admin.accounts.create_settings',compact('accounts','warehouses'));

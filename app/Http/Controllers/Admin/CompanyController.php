@@ -46,10 +46,43 @@ class CompanyController extends Controller
             ->get();
 
         $parentCode = $type == 3 ? 1107 : 2101;
-        $accounts = AccountsTree::query()
-            ->where('parent_code', $parentCode)
-            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
-            ->get();
+        $accountsBaseQuery = AccountsTree::withoutGlobalScope('subscriber')
+            ->when($subscriberId !== null, function ($q) use ($subscriberId) {
+                $q->where(function ($query) use ($subscriberId) {
+                    $query->whereNull('subscriber_id')
+                        ->orWhere('subscriber_id', 0)
+                        ->orWhere('subscriber_id', $subscriberId);
+                });
+            })
+            ->when(Schema::hasColumn('accounts_trees', 'is_active'), function ($q) {
+                $q->where('is_active', 1);
+            });
+        $parentAccount = (clone $accountsBaseQuery)
+            ->where('code', $parentCode)
+            ->first();
+        if ($parentAccount) {
+            $descendantIds = collect();
+            $queue = collect([$parentAccount->id]);
+            while ($queue->isNotEmpty()) {
+                $batchIds = $queue->values();
+                $queue = collect();
+                $children = (clone $accountsBaseQuery)
+                    ->whereIn('parent_id', $batchIds)
+                    ->get(['id']);
+                $childIds = $children->pluck('id');
+                $descendantIds = $descendantIds->merge($childIds);
+                $queue = $queue->merge($childIds);
+            }
+            $accounts = (clone $accountsBaseQuery)
+                ->whereIn('id', $descendantIds->unique())
+                ->orderBy('name')
+                ->get();
+        } else {
+            $accounts = (clone $accountsBaseQuery)
+                ->where('parent_code', $parentCode)
+                ->orderBy('name')
+                ->get();
+        }
 
         $settingsQuery = SystemSettings::query();
         if ($subscriberId && Schema::hasColumn('system_settings', 'subscriber_id')) {
@@ -98,7 +131,7 @@ class CompanyController extends Controller
                 'default_discount' => ['nullable','numeric','min:0'],
                 'email' => ['nullable','email','max:191'],
                 'phone' => ['nullable','string','max:50'],
-                'account_id' => ['required','integer','exists:accounts_trees,id'],
+                'account_id' => ['nullable','integer','exists:accounts_trees,id'],
             ]);
             try {
                 $exists = Company::query()
@@ -140,53 +173,11 @@ class CompanyController extends Controller
                         'subscriber_id' => $subscriberId,
                     ]);
     
-                    $code = $this->get_account_code_no($company);
-    
-                    if($company->group_id == 4){
-                        
-                        $parentAccount = AccountsTree::where('code',2101)->first();
-                        if ($parentAccount && AccountsTree::where('parent_code', 2101)
-                            ->where('name', $company->company)
-                            ->doesntExist()) { 
-
-                            $id = AccountsTree::create([
-                                'code' => $code,
-                                'name' => $company->company,
-                                'type' => 2,
-                                'parent_id' => $parentAccount->id,
-                                'parent_code' => 2101,
-                                'level' => 4,
-                                'list' => 2,
-                                'department' => 1,
-                                'side' => 2,
-                            ])->id; 
-
-                            $company->account_id = $id;
-                            $company->save(); 
+                    if (!$company->account_id) {
+                        if (!$company->ensureAccount()) {
+                            return redirect()->route('clients' , $request -> type)
+                                ->with('error', __('main.account_settings') . ': ' . __('validation.required', ['attribute' => __('main.accounting')]));
                         }
-    
-                    }else if($company->group_id == 3){
-    
-                        $parentAccount = AccountsTree::where('code',1107)->first();
-                        if ($parentAccount && AccountsTree::where('parent_code', 1107)
-                            ->where('name', $company->company)
-                            ->doesntExist()) { 
-
-                            $id = AccountsTree::create([
-                                'code' => $code,
-                                'name' => $company->company,
-                                'type' => 2,
-                                'parent_id' => $parentAccount->id,
-                                'parent_code' => 1107,
-                                'level' => 4,
-                                'list' => 1,
-                                'department' => 1,
-                                'side' => 1,
-                            ])->id; 
-    
-                            $company->account_id = $id;
-                            $company->save(); 
-                        } 
                     }
                 } else {
                     return redirect()->route('clients' , $request -> type)
@@ -247,7 +238,7 @@ class CompanyController extends Controller
                 'name' => 'required',
                 'opening_balance' => 'required', 
                 'type' => 'required',
-                'account_id' => 'required'
+                'account_id' => 'nullable|integer|exists:accounts_trees,id'
             ]);
             try {
                 $company -> update([
@@ -274,13 +265,17 @@ class CompanyController extends Controller
                     'opening_balance' =>$request -> opening_balance? $request -> opening_balance: $company ->  opening_balance,
                     'credit_amount' =>$request -> has('credit_amount')? $request -> credit_amount: $company -> credit_amount ,
                     'stop_sale' =>$request -> has('stop_sale')? 1: $company -> stop_sale ,
-                    'account_id' => $request->account_id,
+                    'account_id' => $request->account_id ?? $company->account_id,
                     'parent_company_id' => $request->parent_company_id ?? $company->parent_company_id,
                     'price_level_id' => $request->price_level_id ?? $company->price_level_id,
                     'default_discount' => $request->default_discount ?? $company->default_discount,
                     'representative_id_' => $request->representative_id_ ?? $company->representative_id_,
 
                 ]);
+
+                if (!$company->account_id) {
+                    $company->ensureAccount();
+                }
 
                 if($company->vat_no > 1 && $company->account_id){
                     $account = AccountsTree::find($company->account_id);

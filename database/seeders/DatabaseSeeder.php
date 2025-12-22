@@ -22,6 +22,7 @@ use Database\Seeders\BrandsTableSeeder;
 use Database\Seeders\CurrenciesTableSeeder;
 use Database\Seeders\CustomerGroupsTableSeeder;
 use Database\Seeders\AccountsTreeTableSeeder;
+use Database\Seeders\AccountSettingsTableSeeder;
 use Database\Seeders\ExpensesTableSeeder;
 use Database\Seeders\PaymentsTableSeeder;
 use Database\Seeders\SalesTableSeeder;
@@ -29,6 +30,8 @@ use Database\Seeders\PurchasesTableSeeder;
 use Database\Seeders\SaleDetailsTableSeeder;
 use Database\Seeders\PurchaseDetailsTableSeeder;
 use Database\Seeders\MultiSubscriberDataSeeder;
+use Database\Seeders\CatchReciptsTableSeeder;
+use Database\Seeders\AccountingJournalsSeeder;
 
 class DatabaseSeeder extends Seeder
 {
@@ -94,17 +97,20 @@ class DatabaseSeeder extends Seeder
             BrandsTableSeeder::class,
             CategoriesTableSeeder::class,
             SystemSettingsTableSeeder::class,
+            AccountsTreeTableSeeder::class,
             CompaniesTableSeeder::class,
             ProductsTableSeeder::class,
-            AccountsTreeTableSeeder::class,
-            ExpensesTableSeeder::class,
-            PaymentsTableSeeder::class,
+            AccountSettingsTableSeeder::class,
             SalesTableSeeder::class,
             PurchasesTableSeeder::class,
             SaleDetailsTableSeeder::class,
             PurchaseDetailsTableSeeder::class,
+            PaymentsTableSeeder::class,
+            ExpensesTableSeeder::class,
+            CatchReciptsTableSeeder::class,
             MultiSubscriberDataSeeder::class,
             InvoiceTermTemplatesSeeder::class,
+            AccountingJournalsSeeder::class,
         ]);
     }
 }

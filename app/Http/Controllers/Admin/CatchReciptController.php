@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AccountsTree;
+use App\Models\AccountSetting;
 use App\Models\CatchRecipt;
 use App\Models\ExpenseType;
 use App\Models\Company;
@@ -14,7 +15,6 @@ use App\Models\Branch;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Alkoumi\LaravelArabicTafqeet\Tafqeet;
 use App\Models\CompanyInfo;
 
@@ -38,7 +38,21 @@ class CatchReciptController extends Controller
         }  
 
         $branches = Branch::where('status',1)->get();
-        $accounts = AccountsTree::where('parent_code',2101)->get();
+        $subscriberId = Auth::user()->subscriber_id ?? null;
+        $accounts = AccountsTree::withoutGlobalScope('subscriber')
+            ->where('type', 3)
+            ->when($subscriberId !== null, function ($q) use ($subscriberId) {
+                $q->where(function ($query) use ($subscriberId) {
+                    $query->whereNull('subscriber_id')
+                        ->orWhere('subscriber_id', 0)
+                        ->orWhere('subscriber_id', $subscriberId);
+                });
+            })
+            ->when(\Schema::hasColumn('accounts_trees', 'is_active'), function ($q) {
+                $q->where('is_active', 1);
+            })
+            ->orderBy('name')
+            ->get(['id', 'name']);
         
         return view('admin.catchs.index' , compact( 'bills','accounts','branches' ));
     }
@@ -71,10 +85,15 @@ class CatchReciptController extends Controller
             'branch_id' => 'required'
         ]);
 
-        if($request ->payment_type == 0){
-            $from_account = 5;
-        }else{
-            $from_account = 6;
+        $settings = AccountSetting::where('branch_id', $request->branch_id)->first();
+        if ($request->payment_type == 0) {
+            $from_account = $settings?->safe_account ?? null;
+        } else {
+            $from_account = $settings?->bank_account ?? null;
+        }
+        if (!$from_account) {
+            return redirect()->route('catches')
+                ->with('error', __('main.account_settings') . ': ' . __('validation.required', ['attribute' => __('main.accounting')]));
         }
 
         $id =  CatchRecipt::create([
@@ -108,8 +127,13 @@ class CatchReciptController extends Controller
     public function show($id)
     {
         $expense = CatchRecipt::find($id);
-        echo json_encode($expense);
-        exit();
+        if ($expense) {
+            $account = AccountsTree::withoutGlobalScope('subscriber')->find($expense->to_account);
+            $expense->parent_code = $account ? $account->parent_code : null;
+            $expense->account_type = $account ? $account->type : null;
+        }
+
+        return response()->json($expense);
 
     }
     public function print($id){
@@ -164,9 +188,53 @@ class CatchReciptController extends Controller
     }
 
     public function getSupplierAccount($id){ 
-        $accounts = AccountsTree::where('parent_code',$id)->get();
-        echo json_encode($accounts);
-        exit();
+        $subscriberId = Auth::user()->subscriber_id ?? null;
+        $typeOptions = [0, 1, 2, 3];
+        if (in_array((int) $id, $typeOptions, true)) {
+            $accounts = AccountsTree::withoutGlobalScope('subscriber')
+                ->where('type', (int) $id)
+                ->when($subscriberId !== null, function ($q) use ($subscriberId) {
+                    $q->where(function ($query) use ($subscriberId) {
+                        $query->whereNull('subscriber_id')
+                            ->orWhere('subscriber_id', 0)
+                            ->orWhere('subscriber_id', $subscriberId);
+                    });
+                })
+                ->when(\Schema::hasColumn('accounts_trees', 'is_active'), function ($q) {
+                    $q->where('is_active', 1);
+                })
+                ->orderBy('name')
+                ->get(['id', 'name']);
+        } else {
+            $parentById = AccountsTree::withoutGlobalScope('subscriber')->where('id', $id)->first();
+            $parentByCode = AccountsTree::withoutGlobalScope('subscriber')->where('code', $id)->first();
+            $parentIds = collect([$parentById?->id, $parentByCode?->id])->filter()->unique()->values();
+            $parentCodes = collect([$parentById?->code, $parentByCode?->code, $id])->filter()->unique()->values();
+
+            $accounts = AccountsTree::withoutGlobalScope('subscriber')
+                ->where(function ($query) use ($parentIds, $parentCodes) {
+                    if ($parentCodes->isNotEmpty()) {
+                        $query->whereIn('parent_code', $parentCodes);
+                    }
+                    if ($parentIds->isNotEmpty()) {
+                        $query->orWhereIn('parent_id', $parentIds);
+                    }
+                })
+                ->when($subscriberId !== null, function ($q) use ($subscriberId) {
+                    $q->where(function ($query) use ($subscriberId) {
+                        $query->whereNull('subscriber_id')
+                            ->orWhere('subscriber_id', 0)
+                            ->orWhere('subscriber_id', $subscriberId);
+                    });
+                })
+                ->when(\Schema::hasColumn('accounts_trees', 'is_active'), function ($q) {
+                    $q->where('is_active', 1);
+                })
+                ->orderBy('name')
+                ->get(['id', 'name']);
+        }
+
+        return response()->json($accounts);
     } 
 
     public function get_Catch_no($branch_id){

@@ -22,7 +22,12 @@ class ExpensesCategoryController extends Controller
     public function index()
     {
         $expenses = ExpensesCategory::with('account') -> get();
-        $accounts = AccountsTree::query()->where('type','>',1)->get();
+        $accounts = AccountsTree::query()
+            ->where('type','>',1)
+            ->when(\Schema::hasColumn('accounts_trees', 'is_active'), function ($q) {
+                $q->where('is_active', 1);
+            })
+            ->get();
         return view('admin.Expenses.index' , ['expenses' => $expenses , 'accounts' => $accounts]);
     }
 

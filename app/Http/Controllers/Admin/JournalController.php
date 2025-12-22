@@ -172,6 +172,7 @@ class JournalController extends Controller
     public function store(Request $request){
         $siteController = new SystemController();
         $header =[
+            'branch_id' => Auth::user()?->branch_id ?? 0,
             'date' => date('Y-m-d').'T'.date('H:i'),
             'basedon_no' => '',
             'basedon_id' => 0,

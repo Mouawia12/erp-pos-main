@@ -167,6 +167,15 @@
                                             @enderror
                                         </div>
                                     </div>
+                                    <div class="col-6">
+                                        <div class="form-group">
+                                            <label>{{ __('main.status') }}</label>
+                                            <select class="form-control" id="is_active" name="is_active">
+                                                <option value="1" selected>{{__('main.status1')}}</option>
+                                                <option value="0">{{__('main.status2')}}</option>
+                                            </select>
+                                        </div>
+                                    </div>
                                 </div>
 
 
@@ -203,7 +212,7 @@ $(document).ready(function () {
     $('#account_type').change(function () {
         var t = $(this).val();
         $('#parent_id').val(0).trigger('change');
-        $('#account_level').val(1);
+        $('#level').val(1);
         if (t == 0) {
             $('#parent_id').attr('disabled', true);
         }

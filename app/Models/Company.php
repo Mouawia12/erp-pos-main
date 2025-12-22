@@ -49,6 +49,49 @@ class Company extends Model
         return $this->belongsTo(CustomerGroup::class , 'customer_group_id');
     }
 
+    public function ensureAccount(): ?AccountsTree
+    {
+        if ($this->account_id) {
+            $existing = AccountsTree::withoutGlobalScope('subscriber')->find($this->account_id);
+            if ($existing) {
+                return $existing;
+            }
+        }
+
+        if (!in_array((int) $this->group_id, [3, 4], true)) {
+            return null;
+        }
+
+        $parentCode = $this->group_id == 3 ? 1107 : 2101;
+        $parentAccount = AccountsTree::withoutGlobalScope('subscriber')->where('code', $parentCode)->first();
+        if (!$parentAccount) {
+            return null;
+        }
+
+        $maxCode = AccountsTree::withoutGlobalScope('subscriber')
+            ->where('parent_id', $parentAccount->id)
+            ->max('code');
+        $nextCode = $maxCode ? (int) $maxCode + 1 : ($this->group_id == 3 ? 110701 : 210101);
+
+        $child = AccountsTree::create([
+            'code' => (string) $nextCode,
+            'name' => $this->company ?: $this->name,
+            'type' => 3,
+            'parent_id' => $parentAccount->id,
+            'parent_code' => $parentAccount->code,
+            'level' => ($parentAccount->level ?? 0) + 1,
+            'list' => $parentAccount->list,
+            'department' => $parentAccount->department,
+            'side' => $parentAccount->side,
+            'is_active' => 1,
+        ]);
+
+        $this->account_id = $child->id;
+        $this->save();
+
+        return $child;
+    }
+
     public static function ensureWalkInCustomer(?int $subscriberId = null): ?self
     {
         $subscriberId = $subscriberId ?? auth()->user()->subscriber_id ?? null;

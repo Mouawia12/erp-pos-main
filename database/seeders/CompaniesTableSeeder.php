@@ -12,7 +12,7 @@ class CompaniesTableSeeder extends Seeder
     {
         $subs = Subscriber::all();
         foreach ($subs as $sub) {
-            Company::updateOrCreate(
+            $client = Company::updateOrCreate(
                 ['email' => 'client-'.$sub->id.'@example.com'],
                 [
                     'group_id' => 3,
@@ -40,7 +40,11 @@ class CompaniesTableSeeder extends Seeder
                 ]
             );
 
-            Company::updateOrCreate(
+            if ($client) {
+                $client->ensureAccount();
+            }
+
+            $supplier = Company::updateOrCreate(
                 ['email' => 'supplier-'.$sub->id.'@example.com'],
                 [
                     'group_id' => 4,
@@ -67,6 +71,10 @@ class CompaniesTableSeeder extends Seeder
                     'subscriber_id' => $sub->id,
                 ]
             );
+
+            if ($supplier) {
+                $supplier->ensureAccount();
+            }
         }
     }
 }
