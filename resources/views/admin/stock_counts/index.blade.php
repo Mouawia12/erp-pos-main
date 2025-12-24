@@ -20,6 +20,7 @@
                     <th>#</th>
                     <th>{{ __('main.reference') ?? 'المرجع' }}</th>
                     <th>{{ __('main.warehouses') }}</th>
+                    <th>{{ __('main.type') ?? 'النوع' }}</th>
                     <th>{{ __('main.status') }}</th>
                     <th>{{ __('main.actions') }}</th>
                 </tr>
@@ -30,7 +31,12 @@
                         <td>{{ $count->id }}</td>
                         <td>{{ $count->reference }}</td>
                         <td>{{ optional($count->warehouse)->name ?? '' }}</td>
-                        <td><span class="badge badge-{{ $count->status === 'approved' ? 'success' : 'warning' }}">{{ $count->status }}</span></td>
+                        <td>{{ $count->is_opening ? __('main.opening_stock') : __('main.inventory') }}</td>
+                        <td>
+                            <span class="badge badge-{{ $count->status === 'approved' ? 'success' : 'warning' }}">
+                                {{ $count->status === 'approved' ? __('main.stock_count_status_approved') : __('main.stock_count_status_draft') }}
+                            </span>
+                        </td>
                         <td class="text-nowrap">
                             @if($count->status==='draft')
                                 <form action="{{ route('stock_counts.approve',$count) }}" method="POST" class="d-inline">

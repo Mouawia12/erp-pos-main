@@ -5,10 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Traits\BelongsToSubscriber;
+use App\Models\Traits\GuardsFiscalYear;
 
 class Inventory extends Model
 {
-    use BelongsToSubscriber;
+    use BelongsToSubscriber, GuardsFiscalYear;
     protected $table = "inventorys";
     protected $fillable = [
         'date', 'branch_id', 'warehouse_id','state', 'user_id',

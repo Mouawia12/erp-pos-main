@@ -300,6 +300,85 @@
                         </div>
                     @endif
                     </div> 
+
+                    <div class="row">
+                        <div class="col-12">
+                            <hr>
+                            <h6>{{ __('main.national_address') ?? 'العنوان الوطني' }}</h6>
+                        </div>
+                        <div class="col-4">
+                            <div class="form-group">
+                                <label>{{ __('main.national_address_short') ?? 'العنوان المختصر' }}</label>
+                                <input type="text" id="national_address_short" name="national_address_short" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="form-group">
+                                <label>{{ __('main.national_address_building_no') ?? 'رقم المبنى' }}</label>
+                                <input type="text" id="national_address_building_no" name="national_address_building_no" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="form-group">
+                                <label>{{ __('main.national_address_street') ?? 'الشارع' }}</label>
+                                <input type="text" id="national_address_street" name="national_address_street" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="form-group">
+                                <label>{{ __('main.national_address_district') ?? 'الحي' }}</label>
+                                <input type="text" id="national_address_district" name="national_address_district" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="form-group">
+                                <label>{{ __('main.national_address_city') ?? 'المدينة' }}</label>
+                                <input type="text" id="national_address_city" name="national_address_city" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="form-group">
+                                <label>{{ __('main.national_address_region') ?? 'المنطقة' }}</label>
+                                <input type="text" id="national_address_region" name="national_address_region" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="form-group">
+                                <label>{{ __('main.national_address_postal_code') ?? 'الرمز البريدي' }}</label>
+                                <input type="text" id="national_address_postal_code" name="national_address_postal_code" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="form-group">
+                                <label>{{ __('main.national_address_additional_no') ?? 'الرقم الإضافي' }}</label>
+                                <input type="text" id="national_address_additional_no" name="national_address_additional_no" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="form-group">
+                                <label>{{ __('main.national_address_unit_no') ?? 'رقم الوحدة' }}</label>
+                                <input type="text" id="national_address_unit_no" name="national_address_unit_no" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="form-group">
+                                <label>{{ __('main.national_address_proof_no') ?? 'رقم إثبات العنوان' }}</label>
+                                <input type="text" id="national_address_proof_no" name="national_address_proof_no" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="form-group">
+                                <label>{{ __('main.national_address_proof_issue_date') ?? 'تاريخ الإصدار' }}</label>
+                                <input type="date" id="national_address_proof_issue_date" name="national_address_proof_issue_date" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="form-group">
+                                <label>{{ __('main.national_address_proof_expiry_date') ?? 'تاريخ الانتهاء' }}</label>
+                                <input type="date" id="national_address_proof_expiry_date" name="national_address_proof_expiry_date" class="form-control" />
+                            </div>
+                        </div>
+                    </div>
                     <div class="row">
                         <div class="col-6" style="display: block; margin: 20px auto; text-align: center;">
                             <button type="submit" class="btn btn-labeled btn-primary"  >
@@ -384,6 +463,18 @@
 
                             }
                             $(".modal-body #address").val( "" );
+                            $(".modal-body #national_address_short").val( "" );
+                            $(".modal-body #national_address_building_no").val( "" );
+                            $(".modal-body #national_address_street").val( "" );
+                            $(".modal-body #national_address_district").val( "" );
+                            $(".modal-body #national_address_city").val( "" );
+                            $(".modal-body #national_address_region").val( "" );
+                            $(".modal-body #national_address_postal_code").val( "" );
+                            $(".modal-body #national_address_additional_no").val( "" );
+                            $(".modal-body #national_address_unit_no").val( "" );
+                            $(".modal-body #national_address_proof_no").val( "" );
+                            $(".modal-body #national_address_proof_issue_date").val( "" );
+                            $(".modal-body #national_address_proof_expiry_date").val( "" );
                             $(".modal-body #id").val( 0 );
                         },
                         complete: function() {
@@ -483,6 +574,18 @@
 
                             }
                             $(".modal-body #address").val( response.address );
+                            $(".modal-body #national_address_short").val( response.national_address_short );
+                            $(".modal-body #national_address_building_no").val( response.national_address_building_no );
+                            $(".modal-body #national_address_street").val( response.national_address_street );
+                            $(".modal-body #national_address_district").val( response.national_address_district );
+                            $(".modal-body #national_address_city").val( response.national_address_city );
+                            $(".modal-body #national_address_region").val( response.national_address_region );
+                            $(".modal-body #national_address_postal_code").val( response.national_address_postal_code );
+                            $(".modal-body #national_address_additional_no").val( response.national_address_additional_no );
+                            $(".modal-body #national_address_unit_no").val( response.national_address_unit_no );
+                            $(".modal-body #national_address_proof_no").val( response.national_address_proof_no );
+                            $(".modal-body #national_address_proof_issue_date").val( response.national_address_proof_issue_date );
+                            $(".modal-body #national_address_proof_expiry_date").val( response.national_address_proof_expiry_date );
                             $(".modal-body #id").val( response.id );
 
                         },

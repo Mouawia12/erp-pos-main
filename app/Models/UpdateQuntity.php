@@ -3,12 +3,15 @@
 namespace App\Models;
 
 use App\Models\Traits\BelongsToSubscriber;
+use App\Models\Traits\GuardsFiscalYear;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class UpdateQuntity extends Model
 {
-    use HasFactory, BelongsToSubscriber;
+    use HasFactory, BelongsToSubscriber, GuardsFiscalYear;
+
+    protected $fiscalDateField = 'bill_date';
     protected $fillable = [
         'id',
         'identifier',

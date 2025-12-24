@@ -3,12 +3,13 @@
 namespace App\Models;
 
 use App\Models\Traits\BelongsToSubscriber;
+use App\Models\Traits\GuardsFiscalYear;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class CatchRecipt extends Model
 {
-    use HasFactory, BelongsToSubscriber;
+    use HasFactory, BelongsToSubscriber, GuardsFiscalYear;
     protected $fillable = [
         'id',
         'branch_id',

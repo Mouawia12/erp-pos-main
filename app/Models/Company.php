@@ -42,6 +42,18 @@ class Company extends Model
         'default_discount',
         'subscriber_id',
         'is_walk_in',
+        'national_address_short',
+        'national_address_building_no',
+        'national_address_street',
+        'national_address_district',
+        'national_address_city',
+        'national_address_region',
+        'national_address_postal_code',
+        'national_address_additional_no',
+        'national_address_unit_no',
+        'national_address_proof_no',
+        'national_address_proof_issue_date',
+        'national_address_proof_expiry_date',
     ];
 
     public function group()

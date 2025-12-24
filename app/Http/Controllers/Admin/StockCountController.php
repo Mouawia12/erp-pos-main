@@ -17,7 +17,7 @@ class StockCountController extends Controller
 {
     public function index()
     {
-        $counts = StockCount::with('items')->latest()->get();
+        $counts = StockCount::with(['items', 'warehouse'])->latest()->get();
         return view('admin.stock_counts.index', compact('counts'));
     }
 
@@ -34,8 +34,10 @@ class StockCountController extends Controller
             'warehouse_id' => 'required|integer',
             'items' => 'required|array',
             'items.*.product_id' => 'required|integer',
+            'is_opening' => 'nullable|boolean',
         ]);
 
+        $isOpening = $request->boolean('is_opening');
         $reference = 'SC-'.Str::padLeft(StockCount::max('id')+1, 5, '0');
 
         $count = StockCount::create([
@@ -44,13 +46,16 @@ class StockCountController extends Controller
             'branch_id' => $request->branch_id ?? null,
             'user_id' => Auth::id(),
             'subscriber_id' => Auth::user()->subscriber_id ?? null,
-            'status' => 'draft',
+            'status' => $isOpening ? 'approved' : 'draft',
+            'is_opening' => $isOpening,
             'note' => $request->note,
         ]);
 
         foreach($request->items as $item){
-            $expected = $this->getExpectedQty($request->warehouse_id, $item['product_id'], $item['variant_id'] ?? null);
-            StockCountItem::create([
+            $expected = $isOpening
+                ? 0
+                : $this->getExpectedQty($request->warehouse_id, $item['product_id'], $item['variant_id'] ?? null);
+            $countItem = StockCountItem::create([
                 'stock_count_id' => $count->id,
                 'product_id' => $item['product_id'],
                 'variant_id' => $item['variant_id'] ?? null,
@@ -61,6 +66,10 @@ class StockCountController extends Controller
                 'counted_qty' => $item['counted_qty'] ?? 0,
                 'difference' => ($item['counted_qty'] ?? 0) - $expected,
             ]);
+
+            if ($isOpening) {
+                $this->applyAdjustment($request->warehouse_id, $countItem, true);
+            }
         }
 
         return redirect()->route('stock_counts.index')->with('success', __('main.created'));
@@ -70,7 +79,7 @@ class StockCountController extends Controller
     {
         $stock_count->load('items');
         foreach($stock_count->items as $item){
-            $this->applyAdjustment($stock_count->warehouse_id, $item);
+            $this->applyAdjustment($stock_count->warehouse_id, $item, (bool) $stock_count->is_opening);
         }
         $stock_count->update(['status' => 'approved']);
         return back()->with('success', __('main.done'));
@@ -91,21 +100,37 @@ class StockCountController extends Controller
         return (float) ($row->quantity ?? 0);
     }
 
-    private function applyAdjustment($warehouseId, StockCountItem $item): void
+    private function applyAdjustment($warehouseId, StockCountItem $item, bool $isOpening = false): void
     {
-        $delta = $item->difference;
-        // Update warehouse product
         $row = WarehouseProducts::firstOrCreate(
             ['warehouse_id'=>$warehouseId, 'product_id'=>$item->product_id],
             ['quantity'=>0,'cost'=>0]
         );
-        $row->update(['quantity' => $row->quantity + $delta]);
+        $previousQty = (float) $row->quantity;
+        if ($isOpening) {
+            $row->update(['quantity' => $item->counted_qty]);
+            $delta = (float) $item->counted_qty - $previousQty;
+        } else {
+            $delta = $item->difference;
+            $row->update(['quantity' => $row->quantity + $delta]);
+        }
+
+        if ($delta != 0) {
+            $product = Product::find($item->product_id);
+            if ($product) {
+                $product->update(['quantity' => $product->quantity + $delta]);
+            }
+        }
 
         // Update variant if exists
         if($item->variant_id){
             $variant = ProductVariant::find($item->variant_id);
             if($variant){
-                $variant->update(['quantity' => $variant->quantity + $delta]);
+                if ($isOpening) {
+                    $variant->update(['quantity' => $item->counted_qty]);
+                } else {
+                    $variant->update(['quantity' => $variant->quantity + $delta]);
+                }
             }
         }
     }

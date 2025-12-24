@@ -45,6 +45,8 @@ use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\BranchController; 
 use App\Http\Controllers\Admin\CatchReciptController;
+use App\Http\Controllers\Admin\StockCountController;
+use App\Http\Controllers\Admin\FiscalYearController;
 use App\Http\Controllers\Admin\PosController;
 use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\SubscriberController;
@@ -317,6 +319,12 @@ Route::group(
     // Stock counts (inventory)
     Route::resource('stock_counts', StockCountController::class)->except(['edit','update','show']);
     Route::post('stock_counts/{stock_count}/approve', [StockCountController::class, 'approve'])->name('stock_counts.approve');
+
+    // Fiscal years
+    Route::get('fiscal_years', [FiscalYearController::class, 'index'])->name('fiscal_years.index');
+    Route::post('fiscal_years', [FiscalYearController::class, 'store'])->name('fiscal_years.store');
+    Route::post('fiscal_years/{fiscal_year}/close', [FiscalYearController::class, 'close'])->name('fiscal_years.close');
+    Route::post('fiscal_years/{fiscal_year}/open', [FiscalYearController::class, 'open'])->name('fiscal_years.open');
 
     // Financial reports
     Route::get('reports/trial-balance', [FinancialReportController::class, 'trialBalance'])->name('reports.trial_balance');

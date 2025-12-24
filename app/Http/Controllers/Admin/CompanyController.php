@@ -132,6 +132,18 @@ class CompanyController extends Controller
                 'email' => ['nullable','email','max:191'],
                 'phone' => ['nullable','string','max:50'],
                 'account_id' => ['nullable','integer','exists:accounts_trees,id'],
+                'national_address_short' => ['nullable','string','max:191'],
+                'national_address_building_no' => ['nullable','string','max:50'],
+                'national_address_street' => ['nullable','string','max:191'],
+                'national_address_district' => ['nullable','string','max:191'],
+                'national_address_city' => ['nullable','string','max:191'],
+                'national_address_region' => ['nullable','string','max:191'],
+                'national_address_postal_code' => ['nullable','string','max:50'],
+                'national_address_additional_no' => ['nullable','string','max:50'],
+                'national_address_unit_no' => ['nullable','string','max:50'],
+                'national_address_proof_no' => ['nullable','string','max:191'],
+                'national_address_proof_issue_date' => ['nullable','date'],
+                'national_address_proof_expiry_date' => ['nullable','date'],
             ]);
             try {
                 $exists = Company::query()
@@ -171,6 +183,18 @@ class CompanyController extends Controller
                         'user_id' => Auth::user() -> id,
                         'representative_id_' => $request->representative_id_ ?? 0,
                         'subscriber_id' => $subscriberId,
+                        'national_address_short' => $request->national_address_short ?? null,
+                        'national_address_building_no' => $request->national_address_building_no ?? null,
+                        'national_address_street' => $request->national_address_street ?? null,
+                        'national_address_district' => $request->national_address_district ?? null,
+                        'national_address_city' => $request->national_address_city ?? null,
+                        'national_address_region' => $request->national_address_region ?? null,
+                        'national_address_postal_code' => $request->national_address_postal_code ?? null,
+                        'national_address_additional_no' => $request->national_address_additional_no ?? null,
+                        'national_address_unit_no' => $request->national_address_unit_no ?? null,
+                        'national_address_proof_no' => $request->national_address_proof_no ?? null,
+                        'national_address_proof_issue_date' => $request->national_address_proof_issue_date ?? null,
+                        'national_address_proof_expiry_date' => $request->national_address_proof_expiry_date ?? null,
                     ]);
     
                     if (!$company->account_id) {
@@ -238,7 +262,19 @@ class CompanyController extends Controller
                 'name' => 'required',
                 'opening_balance' => 'required', 
                 'type' => 'required',
-                'account_id' => 'nullable|integer|exists:accounts_trees,id'
+                'account_id' => 'nullable|integer|exists:accounts_trees,id',
+                'national_address_short' => ['nullable','string','max:191'],
+                'national_address_building_no' => ['nullable','string','max:50'],
+                'national_address_street' => ['nullable','string','max:191'],
+                'national_address_district' => ['nullable','string','max:191'],
+                'national_address_city' => ['nullable','string','max:191'],
+                'national_address_region' => ['nullable','string','max:191'],
+                'national_address_postal_code' => ['nullable','string','max:50'],
+                'national_address_additional_no' => ['nullable','string','max:50'],
+                'national_address_unit_no' => ['nullable','string','max:50'],
+                'national_address_proof_no' => ['nullable','string','max:191'],
+                'national_address_proof_issue_date' => ['nullable','date'],
+                'national_address_proof_expiry_date' => ['nullable','date'],
             ]);
             try {
                 $company -> update([
@@ -270,6 +306,18 @@ class CompanyController extends Controller
                     'price_level_id' => $request->price_level_id ?? $company->price_level_id,
                     'default_discount' => $request->default_discount ?? $company->default_discount,
                     'representative_id_' => $request->representative_id_ ?? $company->representative_id_,
+                    'national_address_short' => $request->national_address_short ?? $company->national_address_short,
+                    'national_address_building_no' => $request->national_address_building_no ?? $company->national_address_building_no,
+                    'national_address_street' => $request->national_address_street ?? $company->national_address_street,
+                    'national_address_district' => $request->national_address_district ?? $company->national_address_district,
+                    'national_address_city' => $request->national_address_city ?? $company->national_address_city,
+                    'national_address_region' => $request->national_address_region ?? $company->national_address_region,
+                    'national_address_postal_code' => $request->national_address_postal_code ?? $company->national_address_postal_code,
+                    'national_address_additional_no' => $request->national_address_additional_no ?? $company->national_address_additional_no,
+                    'national_address_unit_no' => $request->national_address_unit_no ?? $company->national_address_unit_no,
+                    'national_address_proof_no' => $request->national_address_proof_no ?? $company->national_address_proof_no,
+                    'national_address_proof_issue_date' => $request->national_address_proof_issue_date ?? $company->national_address_proof_issue_date,
+                    'national_address_proof_expiry_date' => $request->national_address_proof_expiry_date ?? $company->national_address_proof_expiry_date,
 
                 ]);
 

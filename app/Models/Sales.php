@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Traits\BelongsToSubscriber;
+use App\Models\Traits\GuardsFiscalYear;
 use App\Models\SaleDetails;
 use App\Models\ZatcaDocument;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -12,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Sales extends Model
 {
-    use HasFactory, BelongsToSubscriber;
+    use HasFactory, BelongsToSubscriber, GuardsFiscalYear;
     protected $table = "sales";
     protected $fillable = [
         'date','invoice_no','customer_id','representative_id', 'customer_name', 'customer_phone','biller_id',

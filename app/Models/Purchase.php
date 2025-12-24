@@ -5,10 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Traits\BelongsToSubscriber;
+use App\Models\Traits\GuardsFiscalYear;
 
 class Purchase extends Model
 {
-    use HasFactory, BelongsToSubscriber;
+    use HasFactory, BelongsToSubscriber, GuardsFiscalYear;
     protected $fillable = [
         'date',
         'invoice_no',

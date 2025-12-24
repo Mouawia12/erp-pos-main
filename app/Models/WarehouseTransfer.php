@@ -5,10 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Traits\BelongsToSubscriber;
+use App\Models\Traits\GuardsFiscalYear;
 
 class WarehouseTransfer extends Model
 {
-    use HasFactory, BelongsToSubscriber;
+    use HasFactory, BelongsToSubscriber, GuardsFiscalYear;
+
+    protected $fiscalDateField = 'created_at';
 
     protected $fillable = [
         'from_warehouse_id',
