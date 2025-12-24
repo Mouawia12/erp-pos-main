@@ -293,6 +293,7 @@ Route::group(
     Route::get('/products/edit/{id}', [ProductController::class, 'edit'])->name('editProduct');
     Route::post('/products/update/{id}', [ProductController::class, 'update'])->name('updateProduct');
     Route::post('/products/delete', [ProductController::class, 'delete'])->name('product.delete');
+    Route::get('/products/generate-barcode', [ProductController::class, 'generateBarcode'])->name('products.generate_barcode');
     Route::get('/getProduct/{code}', [ProductController::class, 'getProduct'])->name('getProduct');
     Route::get('/get-product-warehouse/{warehouse_id}/{code}', [ProductController::class, 'get_product_warehouse'])->name('get.product.warehouse');
     Route::get('/get-product-batches/{warehouse_id}/{product_id}', [ProductController::class, 'getProductBatches'])->name('get.product.batches');

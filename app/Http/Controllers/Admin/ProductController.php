@@ -137,6 +137,14 @@ class ProductController extends Controller
         $request['code'] =  $request->code ? $request->code : $this->getItemCode();
         $this->applyProductDefaults($request);
 
+        $rawVariants = $request->input('product_variants', []);
+        $normalizedVariants = $this->normalizeVariantsInput($rawVariants);
+        if (!empty($rawVariants) && empty($normalizedVariants)) {
+            return back()
+                ->withInput()
+                ->withErrors(['product_variants' => __('main.product_variants_invalid') ?? 'Invalid variant rows.']);
+        }
+
         $validated = $request->validate(
             $this->productValidationRules(),
             $this->productValidationMessages(),
@@ -214,7 +222,7 @@ class ProductController extends Controller
             ]);
             if($product){ 
                 $this->syncProductTaxes($product->id, $request->input('tax_rates_multi', []));
-                $this->syncProductVariants($product->id, $request->input('product_variants', []));
+                $this->syncProductVariants($product->id, $normalizedVariants);
                 $unitsTable = $request->product_units;
                 if($unitsTable && is_array($unitsTable)){
                     foreach ($unitsTable as $row){
@@ -318,17 +326,19 @@ class ProductController extends Controller
 
     private function syncProductVariants(int $productId, array $variants = []): void
     {
-        ProductVariant::where('product_id', $productId)->delete();
-        $variants = array_filter($variants ?? [], function ($row) {
-            return !empty($row['color']) || !empty($row['size']) || !empty($row['sku']) || !empty($row['barcode']);
-        });
+        ProductVariant::withoutGlobalScope('subscriber')
+            ->where('product_id', $productId)
+            ->delete();
+        $variants = $this->normalizeVariantsInput($variants);
 
+        $subscriberId = Auth::user()->subscriber_id ?? null;
+        $hasSubscriberColumn = Schema::hasColumn('product_variants', 'subscriber_id');
         $totalQty = 0;
         $rows = [];
         foreach ($variants as $row) {
             $qty = isset($row['quantity']) ? (float)$row['quantity'] : 0;
             $totalQty += $qty;
-            $rows[] = [
+            $data = [
                 'product_id' => $productId,
                 'sku' => $row['sku'] ?? null,
                 'color' => $row['color'] ?? null,
@@ -339,12 +349,29 @@ class ProductController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ];
+            if ($hasSubscriberColumn) {
+                $data['subscriber_id'] = $subscriberId;
+            }
+            $rows[] = $data;
         }
 
         if (!empty($rows)) {
             ProductVariant::insert($rows);
             Product::where('id', $productId)->update(['quantity' => $totalQty]);
         }
+    }
+
+    private function normalizeVariantsInput($variants): array
+    {
+        $variants = is_array($variants) ? $variants : [];
+
+        return array_filter($variants, function ($row) {
+            $row = is_array($row) ? $row : [];
+            $hasIdentity = !empty($row['color']) || !empty($row['size']) || !empty($row['sku']) || !empty($row['barcode']);
+            $hasPrice = array_key_exists('price', $row) && $row['price'] !== '' && $row['price'] !== null;
+            $hasQuantity = array_key_exists('quantity', $row) && $row['quantity'] !== '' && $row['quantity'] !== null;
+            return $hasIdentity || $hasPrice || $hasQuantity;
+        });
     }
 
     /**
@@ -360,6 +387,13 @@ class ProductController extends Controller
         $product = Product::find($id);
         if($product){
             $this->applyProductDefaults($request, $product);
+            $rawVariants = $request->input('product_variants', []);
+            $normalizedVariants = $this->normalizeVariantsInput($rawVariants);
+            if (!empty($rawVariants) && empty($normalizedVariants)) {
+                return back()
+                    ->withInput()
+                    ->withErrors(['product_variants' => __('main.product_variants_invalid') ?? 'Invalid variant rows.']);
+            }
             $validated = $request->validate(
                 $this->productValidationRules($product->id),
                 $this->productValidationMessages(),
@@ -434,7 +468,7 @@ class ProductController extends Controller
 
                 ]);
                 $this->syncProductTaxes($product->id, $request->input('tax_rates_multi', []));
-                $this->syncProductVariants($product->id, $request->input('product_variants', []));
+                $this->syncProductVariants($product->id, $normalizedVariants);
 
                 $units = ProductUnit::where('product_id' , '=' , $product -> id) -> get();
                 foreach ($units as $unit){
@@ -1163,6 +1197,70 @@ class ProductController extends Controller
             
         $no = str_pad($id + 1, 6, '0', STR_PAD_LEFT);
         return $no; 
+    }
+
+    public function generateBarcode(Request $request)
+    {
+        $length = (int) $request->input('length', 12);
+        if ($length < 6) {
+            $length = 6;
+        } elseif ($length > 20) {
+            $length = 20;
+        }
+
+        $subscriberId = Auth::user()->subscriber_id ?? null;
+        $attempts = 0;
+        do {
+            $barcode = $this->generateBarcodeDigits($length);
+            $attempts++;
+        } while (! $this->isBarcodeAvailable($barcode, $subscriberId) && $attempts < 50);
+
+        if (! $this->isBarcodeAvailable($barcode, $subscriberId)) {
+            return response()->json([
+                'message' => __('main.error_occured') ?? 'Unable to generate barcode.',
+            ], 422);
+        }
+
+        return response()->json(['barcode' => $barcode]);
+    }
+
+    private function generateBarcodeDigits(int $length): string
+    {
+        $min = (int) pow(10, $length - 1);
+        $max = (int) pow(10, $length) - 1;
+        if ($length === 1) {
+            $min = 0;
+        }
+        return (string) random_int($min, $max);
+    }
+
+    private function isBarcodeAvailable(string $barcode, ?int $subscriberId = null): bool
+    {
+        if ($barcode === '') {
+            return false;
+        }
+
+        $productsQuery = Product::query()->where('barcode', $barcode);
+        if ($subscriberId) {
+            $productsQuery->where('subscriber_id', $subscriberId);
+        }
+        if ($productsQuery->exists()) {
+            return false;
+        }
+
+        if (ProductUnit::query()->where('barcode', $barcode)->exists()) {
+            return false;
+        }
+
+        if (ProductVariant::query()->where('barcode', $barcode)->exists()) {
+            return false;
+        }
+
+        if (PromotionItem::query()->where('special_barcode', $barcode)->exists()) {
+            return false;
+        }
+
+        return true;
     }
 
     

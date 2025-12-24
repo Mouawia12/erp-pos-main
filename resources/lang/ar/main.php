@@ -91,6 +91,8 @@ return [
     'national_address_proof_no' => 'رقم إثبات العنوان',
     'national_address_proof_issue_date' => 'تاريخ الإصدار',
     'national_address_proof_expiry_date' => 'تاريخ الانتهاء',
+    'optional' => 'اختياري',
+    'product_variants_invalid' => 'بيانات المتغيرات غير مكتملة. يرجى إدخال قيمة واحدة على الأقل في كل سطر.',
     'credit_limit' => 'الحد الائتماني',
     'stop_sale' => ' ايقاف البيع في حالة وجود مبالغ مستحقة ',
     'system_settings' => 'إعدادات النظام',

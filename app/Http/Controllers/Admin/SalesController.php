@@ -254,6 +254,7 @@ class SalesController extends Controller
             $id = 0 ;
         }
        
+        $subscriberId = Auth::user()->subscriber_id ?? null;
         $settings = SystemSettings::query()
             ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
             ->get();
@@ -754,9 +755,13 @@ class SalesController extends Controller
                 ->get();
 
             if($unitsOptions->isEmpty()){
-                $unitsOptions = collect([[
+                $unitName = '';
+                if ($saleItem->unit_id) {
+                    $unitName = Unit::find($saleItem->unit_id)->name ?? '';
+                }
+                $unitsOptions = collect([(object) [
                     'unit_id' => $saleItem->unit_id,
-                    'unit_name' => Unit::find($saleItem->unit_id)->name ?? '',
+                    'unit_name' => $unitName,
                     'price' => $saleItem->price_unit,
                     'conversion_factor' => 1,
                     'barcode' => null
@@ -765,11 +770,11 @@ class SalesController extends Controller
 
             $saleItem->units_options = $unitsOptions->map(function($u){
                 return [
-                    'unit_id' => $u->unit_id,
-                    'unit_name' => $u->unit_name,
-                    'price' => $u->price,
-                    'conversion_factor' => $u->conversion_factor ?? 1,
-                    'barcode' => $u->barcode
+                    'unit_id' => data_get($u, 'unit_id'),
+                    'unit_name' => data_get($u, 'unit_name'),
+                    'price' => data_get($u, 'price'),
+                    'conversion_factor' => data_get($u, 'conversion_factor', 1),
+                    'barcode' => data_get($u, 'barcode'),
                 ];
             });
             $saleItem->selected_unit_id = $saleItem->unit_id;

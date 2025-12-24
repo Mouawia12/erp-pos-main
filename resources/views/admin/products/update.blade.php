@@ -69,7 +69,12 @@
                                                         <div class="col-md-4">
                                                             <div class="form-group">
                                                                 <label>{{ __('main.barcode') }}</label>
-                                                                <input type="text" id="barcode" name="barcode" class="form-control @error('barcode') is-invalid @enderror" value="{{ $product->barcode }}">
+                                                                <div class="input-group">
+                                                                    <input type="text" id="barcode" name="barcode" class="form-control @error('barcode') is-invalid @enderror" value="{{ $product->barcode }}">
+                                                                    <button class="btn btn-outline-secondary generateMainBarcode" type="button">
+                                                                        {{ __('main.generate') ?? 'توليد' }}
+                                                                    </button>
+                                                                </div>
                                                                 @error('barcode')<span class="invalid-feedback">{{ $message }}</span>@enderror
                                                             </div>
                                                         </div>
@@ -362,6 +367,7 @@
 <script type="text/javascript">
     const subCategories = @json($subCategoryOptions);
     const unitOptions = @json($units->map(function($unit){ return ['id'=>$unit->id,'name'=>$unit->name]; })->values());
+    const barcodeGenerateUrl = "{{ route('products.generate_barcode') }}";
 
     function escapeHtml(text) {
         if (text === null || text === undefined) {
@@ -480,7 +486,7 @@
                 <td><input type="number" step="0.01" name="product_units[${unitRowIndex}][conversion_factor]" class="form-control" value="${factor ?? 1}"></td>
                 <td><input type="text" name="product_units[${unitRowIndex}][barcode]" class="form-control" value="${barcode ?? ''}"></td>
                 <td class="d-flex gap-1">
-                    <button type="button" class="btn btn-sm btn-outline-secondary generateBarcode">{{ __('main.generate') ?? 'توليد' }}</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary generateUnitBarcode">{{ __('main.generate') ?? 'توليد' }}</button>
                     ${canDelete ? '<button type="button" class="btn btn-sm btn-danger removeUnitRow">-</button>' : ''}
                 </td>`;
             $('#unitRowsTable tbody').append(row);
@@ -500,9 +506,26 @@
 
         $('#addUnitRowBtn').on('click', function(){ addUnitRow('', '', 1, '', true); });
         $(document).on('click','.removeUnitRow', function(){ $(this).closest('tr').remove(); });
-        $(document).on('click','.generateBarcode', function(){
-            const code = '9' + Math.floor(100000000000 + Math.random() * 900000000000).toString().slice(0,12);
-            $(this).closest('tr').find('input[name*="[barcode]"]').val(code);
+        function requestBarcode(fillTarget){
+            $.get(barcodeGenerateUrl, function(response){
+                if(response && response.barcode){
+                    fillTarget(response.barcode);
+                }
+            }).fail(function(){
+                alert("{{ __('main.error_occured') ?? 'حدث خطأ غير متوقع' }}");
+            });
+        }
+        $(document).on('click','.generateUnitBarcode', function(){
+            const $input = $(this).closest('tr').find('input[name*="[barcode]"]');
+            requestBarcode(function(code){ $input.val(code); });
+        });
+        $(document).on('click','.generateVariantBarcode', function(){
+            const $input = $(this).closest('tr').find('input[name*="[barcode]"]');
+            requestBarcode(function(code){ $input.val(code); });
+        });
+        $(document).on('click','.generateMainBarcode', function(){
+            const $input = $('#barcode');
+            requestBarcode(function(code){ $input.val(code); });
         });
         $('#price').on('change', function(){ $('#unitRowsTable tbody tr').first().find('input[name*="[price]"]').val($(this).val()); });
 
@@ -517,7 +540,10 @@
                 <td><input class="form-control" name="product_variants[${index}][barcode]" value="${data.barcode ?? ''}"></td>
                 <td><input class="form-control" type="number" step="0.01" name="product_variants[${index}][price]" value="${data.price ?? ''}"></td>
                 <td><input class="form-control" type="number" step="0.01" name="product_variants[${index}][quantity]" value="${data.quantity ?? ''}"></td>
-                <td><button type="button" class="btn btn-sm btn-danger" onclick="this.closest('tr').remove();">حذف</button></td>`;
+                <td class="d-flex gap-1">
+                    <button type="button" class="btn btn-sm btn-outline-secondary generateVariantBarcode">{{ __('main.generate') ?? 'توليد' }}</button>
+                    <button type="button" class="btn btn-sm btn-danger" onclick="this.closest('tr').remove();">حذف</button>
+                </td>`;
             tbody.appendChild(row);
         }
         $('#addVariantRowBtn').on('click', function(){ addVariantRow(); });

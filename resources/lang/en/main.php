@@ -90,6 +90,8 @@ return [
     'national_address_proof_no' => 'Address Proof No.',
     'national_address_proof_issue_date' => 'Issue Date',
     'national_address_proof_expiry_date' => 'Expiry Date',
+    'optional' => 'Optional',
+    'product_variants_invalid' => 'Variant rows are incomplete. Please fill at least one value per row.',
     'credit_limit' => 'credit limit',
     'stop_sale' => ' Stop selling if there are due amounts',
     'system_settings' => 'System Settings',
