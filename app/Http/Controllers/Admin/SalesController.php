@@ -792,7 +792,7 @@ class SalesController extends Controller
             return redirect()->back();
         }
 
-        return view('admin.salesReturn.create',compact('warehouses','customers','saleItems','id','sale'));
+        return view('admin.SalesReturn.create',compact('warehouses','customers','saleItems','id','sale'));
     }
 
 
