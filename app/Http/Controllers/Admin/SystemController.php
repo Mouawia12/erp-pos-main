@@ -832,7 +832,9 @@ class SystemController extends Controller
 
                 if($manual  == 1){
                     $journal  = Journal::find($journal_id);
-                    $journal->update(['baseon_text' => 'سند قيد يدوي رقم '.$journal_id]);
+                    if ($journal) {
+                        $journal->update(['baseon_text' => 'سند قيد يدوي رقم '.$journal_id]);
+                    }
                 }
             }
             return true;
@@ -999,6 +1001,10 @@ class SystemController extends Controller
     {
         if (!isset($header['branch_id'])) {
             $header['branch_id'] = Auth::user()?->branch_id ?? 0;
+        }
+
+        if (!isset($header['subscriber_id']) && Schema::hasColumn('journals', 'subscriber_id')) {
+            $header['subscriber_id'] = Auth::user()?->subscriber_id;
         }
 
         if (!isset($header['date'])) {

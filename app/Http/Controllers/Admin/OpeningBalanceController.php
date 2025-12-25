@@ -95,7 +95,7 @@ class OpeningBalanceController extends Controller
         ];
 
         $systemController = new SystemController();
-        $systemController->insertJournal($header, $details, 1);
+        $systemController->insertJournal($header, $details, 0);
 
         return redirect()->route('opening_balances.index')->with('success', __('main.created'));
     }
