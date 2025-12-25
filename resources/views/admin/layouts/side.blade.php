@@ -300,7 +300,7 @@
 
 
 
-    @if( in_array('accounts' , $routes )    ||in_array('account_settings' , $routes )    || in_array('journals' , $routes )  ||  in_array('manual_journal' , $routes ) )
+    @if( in_array('accounts' , $routes )    ||in_array('account_settings' , $routes )    || in_array('journals' , $routes )  ||  in_array('manual_journal' , $routes ) || in_array('opening_balances' , $routes ) )
    <li class="nav-item @if($slag == 16) active @endif"
        @if(Config::get('app.locale') == 'ar') style="direction: rtl" @endif>
        <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapse16"
@@ -331,6 +331,10 @@
                    @if( in_array('manual_journal' , $routes )    )
                <a class="collapse-item @if($subSlag == 164) active @endif"
                   href="{{route('manual_journal')}}">{{__('main.manual_journal')}}</a>
+                   @endif
+                   @if( in_array('opening_balances' , $routes )    )
+               <a class="collapse-item @if($subSlag == 166) active @endif"
+                  href="{{route('opening_balances.index')}}">{{__('main.opening_balances')}}</a>
                    @endif
 
            </div>

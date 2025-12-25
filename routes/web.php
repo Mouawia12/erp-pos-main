@@ -47,6 +47,7 @@ use App\Http\Controllers\Admin\BranchController;
 use App\Http\Controllers\Admin\CatchReciptController;
 use App\Http\Controllers\Admin\StockCountController;
 use App\Http\Controllers\Admin\FiscalYearController;
+use App\Http\Controllers\Admin\OpeningBalanceController;
 use App\Http\Controllers\Admin\PosController;
 use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\SubscriberController;
@@ -429,6 +430,9 @@ Route::group(
 
     Route::get('/accounts/manual',[JournalController::class,'create'])->name('manual_journal');
     Route::post('/accounts/manual',[JournalController::class,'store'])->name('store_manual');
+    Route::get('/accounts/opening-balances', [OpeningBalanceController::class, 'index'])->name('opening_balances.index');
+    Route::post('/accounts/opening-balances', [OpeningBalanceController::class, 'store'])->name('opening_balances.store');
+    Route::get('/accounts/opening-balances/accounts/{code}', [OpeningBalanceController::class, 'searchAccounts'])->name('opening_balances.accounts');
     Route::get('/getAccounts/{code}', [AccountsTreeController::class, 'getAccount'])->name('getAccounts');
     Route::get('/journals/delete/{id}',[JournalController::class,'delete'])->name('delete_journal');
     

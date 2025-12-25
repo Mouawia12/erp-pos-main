@@ -288,6 +288,7 @@
                         <li><a class="slide-item" href="{{route('account_settings_list')}}">{{__('main.account_settings')}}</a></li>
                         <li><a class="slide-item" href="{{route('journals', 1)}}">{{__('main.journals')}}</a></li>
                         <li><a class="slide-item" href="{{route('manual_journal')}}">{{__('main.add_manual_journal')}}</a></li> 
+                        <li><a class="slide-item" href="{{route('opening_balances.index')}}">{{__('main.opening_balances')}}</a></li>
                         <li><a class="slide-item" href="{{route('fiscal_years.index')}}">{{__('main.fiscal_years')}}</a></li>
                     </ul>
                 </li>  
