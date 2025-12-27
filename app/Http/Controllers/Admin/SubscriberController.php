@@ -23,7 +23,7 @@ class SubscriberController extends Controller
     {
         $subscribers = Subscriber::with(['renewals' => function ($q) {
             $q->latest();
-        }, 'documents'])
+        }, 'documents', 'users'])
             ->orderByDesc('id')
             ->get()
             ->map(function (Subscriber $subscriber) {

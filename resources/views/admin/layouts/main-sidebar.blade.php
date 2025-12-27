@@ -343,14 +343,28 @@
                         <li><a class="slide-item" href="{{route('purchase_report')}}">{{__('main.purchases_report')}}</a></li>
                         <li><a class="slide-item" href="{{route('purchases_return_report')}}">{{__('main.purchases_return_report')}}</a></li>
                         <li><a class="slide-item" href="{{route('sales.return.report')}}">{{__('main.sales_return_report')}}</a></li>
+                        <li><a class="slide-item" href="{{route('reports.clients.status')}}">{{__('main.client_status_report')}}</a></li>
+                        <li><a class="slide-item" href="{{route('reports.vendors.status')}}">{{__('main.vendor_status_report')}}</a></li>
                         <li><a class="slide-item" href="{{route('items_report')}}">{{__('main.items_report')}}</a></li>
                         <li><a class="slide-item" href="{{route('items_limit_report')}}">{{__('main.under_limit_items_report')}}</a></li>
                         <li><a class="slide-item" href="{{route('items_no_balance_report')}}">{{__('main.no_balance_items_report')}}</a></li>
                         <li><a class="slide-item" href="{{route('items_stock_report')}}">{{__('main.users_transactions_report')}}</a></li>
                         <li><a class="slide-item" href="{{route('items_purchased_report')}}">{{__('main.imported_items_reports')}}</a></li>                     
+                        <li><a class="slide-item" href="{{route('reports.salon.services')}}">{{__('main.salon_services_report')}}</a></li>
                     </ul>
                 </li>     
             @endcan   
+            <li class="slide">
+                <a class="side-menu__item" data-toggle="slide" href="#">
+                    <i class="fa fa-spa side-menu__icon"></i>
+                    <span class="side-menu__label">{{ __('main.salon_module') ?? 'المشغل' }}</span>
+                    <i class="angle fe fe-chevron-down"></i>
+                </a>
+                <ul class="slide-menu">
+                    <li><a class="slide-item" href="{{route('salon.departments')}}">{{__('main.salon_departments')}}</a></li>
+                    <li><a class="slide-item" href="{{route('salon.reservations')}}">{{__('main.salon_reservations')}}</a></li>
+                </ul>
+            </li>
             @can('عرض ترميز')
                 @php
                     $basicDataActive = Request::is('*admin/units*') ||

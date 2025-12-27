@@ -35,6 +35,11 @@ class User extends Authenticatable
                 $branch->branch_name_ar = '';
             });
     }
+
+    public function salonDepartments()
+    {
+        return $this->belongsToMany(SalonDepartment::class, 'salon_department_user')->withTimestamps();
+    }
     /**
      * The attributes that should be hidden for serialization.
      *

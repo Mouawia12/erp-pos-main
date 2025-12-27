@@ -158,12 +158,11 @@
                                 <div class="col-md-3">
                                     <div class="form-group">
                                         <label>{{ __('main.categories') }}</label>
-                                        @php $selectedCategory = old('category_id', $defaultCategoryId); @endphp
-                                        <select class="js-example-basic-single w-100 @error('category_id') is-invalid @enderror" name="category_id" id="category_id">
+                                        <select class="js-example-basic-single w-100 @error('category_id') is-invalid @enderror" name="category_node_id" id="category_node_id">
                                             <option value="">{{ __('main.choose') }}</option>
-                                            @foreach($categories as $cat) 
-                                                <option value="{{$cat->id}}" data-excise="{{ $cat->tax_excise ?? 0 }}" @if($selectedCategory==$cat->id) selected @endif>{{$cat->name}}</option> 
-                                            @endforeach
+                                            @foreach($categoryTreeOptions as $option)
+                                                <option value="{{ $option['id'] }}" data-excise="{{ $option['tax_excise'] ?? 0 }}" @if((string)$selectedCategoryNode === (string)$option['id']) selected @endif>{{ $option['label'] }}</option>
+                                            @endforeach 
                                         </select>
                                         @error('category_id')
                                         <span class="invalid-feedback" role="alert">
@@ -174,17 +173,21 @@
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-group">
-                                        <label>{{ __('main.subcategory') ?? 'التصنيف الفرعي' }}</label>
-                                        <select class="form-control @error('subcategory_id') is-invalid @enderror" name="subcategory_id" id="subcategory_id" data-selected="{{ old('subcategory_id') }}">
+                                        <label>{{ __('main.salon_department') ?? 'قسم المشغل' }}</label>
+                                        @php $selectedSalonDepartment = old('salon_department_id'); @endphp
+                                        <select class="js-example-basic-single w-100 @error('salon_department_id') is-invalid @enderror" name="salon_department_id">
                                             <option value="">{{ __('main.choose') }}</option>
+                                            @foreach($salonDepartments as $department)
+                                                <option value="{{$department->id}}" @if((string)$selectedSalonDepartment === (string)$department->id) selected @endif>{{$department->name}}</option>
+                                            @endforeach
                                         </select>
-                                        @error('subcategory_id')
+                                        @error('salon_department_id')
                                         <span class="invalid-feedback" role="alert">
                                             <strong>{{ $message }}</strong>
                                         </span>
                                         @enderror
                                     </div>
-                                </div>  
+                                </div>
                                 <div class="col-md-3">
                                     <div class="form-group">
                                         <div class="d-flex justify-content-between align-items-center">
@@ -225,6 +228,22 @@
                                         @enderror
                                     </div>
                                 </div>  
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label>{{ __('main.additional_taxes') ?? 'ضرائب إضافية' }}</label>
+                                        @php $selectedMultiTaxes = old('tax_rates_multi', []); @endphp
+                                        <select class="js-example-basic-single w-100 @error('tax_rates_multi') is-invalid @enderror" name="tax_rates_multi[]" multiple>
+                                            @foreach($taxRages as $tax)
+                                                <option value="{{$tax->id}}" @if(in_array($tax->id, $selectedMultiTaxes)) selected @endif>{{$tax->name ?? $tax->rate}}</option>
+                                            @endforeach
+                                        </select>
+                                        @error('tax_rates_multi')
+                                        <span class="invalid-feedback" role="alert">
+                                            <strong>{{ $message }}</strong>
+                                        </span>
+                                        @enderror
+                                    </div>
+                                </div>
                                 @if($exciseEnabled)
                                     <div class="col-md-3">
                                         <div class="form-group">
@@ -268,10 +287,20 @@
                                 </div> 
                                 <div class="col-md-3">  
                                     <div class="form-group">
-                                        <label>{{ __('main.profit_margin') }} %</label>
-                                        <input type="number"  id="profit_margin" name="profit_margin"
+                                        <label>{{ __('main.profit_type') ?? 'نوع احتساب الربح' }}</label>
+                                        @php $profitType = old('profit_type', 'percent'); @endphp
+                                        <select class="form-control" id="profit_type" name="profit_type">
+                                            <option value="percent" @if($profitType === 'percent') selected @endif>{{ __('main.profit_type_percent') ?? 'نسبة' }}</option>
+                                            <option value="amount" @if($profitType === 'amount') selected @endif>{{ __('main.profit_type_amount') ?? 'مبلغ ثابت' }}</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">  
+                                    <div class="form-group">
+                                        <label>{{ __('main.profit_value') ?? 'قيمة الربح' }}</label>
+                                        <input type="number"  id="profit_amount" name="profit_amount"
                                                class="form-control" step="0.01"
-                                               placeholder="{{ __('main.profit_margin') }}" value="{{ old('profit_margin') }}"  />
+                                               placeholder="{{ __('main.profit_value') ?? 'قيمة الربح' }}" value="{{ old('profit_amount', old('profit_margin')) }}"  />
                                     </div>
                                 </div>
                                 <div class="col-md-3">
@@ -284,6 +313,43 @@
                                         </select>
                                     </div>
                                 </div>
+                                <div class="col-12">
+                                    <div class="form-group">
+                                        <label>{{ __('main.product_services') ?? 'خدمات الصنف' }}</label>
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <label class="small text-muted">{{ __('main.shipping_service') ?? 'خدمة الشحن' }}</label>
+                                                @php $shippingType = old('shipping_service_type', 'free'); @endphp
+                                                <select class="form-control" name="shipping_service_type">
+                                                    <option value="paid" @if($shippingType==='paid') selected @endif>{{ __('main.service_paid') ?? 'برسوم' }}</option>
+                                                    <option value="included" @if($shippingType==='included') selected @endif>{{ __('main.service_included') ?? 'ضمن الفاتورة' }}</option>
+                                                    <option value="free" @if($shippingType==='free') selected @endif>{{ __('main.service_free') ?? 'مجانية' }}</option>
+                                                </select>
+                                                <input type="number" step="0.01" class="form-control mt-1" name="shipping_service_amount" placeholder="{{ __('main.service_fee') ?? 'قيمة الرسوم' }}" value="{{ old('shipping_service_amount', 0) }}">
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="small text-muted">{{ __('main.delivery_service') ?? 'خدمة التوصيل' }}</label>
+                                                @php $deliveryType = old('delivery_service_type', 'free'); @endphp
+                                                <select class="form-control" name="delivery_service_type">
+                                                    <option value="paid" @if($deliveryType==='paid') selected @endif>{{ __('main.service_paid') ?? 'برسوم' }}</option>
+                                                    <option value="included" @if($deliveryType==='included') selected @endif>{{ __('main.service_included') ?? 'ضمن الفاتورة' }}</option>
+                                                    <option value="free" @if($deliveryType==='free') selected @endif>{{ __('main.service_free') ?? 'مجانية' }}</option>
+                                                </select>
+                                                <input type="number" step="0.01" class="form-control mt-1" name="delivery_service_amount" placeholder="{{ __('main.service_fee') ?? 'قيمة الرسوم' }}" value="{{ old('delivery_service_amount', 0) }}">
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="small text-muted">{{ __('main.installation_service') ?? 'خدمة التركيب' }}</label>
+                                                @php $installationType = old('installation_service_type', 'free'); @endphp
+                                                <select class="form-control" name="installation_service_type">
+                                                    <option value="paid" @if($installationType==='paid') selected @endif>{{ __('main.service_paid') ?? 'برسوم' }}</option>
+                                                    <option value="included" @if($installationType==='included') selected @endif>{{ __('main.service_included') ?? 'ضمن الفاتورة' }}</option>
+                                                    <option value="free" @if($installationType==='free') selected @endif>{{ __('main.service_free') ?? 'مجانية' }}</option>
+                                                </select>
+                                                <input type="number" step="0.01" class="form-control mt-1" name="installation_service_amount" placeholder="{{ __('main.service_fee') ?? 'قيمة الرسوم' }}" value="{{ old('installation_service_amount', 0) }}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                                 <div class="col-md-9">
                                     <div class="form-group">
                                         <label>{{ __('main.price_level') }} (1-6)</label>
@@ -293,6 +359,19 @@
                                                     <input type="number" step="0.01" class="form-control" name="price_level_{{$i}}" placeholder="Level {{$i}}" value="{{ old('price_level_'.$i) }}">
                                                 </div>
                                             @endfor
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="form-group">
+                                        <label>{{ __('main.warehouse_prices') ?? 'أسعار حسب المستودع' }}</label>
+                                        <div class="row">
+                                            @foreach($warehouses as $warehouse)
+                                                <div class="col-md-3 mb-2">
+                                                    <label class="small text-muted">{{ $warehouse->name }}</label>
+                                                    <input type="number" step="0.01" class="form-control" name="warehouse_prices[{{ $warehouse->id }}]" value="{{ old('warehouse_prices.'.$warehouse->id, old('price', 0)) }}">
+                                                </div>
+                                            @endforeach
                                         </div>
                                     </div>
                                 </div>
@@ -400,6 +479,9 @@
                                             <tbody>
                                             </tbody>
                                         </table>
+                                        @error('product_units')
+                                        <span class="text-danger small d-block mt-1">{{ $message }}</span>
+                                        @enderror
                                     </div>
                                 </div>
                             </div> 
@@ -444,17 +526,6 @@
 @endcan 
 @endsection 
 @php
-    $subCategoryOptions = $subCategories->mapWithKeys(function ($group, $parentId) {
-        return [
-            $parentId => $group->map(function ($cat) {
-                return [
-                    'id' => $cat->id,
-                    'name' => $cat->name,
-                    'tax_excise' => $cat->tax_excise ?? 0,
-                ];
-            })->values()
-        ];
-    });
     $unitOptionsData = $units->map(function ($unit) {
         return [
             'id' => $unit->id,
@@ -464,8 +535,6 @@
 @endphp
 @section('js')
 <script type="text/javascript">
-    const subCategories = @json($subCategoryOptions);
-    const subPlaceholder = "{{ __('main.choose') }}";
     let unitOptions = @json($unitOptionsData);
     const barcodeGenerateUrl = "{{ route('products.generate_barcode') }}";
 
@@ -513,8 +582,7 @@
 
     let unitOptionsHtml = '';
     $(document).ready(function () {
-        const subSelect = document.getElementById('subcategory_id');
-        const parentSelect = document.getElementById('category_id');
+        const categorySelect = document.getElementById('category_node_id');
         let exciseTouched = false;
 
         refreshUnitSelects();
@@ -523,59 +591,20 @@
             refreshUnitSelects($(this).val());
         });
 
-        function fillSubCategories(parentId) {
-            if (!subSelect) return;
-            const selected = subSelect.dataset.selected || '';
-            subSelect.innerHTML = `<option value="">${subPlaceholder}</option>`;
-            (subCategories[parentId] || []).forEach(function (cat) {
-                const option = document.createElement('option');
-                option.value = cat.id;
-                option.textContent = cat.name;
-                option.dataset.excise = cat.tax_excise ?? 0;
-                if (selected && String(cat.id) === String(selected)) {
-                    option.selected = true;
-                }
-                subSelect.appendChild(option);
-            });
-            if (!(subCategories[parentId] || []).some(cat => String(cat.id) === String(selected))) {
-                subSelect.value = '';
-            }
-        }
-
         function autoSetExcise(option) {
             if (!option || exciseTouched) return;
             const value = option.dataset.excise ?? null;
             const exciseInput = document.getElementById('tax_excise');
-            if (value !== null && exciseInput && !exciseInput.value) {
+            if (value !== null && exciseInput) {
                 exciseInput.value = value;
             }
         }
 
-        if (parentSelect) {
-            fillSubCategories(parentSelect.value);
-            autoSetExcise(parentSelect.selectedOptions[0]);
-            parentSelect.addEventListener('change', function () {
+        if (categorySelect) {
+            autoSetExcise(categorySelect.selectedOptions[0]);
+            categorySelect.addEventListener('change', function () {
                 exciseTouched = false;
-                fillSubCategories(this.value);
-                if (!subSelect.value) {
-                    autoSetExcise(this.selectedOptions[0]);
-                }
-            });
-        }
-
-        if (subSelect) {
-            subSelect.addEventListener('change', function () {
-                subSelect.dataset.selected = this.value || '';
-                if (this.value && this.selectedOptions[0]) {
-                    exciseTouched = true;
-                    const option = this.selectedOptions[0];
-                    if (option.dataset.excise !== undefined && document.getElementById('tax_excise')) {
-                        document.getElementById('tax_excise').value = option.dataset.excise;
-                    }
-                } else if (parentSelect) {
-                    exciseTouched = false;
-                    autoSetExcise(parentSelect.selectedOptions[0]);
-                }
+                autoSetExcise(this.selectedOptions[0]);
             });
         }
 
@@ -711,6 +740,9 @@
         });
 
         const $costInput = $('#cost');
+        const $priceInput = $('#price');
+        const $profitType = $('#profit_type');
+        const $profitAmount = $('#profit_amount');
         const $exciseInput = $('#tax_excise');
         function resetExciseHelper(){
             $('#exciseCostHelper').addClass('d-none').text('');
@@ -719,6 +751,27 @@
         $costInput.on('input', function(){
             $(this).data('inclusive-cost', $(this).val());
             resetExciseHelper();
+        });
+        function syncPriceFromProfit(){
+            const rawAmount = parseFloat($profitAmount.val());
+            if (isNaN(rawAmount)) {
+                return;
+            }
+            const costVal = parseFloat($costInput.val()) || 0;
+            let nextPrice = costVal;
+            if ($profitType.val() === 'percent') {
+                nextPrice = costVal + (costVal * (rawAmount / 100));
+            } else if ($profitType.val() === 'amount') {
+                nextPrice = costVal + rawAmount;
+            }
+            $priceInput.val(nextPrice.toFixed(4));
+        }
+        $profitType.on('change', syncPriceFromProfit);
+        $profitAmount.on('input', syncPriceFromProfit);
+        $costInput.on('input', function(){
+            if ($profitAmount.val() !== '') {
+                syncPriceFromProfit();
+            }
         });
         function adjustCostForExcise(){
             const exciseVal = parseFloat($exciseInput.val());

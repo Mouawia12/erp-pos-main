@@ -217,6 +217,7 @@ class SystemController extends Controller
                         'warehouse_id' => $warehouseId,
                         'product_id' => $productId,
                         'cost' => $product->cost,
+                        'price' => $product->price,
                         'quantity' => $item->quantity
                     ]);
                 }

@@ -25,6 +25,7 @@ use App\Http\Controllers\Admin\SalesController;
 use App\Http\Controllers\Admin\PurchaseController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\Admin\CompanyStatusReportController;
 use App\Http\Controllers\Admin\JournalController;
 use App\Http\Controllers\Admin\AccountsTreeController;
 use App\Http\Controllers\Admin\AccountSettingController;
@@ -37,6 +38,8 @@ use App\Http\Controllers\Admin\AdvancePaymentController;
 use App\Http\Controllers\Admin\SalaryDocController;
 use App\Http\Controllers\Admin\InventoryController;
 use App\Http\Controllers\Admin\ManufacturingController;
+use App\Http\Controllers\Admin\SalonDepartmentController;
+use App\Http\Controllers\Admin\SalonReservationController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\AlertController;
 use App\Http\Controllers\Admin\ReportAccountController;
@@ -304,6 +307,16 @@ Route::group(
     Route::get('/products/print_qr', [ProductController::class, 'print_qr'])->name('print_qr');
     Route::post('/products/print_qr', [ProductController::class, 'do_print_qr'])->name('preview_qr');
 
+    Route::get('/salon/departments', [SalonDepartmentController::class, 'index'])->name('salon.departments');
+    Route::post('/salon/departments', [SalonDepartmentController::class, 'store'])->name('salon.departments.store');
+    Route::post('/salon/departments/{id}', [SalonDepartmentController::class, 'update'])->name('salon.departments.update');
+    Route::delete('/salon/departments/{id}', [SalonDepartmentController::class, 'destroy'])->name('salon.departments.delete');
+
+    Route::get('/salon/reservations', [SalonReservationController::class, 'index'])->name('salon.reservations');
+    Route::post('/salon/reservations', [SalonReservationController::class, 'store'])->name('salon.reservations.store');
+    Route::post('/salon/reservations/{id}', [SalonReservationController::class, 'update'])->name('salon.reservations.update');
+    Route::delete('/salon/reservations/{id}', [SalonReservationController::class, 'destroy'])->name('salon.reservations.delete');
+
     // Quotations
     Route::resource('quotations', QuotationController::class);
     Route::post('quotations/{quotation}/convert', [QuotationController::class, 'convertToInvoice'])->name('quotations.convert');
@@ -388,6 +401,7 @@ Route::group(
     // Reports: expiry / near-expiry items
     Route::get('/reports/expiry', [ReportController::class, 'expiryReport'])->name('reports.expiry');
     Route::post('/reports/expiry', [ReportController::class, 'expiryReport'])->name('reports.expiry.search');
+    Route::get('/reports/salon-services', [ReportController::class, 'salonServicesReport'])->name('reports.salon.services');
     // Reports: low stock
     Route::get('/reports/low-stock', [ReportController::class, 'lowStockReport'])->name('reports.low_stock');
     Route::post('/reports/low-stock', [ReportController::class, 'lowStockReport'])->name('reports.low_stock.search');
@@ -527,7 +541,12 @@ Route::group(
 
     Route::get('/items_purchased_report', [ReportController::class, 'items_purchased_report'])->name('items_purchased_report');
     Route::get('/items-purchased-report-search/{fdate}/{tdate}/{warehouse}/{branch_id}/{item}/{supplier}', [ReportController::class, 'items_purchased_report_search'])
-        ->name('items.purchased.report.search'); 
+        ->name('items.purchased.report.search');
+
+    Route::get('/reports/clients-status', [CompanyStatusReportController::class, 'clients'])->name('reports.clients.status');
+    Route::get('/reports/clients-status-search', [CompanyStatusReportController::class, 'clientsSearch'])->name('reports.clients.status.search');
+    Route::get('/reports/vendors-status', [CompanyStatusReportController::class, 'vendors'])->name('reports.vendors.status');
+    Route::get('/reports/vendors-status-search', [CompanyStatusReportController::class, 'vendorsSearch'])->name('reports.vendors.status.search');
     Route::get('/client_balance_report/{id}/{slag}',[ReportController::class,'client_balance_report'])->name('client_balance_report');
     
     Route::get('/account_movement_report', [ReportAccountController::class, 'account_movement_report'])->name('account_movement_report');

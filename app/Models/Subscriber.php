@@ -34,6 +34,11 @@ class Subscriber extends Model
         return $this->hasMany(SubscriberDocument::class);
     }
 
+    public function users()
+    {
+        return $this->hasMany(User::class);
+    }
+
     public function refreshLifecycleStatus(): void
     {
         $endDate = $this->subscription_end ?? $this->trial_ends_at;

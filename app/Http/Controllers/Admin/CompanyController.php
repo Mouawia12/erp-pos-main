@@ -152,6 +152,10 @@ class CompanyController extends Controller
 
                 if ($exists->doesntExist()) {
                    
+                    $taxNumber = $validated['tax_number'] ?? $request->tax_number ?? null;
+                    if (empty($taxNumber) && !empty($validated['parent_company_id'])) {
+                        $taxNumber = Company::query()->where('id', $validated['parent_company_id'])->value('tax_number');
+                    }
                     $company = Company::create([
                         'group_id' => $validated['type'],
                         'group_name' => '',
@@ -160,11 +164,11 @@ class CompanyController extends Controller
                         'name' => $validated['name'] ?? $validated['company'],
                         'company' => $validated['company'],
                         'cr_number' => $validated['cr_number'] ?? null,
-                        'tax_number' => $validated['tax_number'] ?? null,
+                        'tax_number' => $taxNumber,
                         'parent_company_id' => $validated['parent_company_id'] ?? null,
                         'price_level_id' => $validated['price_level_id'] ?? null,
                         'default_discount' => $validated['default_discount'] ?? 0,
-                        'vat_no' => $request->tax_number ?? $validated['tax_number'] ?? '',
+                        'vat_no' => $taxNumber ?? '',
                         'address' => $request-> address ?? '',
                         'city' => '' ,
                         'state' => '',
@@ -277,6 +281,11 @@ class CompanyController extends Controller
                 'national_address_proof_expiry_date' => ['nullable','date'],
             ]);
             try {
+                $taxNumber = $request->tax_number ?? $company->tax_number ?? null;
+                $parentCompanyId = $request->parent_company_id ?? $company->parent_company_id;
+                if (empty($taxNumber) && !empty($parentCompanyId)) {
+                    $taxNumber = Company::query()->where('id', $parentCompanyId)->value('tax_number');
+                }
                 $company -> update([
                     'group_id' => $request -> type,
                     'group_name' => '',
@@ -285,8 +294,8 @@ class CompanyController extends Controller
                     'name' => $request->name ?? $company->name,
                     'company' => $request->company ?? $company->company,
                     'cr_number' => $request->cr_number ?? $company->cr_number,
-                    'tax_number' => $request->tax_number ?? $company->tax_number,
-                    'vat_no' => $request->tax_number ?? $request->vat_no ?? $company->vat_no,
+                    'tax_number' => $taxNumber ?? $company->tax_number,
+                    'vat_no' => $taxNumber ?? $request->vat_no ?? $company->vat_no,
                     'address' => $request-> address ?? '',
                     'city' => '' ,
                     'state' => '',
@@ -302,7 +311,7 @@ class CompanyController extends Controller
                     'credit_amount' =>$request -> has('credit_amount')? $request -> credit_amount: $company -> credit_amount ,
                     'stop_sale' =>$request -> has('stop_sale')? 1: $company -> stop_sale ,
                     'account_id' => $request->account_id ?? $company->account_id,
-                    'parent_company_id' => $request->parent_company_id ?? $company->parent_company_id,
+                    'parent_company_id' => $parentCompanyId,
                     'price_level_id' => $request->price_level_id ?? $company->price_level_id,
                     'default_discount' => $request->default_discount ?? $company->default_discount,
                     'representative_id_' => $request->representative_id_ ?? $company->representative_id_,

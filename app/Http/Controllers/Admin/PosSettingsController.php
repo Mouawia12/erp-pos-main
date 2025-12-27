@@ -86,6 +86,7 @@ class PosSettingsController extends Controller
                     'header_img' => $imageName,
                     'seller_buyer' => $request -> seller_buyer,
                     'pos_mode' => $request->pos_mode ?? 'classic',
+                    'print_format' => $request->print_format ?: null,
                 ]);
 
                 return redirect()->route('pos_settings')->with('success' , __('main.created'));
@@ -166,6 +167,7 @@ class PosSettingsController extends Controller
                     'header_img' => $imageName,
                     'seller_buyer' => $request -> seller_buyer,
                     'pos_mode' => $request->pos_mode ?? $setting->pos_mode ?? 'classic',
+                    'print_format' => $request->print_format ?: $setting->print_format,
 
                 ]);
 

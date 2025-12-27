@@ -15,6 +15,7 @@ use App\Models\Sales;
 use App\Models\Purchase;
 use App\Models\Branch;
 use App\Models\WarehouseProducts;
+use App\Models\SalonDepartment;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -733,6 +734,7 @@ class ReportController extends Controller
             )
             ->whereNotNull('pd.expiry_date')
             ->whereBetween('pd.expiry_date', [$dateFrom, $dateTo])
+            ->when($request->batch_no, fn($q,$v)=>$q->where('pd.batch_no','like','%'.$v.'%'))
             ->when($request->branch_id, fn($q,$v)=>$q->where('p.branch_id',$v))
             ->when($request->warehouse_id, fn($q,$v)=>$q->where('pd.warehouse_id',$v))
             ->when(Auth::user()->branch_id ?? null, fn($q,$v)=>$q->where('p.branch_id',$v))
@@ -751,6 +753,7 @@ class ReportController extends Controller
             'dateTo'=>$dateTo,
             'branchSelected'=>$request->branch_id,
             'warehouseSelected'=>$request->warehouse_id,
+            'batchSelected'=>$request->batch_no,
         ]);
     }
 
@@ -786,6 +789,47 @@ class ReportController extends Controller
             'data'=>$data,
             'branchSelected'=>$request->branch_id,
             'warehouseSelected'=>$request->warehouse_id,
+        ]);
+    }
+
+    public function salonServicesReport(Request $request)
+    {
+        $dateFrom = $request->date_from ?? now()->subDays(30)->toDateString();
+        $dateTo = $request->date_to ?? now()->toDateString();
+
+        $departments = SalonDepartment::query()
+            ->when(Auth::user()->subscriber_id ?? null, fn($q,$v) => $q->where('subscriber_id', $v))
+            ->orderBy('name')
+            ->get();
+
+        $data = DB::table('sale_details as sd')
+            ->join('sales as s', 's.id', '=', 'sd.sale_id')
+            ->join('products as p', 'p.id', '=', 'sd.product_id')
+            ->leftJoin('salon_departments as d', 'd.id', '=', 'p.salon_department_id')
+            ->select(
+                'p.id',
+                'p.name',
+                'd.name as department_name',
+                DB::raw('SUM(sd.quantity) as quantity'),
+                DB::raw('SUM(sd.total) as total'),
+                DB::raw('SUM(sd.tax) as tax'),
+                DB::raw('SUM(sd.tax_excise) as tax_excise')
+            )
+            ->whereNotNull('p.salon_department_id')
+            ->whereBetween('s.date', [$dateFrom, $dateTo])
+            ->when($request->department_id, fn($q,$v) => $q->where('p.salon_department_id', $v))
+            ->when(Auth::user()->branch_id ?? null, fn($q,$v) => $q->where('s.branch_id', $v))
+            ->when(Auth::user()->subscriber_id ?? null, fn($q,$v) => $q->where('s.subscriber_id', $v))
+            ->groupBy('p.id', 'p.name', 'd.name')
+            ->orderBy('quantity', 'desc')
+            ->get();
+
+        return view('admin.Report.salon_services_report', [
+            'departments' => $departments,
+            'data' => $data,
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+            'departmentSelected' => $request->department_id,
         ]);
     }
 

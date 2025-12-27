@@ -325,9 +325,9 @@
             $.get("{{ url('/admin/products') }}/"+id+"/locations", function(resp){
                 if(resp && resp.locations){
                     let html = '<h6>'+resp.product.name+' ('+resp.product.code+')</h6>';
-                    html += '<table class="table table-bordered"><thead><tr><th>{{__("main.warehouse")}}</th><th>{{__("main.quantity")}}</th><th>{{__("main.cost")}}</th><th>{{__("main.last_sale_price") ?? "آخر سعر بيع"}}</th></tr></thead><tbody>';
+                    html += '<table class="table table-bordered"><thead><tr><th>{{__("main.warehouse")}}</th><th>{{__("main.quantity")}}</th><th>{{__("main.cost")}}</th><th>{{__("main.price")}}</th><th>{{__("main.last_sale_price") ?? "آخر سعر بيع"}}</th></tr></thead><tbody>';
                     resp.locations.forEach(function(loc){
-                        html += '<tr><td>'+loc.warehouse_name+'</td><td>'+loc.quantity+'</td><td>'+loc.cost+'</td><td>'+loc.last_sale_price+'</td></tr>';
+                        html += '<tr><td>'+loc.warehouse_name+'</td><td>'+loc.quantity+'</td><td>'+loc.cost+'</td><td>'+loc.price+'</td><td>'+loc.last_sale_price+'</td></tr>';
                     });
                     html += '</tbody></table>';
                     $('#locationsBody').html(html);

@@ -272,7 +272,8 @@ label.total {
                                                     data-phone="{{$vendor->phone ?? ''}}"
                                                     data-address="{{$vendor->address ?? ''}}"
                                                     data-tax="{{$vendor->tax_number ?? ''}}"
-                                                    data-name="{{$vendor->name}}">
+                                                    data-name="{{$vendor->name}}"
+                                                    data-representative="{{$vendor->representative_id_ ?? ''}}">
                                                     {{$vendor -> name}} @if($vendor->phone) - {{$vendor->phone}} @endif @if($vendor->address) - {{$vendor->address}} @endif @if($vendor->tax_number) - {{$vendor->tax_number}} @endif
                                                 </option>
                                             @endforeach
@@ -298,6 +299,17 @@ label.total {
                                     <div class="form-group">   
                                         <input id="customer_tax_number" name="customer_tax_number" class="form-control pos-input" type="text" placeholder="{{ __('main.tax_number') }}">  
                                     </div>   
+                                </div>
+                                <div class="col-lg-4">
+                                    <div class="form-group">
+                                        <label>{{ __('main.representatives') }}</label>
+                                        <select class="form-control pos-input" name="representative_id" id="representative_id">
+                                            <option value="">{{ __('main.choose') }}</option>
+                                            @foreach($representatives as $rep)
+                                                <option value="{{$rep->id}}">{{$rep->user_name}}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
                                 </div>
                                 <div class="col-lg-4">
                                     <div class="form-group">
@@ -528,6 +540,21 @@ label.total {
     const posNoProductsText = @json(__('main.pos_no_products'));
     const posCustomerNoResultsText = @json(__('main.pos_customer_no_results'));
     const posProductImageBase = "{{ env('APP_URL') }}/uploads/items/images/";
+    const serviceFeeLabel = @json(__('main.product_service_fee') ?? 'رسوم الخدمات');
+
+    function calculateServiceFee(item){
+        let fee = 0;
+        if (item.shipping_service_type === 'paid' || item.shipping_service_type === 'included') {
+            fee += parseFloat(item.shipping_service_amount ?? 0) || 0;
+        }
+        if (item.delivery_service_type === 'paid' || item.delivery_service_type === 'included') {
+            fee += parseFloat(item.delivery_service_amount ?? 0) || 0;
+        }
+        if (item.installation_service_type === 'paid' || item.installation_service_type === 'included') {
+            fee += parseFloat(item.installation_service_amount ?? 0) || 0;
+        }
+        return fee;
+    }
 
     function togglePosServiceMeta(){
         const control = $('#pos_service_mode');
@@ -761,11 +788,15 @@ label.total {
             const address = selected.data('address') || '';
             const taxNumber = selected.data('tax') || '';
             const name = selected.data('name') || selected.text().trim();
+            const representativeId = selected.data('representative') || '';
             $('#customer_phone').val(phone);
             $('#customer_address').val(address);
             $('#customer_tax_number').val(taxNumber);
             if(!$('#customer_name').val()){
                 $('#customer_name').val(name);
+            }
+            if($('#representative_id').length){
+                $('#representative_id').val(representativeId).trigger('change');
             }
             if(customerLookupInput && customerLookupInput.length){
                 const summaryParts = [];
@@ -1000,6 +1031,7 @@ label.total {
         });
 
         var price = item.price;
+        var serviceFee = calculateServiceFee(item);
         if(item.selected_variant && item.selected_variant.price){
             price = item.selected_variant.price;
         }
@@ -1009,7 +1041,9 @@ label.total {
         }
 
         var taxType = item.tax_method;
-        var taxRate = item.total_tax_rate ? Number(item.total_tax_rate) : (item.tax_rate == 1 ? 0 : 15);
+        var taxRate = item.total_tax_rate !== undefined && item.total_tax_rate !== null
+            ? Number(item.total_tax_rate)
+            : Number(item.tax ?? 0);
         var itemTax = 0;
         var priceWithoutTax = 0;
         var priceWithTax = 0;
@@ -1025,20 +1059,21 @@ label.total {
             }
         }
 
-        if(taxType == 1){
+        price = (parseFloat(price) || 0) + (serviceFee || 0);
+        var Excise = item.tax_excise;
+        var includesTax = Number(item.price_includes_tax ?? 0) === 1;
+        if(item.price_includes_tax === undefined || item.price_includes_tax === null){
+            includesTax = Number(taxType ?? 0) === 1;
+        }
+        var totalRate = (taxRate || 0) + (Excise || 0);
+        if(includesTax){
             priceWithTax = price;
-            priceWithoutTax = (price / (1+(taxRate/100)));
+            priceWithoutTax = totalRate > 0 ? (price / (1+(totalRate/100))) : price;
             itemTax = priceWithTax - priceWithoutTax;
         }else{
-            itemTax = price * (taxRate/100);
             priceWithoutTax = price;
-            priceWithTax = price + itemTax;
-        } 
-        var Excise = item.tax_excise;
-        var taxExcise = 0;
-        if(Excise > 0){    
-            taxExcise = (priceWithoutTax * (Excise/100));
-            itemTax = itemTax + taxExcise;
+            itemTax = (priceWithoutTax * (taxRate/100)) + (priceWithoutTax * (Excise/100));
+            priceWithTax = priceWithoutTax + itemTax;
         }
         
         var key = (item.selected_variant ? ('v'+item.selected_variant.id) : ('p'+item.id)) + '_' + itemKey;
@@ -1051,6 +1086,7 @@ label.total {
         sItems[key].item_tax = itemTax;
         sItems[key].tax_rate = taxRate;
         sItems[key].tax_excise = Excise;
+        sItems[key].service_fee = serviceFee;
         sItems[key].qnt = 1;
         sItems[key].available_qty = item.qty ? Number(item.qty) : 0;
         sItems[key].cost = item.cost ? Number(item.cost) : 0;
@@ -1130,13 +1166,14 @@ label.total {
             var newPrice = parseFloat($(this).val()),
                 item_id = row.attr('data-item-id');
 
-            var item_tax =sItems[item_id].item_tax;
             var tax_rate = sItems[item_id].tax_rate;
             var tax_excise = sItems[item_id].tax_excise;
+            var totalRate = (tax_rate || 0) + (tax_excise || 0);
             var priceWithTax = newPrice;
-            if(item_tax > 0){
-                priceWithTax = newPrice + (newPrice * (tax_rate/100));
-                item_tax = (newPrice * (tax_rate/100)) + (newPrice * (tax_excise/100));
+            var item_tax = 0;
+            if(totalRate > 0){
+                priceWithTax = newPrice + (newPrice * (totalRate/100));
+                item_tax = (newPrice * (totalRate/100));
             }
             sItems[item_id].price_withoute_tax= newPrice;
             sItems[item_id].price_with_tax= priceWithTax;
@@ -1160,13 +1197,14 @@ label.total {
             var newPrice = parseFloat($(this).val()),
                 item_id = row.attr('data-item-id');
 
-            var item_tax =sItems[item_id].item_tax;
             var tax_rate = sItems[item_id].tax_rate;
             var tax_excise = sItems[item_id].tax_excise;
+            var totalRate = (tax_rate || 0) + (tax_excise || 0);
             var priceWithoutTax = newPrice;
-            if(item_tax > 0){ 
-                priceWithoutTax = newPrice / (1 + (tax_rate/100)+(tax_excise/100));
-                item_tax = (priceWithoutTax * (tax_rate/100)) + (priceWithoutTax * (tax_excise/100));
+            var item_tax = 0;
+            if(totalRate > 0){ 
+                priceWithoutTax = newPrice / (1 + (totalRate/100));
+                item_tax = (priceWithoutTax * (totalRate/100));
             }
             sItems[item_id].price_withoute_tax= priceWithoutTax;
             sItems[item_id].price_with_tax= newPrice;
@@ -1180,15 +1218,21 @@ label.total {
             var item_id = row.attr('data-item-id');
             var previousUnit = sItems[item_id].selected_unit_id;
             var previousFactor = sItems[item_id].unit_factor;
-            var selectedPrice = parseFloat($(this).find(':selected').data('price')) || sItems[item_id].price_withoute_tax;
+            var selectedPrice = parseFloat($(this).find(':selected').data('price'));
+            if (isNaN(selectedPrice)) {
+                selectedPrice = sItems[item_id].price_withoute_tax;
+            } else {
+                selectedPrice += parseFloat(sItems[item_id].service_fee ?? 0) || 0;
+            }
             var factor = parseFloat($(this).find(':selected').data('factor')) || 1;
 
             var item_tax = 0;
             var tax_rate = sItems[item_id].tax_rate;
             var tax_excise = sItems[item_id].tax_excise;
+            var totalRate = (tax_rate || 0) + (tax_excise || 0);
             var priceWithTax = selectedPrice;
-            priceWithTax = selectedPrice + (selectedPrice * (tax_rate/100));
-            item_tax = (selectedPrice * (tax_rate/100)) + (selectedPrice * (tax_excise/100));
+            priceWithTax = selectedPrice + (selectedPrice * (totalRate/100));
+            item_tax = selectedPrice * (totalRate/100);
             sItems[item_id].price_withoute_tax= selectedPrice;
             sItems[item_id].price_with_tax= priceWithTax;
             sItems[item_id].item_tax= item_tax;
@@ -1282,7 +1326,11 @@ label.total {
             net += (lineTotal + lineTax - lineDiscount);
 
             var newTr = $('<tr data-item-id="'+i+'">');
-            var tr_html ='<td><input type="hidden" name="product_id[]" value="'+(item.product_id ?? item.id)+'"> <span><strong>'+item.name + '</strong><br>' + (item.code)+'</span> </td>';
+            var serviceTag = '';
+            if (Number(item.service_fee ?? 0) > 0) {
+                serviceTag = '<br><small class="text-warning">'+serviceFeeLabel+': '+Number(item.service_fee ?? 0).toFixed(2)+'</small>';
+            }
+            var tr_html ='<td><input type="hidden" name="product_id[]" value="'+(item.product_id ?? item.id)+'"> <span><strong>'+item.name + '</strong><br>' + (item.code)+serviceTag+'</span> </td>';
                 tr_html +='<td><span class="badge badge-light">'+Number(item.available_qty ?? 0)+'</span></td>';
                 tr_html +='<td><input type="text" readonly class="form-control" value="'+Number(item.cost ?? 0).toFixed(2)+'"></td>';
                 tr_html +='<td><input type="text" readonly class="form-control" value="'+Number(item.last_sale_price ?? 0).toFixed(2)+'"></td>';

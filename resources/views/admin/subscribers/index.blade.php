@@ -59,6 +59,7 @@
                             <th>بيانات تواصل</th>
                             <th>الرابط / الوصول</th>
                             <th>بيانات دخول المشترك</th>
+                            <th>المستخدمون</th>
                             <th>مدة الاشتراك</th>
                             <th>الحالة</th>
                             <th>عمليات</th>
@@ -97,6 +98,13 @@
                                 <td>
                                     <div>بريد: {{ $subscriber->login_email ?? '-' }}</div>
                                     <div>كلمة المرور: {{ $subscriber->login_password_plain ?? '-' }}</div>
+                                </td>
+                                <td>
+                                    @forelse($subscriber->users as $user)
+                                        <div>{{ $user->name }} - {{ $user->email }}</div>
+                                    @empty
+                                        -
+                                    @endforelse
                                 </td>
                                 <td>
                                     <div>من: {{ optional($subscriber->subscription_start)->format('Y-m-d') ?? '-' }}</div>
@@ -138,7 +146,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="6">لا يوجد مشتركون بعد</td></tr>
+                            <tr><td colspan="8">لا يوجد مشتركون بعد</td></tr>
                         @endforelse
                     </tbody>
                 </table>

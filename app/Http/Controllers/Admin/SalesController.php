@@ -14,6 +14,7 @@ use App\Http\Requests\StoreSalesRequest;
 use App\Http\Requests\UpdateSalesRequest;
 use App\Models\SystemSettings;
 use App\Models\PosSettings;
+use App\Models\PosSettings;
 use App\Models\Warehouse;
 use App\Models\Branch;
 use App\Models\ProductUnit;
@@ -528,6 +529,17 @@ class SalesController extends Controller
         $taxForInvoice = $tax_excise > 0 ? ($tax - $tax_excise) : $tax;
         $net += $request -> additional_service ?? 0 ;
         $net -= $request->discount;
+
+        $creditLimit = (float) ($customer->credit_amount ?? 0);
+        if ($creditLimit > 0) {
+            $currentBalance = (float) ($customer->deposit_amount ?? 0);
+            $projectedBalance = $currentBalance - $net;
+            if ($projectedBalance < (-1 * $creditLimit)) {
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', __('main.credit_limit_exceeded') ?? 'تم تجاوز الحد الائتماني للعميل.');
+            }
+        }
  
         $saleData = [
             'date' => $billDate,
@@ -702,6 +714,7 @@ class SalesController extends Controller
             'product_id' => $productId,
             'quantity' => $initialQty,
             'cost' => $product->cost,
+            'price' => $product->price,
         ]);
 
         Log::warning('warehouse_product_autocreated', [
@@ -1043,6 +1056,7 @@ class SalesController extends Controller
         $defaultInvoiceType = $this->resolveDefaultInvoiceType();
         $posSettings = PosSettings::first();
         $posMode = optional($posSettings)->pos_mode ?? 'classic';
+        $representatives = Representative::all();
         $defaultWarehouseId = optional($warehouses->first())->id;
         if($settings && $settings->branch_id){
             $preferred = $warehouses->firstWhere('id', $settings->branch_id);
@@ -1052,7 +1066,7 @@ class SalesController extends Controller
         }
         $allowNegativeStock = $siteContrller->allowSellingWithoutStock();
      
-       return view('admin.sales.pos' , compact('vendors' , 'warehouses' , 'settings','defaultInvoiceType','posSettings','posMode','defaultWarehouseId','allowNegativeStock'));
+       return view('admin.sales.pos' , compact('vendors' , 'warehouses' , 'settings','defaultInvoiceType','posSettings','posMode','defaultWarehouseId','allowNegativeStock','representatives'));
     }
 
     private function resolveDefaultInvoiceType(): string
@@ -1099,9 +1113,26 @@ class SalesController extends Controller
         }
 
         $format = $request->get('format');
+        if (! $format) {
+            $subscriberId = $payload['data']->subscriber_id ?? Auth::user()->subscriber_id ?? null;
+            $posSettingsQuery = PosSettings::query();
+            if ($subscriberId) {
+                $posSettingsQuery->where('subscriber_id', $subscriberId);
+            }
+            $posSettings = $posSettingsQuery->first();
+            $format = $posSettings?->print_format ?: null;
+        }
 
         if ($format === 'a5') {
             return view('admin.sales.printA5', $payload)->render();
+        }
+
+        if ($format === 'pos') {
+            return view('admin.sales.printPos', $payload)->render();
+        }
+
+        if ($format === 'a4') {
+            return view('admin.sales.print', $payload)->render();
         }
 
         if ($payload['data']->pos == 1) {

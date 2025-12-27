@@ -32,6 +32,7 @@ class Product extends Model
       'alert_quantity',
       'category_id',
       'subcategory_id',
+      'salon_department_id',
       'quantity',
       'tax',
       'tax_rate',
@@ -40,7 +41,15 @@ class Product extends Model
       'tax_method',
       'price_includes_tax',
       'profit_margin',
+      'profit_type',
+      'profit_amount',
       'tax_excise',
+      'shipping_service_type',
+      'shipping_service_amount',
+      'delivery_service_type',
+      'delivery_service_amount',
+      'installation_service_type',
+      'installation_service_amount',
       'type',
       'brand',
       'slug',
@@ -65,6 +74,11 @@ class Product extends Model
     public function variants()
     {
         return $this->hasMany(ProductVariant::class);
+    }
+
+    public function salonDepartment()
+    {
+        return $this->belongsTo(SalonDepartment::class, 'salon_department_id');
     }
 
     public function totalTaxRate(): float

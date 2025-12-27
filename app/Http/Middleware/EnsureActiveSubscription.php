@@ -20,6 +20,12 @@ class EnsureActiveSubscription
                 $subscriber->refreshLifecycleStatus();
 
                 if ($subscriber->status === 'expired') {
+                    $routeName = $request->route()?->getName();
+                    $safeMethods = ['GET', 'HEAD', 'OPTIONS'];
+                    if (in_array($request->method(), $safeMethods, true) || $routeName === 'admin.logout') {
+                        return $next($request);
+                    }
+
                     if ($request->expectsJson()) {
                         abort(402, __('اشتراك هذا الحساب منتهٍ، الرجاء التواصل مع المالك.'));
                     }

@@ -98,6 +98,23 @@
                                                     </div>
                                                 </div>
                                             </div>
+
+                                            <div class="row">
+                                                <div class="col-4">
+                                                    <div class="form-group">
+                                                        <label>
+                                                            {{ __('main.print_format') }}
+                                                            <span class="text-danger">*</span>
+                                                        </label>
+                                                        <select class="form-control" name="print_format" id="print_format">
+                                                            <option @if(!$setting) selected @endif value="">{{ __('main.choose') ?? 'اختر' }}</option>
+                                                            <option @if($setting? $setting->print_format == 'pos' : false) selected @endif value="pos">{{ __('main.print_format_pos') }}</option>
+                                                            <option @if($setting? $setting->print_format == 'a4' : false) selected @endif value="a4">{{ __('main.print_format_a4') }}</option>
+                                                            <option @if($setting? $setting->print_format == 'a5' : false) selected @endif value="a5">{{ __('main.print_format_a5') }}</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
         
                                             <div class="row">
                                                 <div class="col-4">

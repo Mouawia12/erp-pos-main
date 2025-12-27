@@ -276,7 +276,7 @@
                                 <select class="form-control" id="parent_company_id" name="parent_company_id">
                                     <option value="">{{ __('main.choose') }}</option>
                                     @foreach($parentCompanies as $c)
-                                        <option value="{{$c->id}}">{{$c->company}}</option>
+                                        <option value="{{$c->id}}" data-tax="{{$c->tax_number ?? $c->vat_no ?? ''}}">{{$c->company}}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -527,6 +527,13 @@
             id = 0 ;
         });
 
+        $('#parent_company_id').on('change', function () {
+            const tax = $(this).find(':selected').data('tax') || '';
+            const taxInput = $('#tax_number');
+            if (!taxInput.val()) {
+                taxInput.val(tax);
+            }
+        });
 
     });
     function confirmDelete(){

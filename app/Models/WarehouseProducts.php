@@ -14,6 +14,7 @@ class WarehouseProducts extends Model
         'warehouse_id',
         'product_id',
         'quantity',
-        'cost'
+        'cost',
+        'price'
     ];
 }

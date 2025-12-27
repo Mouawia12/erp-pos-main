@@ -30,6 +30,7 @@ use Illuminate\Support\Str;
 use App\Models\Brand;
 use App\Models\Unit;
 use App\Models\TaxRates;
+use App\Models\SalonDepartment;
 
 class ProductController extends Controller
 {
@@ -94,11 +95,13 @@ class ProductController extends Controller
         $systemController = new SystemController(); 
         $brands = $systemController->getAllBrands();
         $units = $systemController->getAllUnits();
-        $categories = $systemController->getAllMainCategories();
-        $subCategories = Category::where('parent_id', '<>', 0)
+        $categories = Category::orderBy('name')->get();
+        $categoryTreeOptions = $this->buildCategoryTreeOptions($categories);
+        $warehouses = $systemController->getAllWarehouses();
+        $salonDepartments = SalonDepartment::query()
+            ->when(Auth::user()->subscriber_id ?? null, fn($q,$v) => $q->where('subscriber_id', $v))
             ->orderBy('name')
-            ->get()
-            ->groupBy('parent_id');
+            ->get();
         $taxRages = $systemController->getAllTaxRates();
         $taxTypes = $systemController->getAllTaxTypes();
         $settings = SystemSettings::first();
@@ -108,11 +111,17 @@ class ProductController extends Controller
         $defaultBrandId = $this->resolveDefaultBrandId();
         $defaultUnitId = $this->resolveDefaultUnitId();
         $defaultTaxRateId = $this->resolveDefaultTaxRateId();
+        $selectedCategoryNode = old('category_node_id')
+            ?? old('subcategory_id')
+            ?? old('category_id')
+            ?? $defaultCategoryId;
 
         return view('admin.products.create',compact(
             'brands',
             'categories',
-            'subCategories',
+            'categoryTreeOptions',
+            'warehouses',
+            'salonDepartments',
             'taxRages',
             'taxTypes',
             'units',
@@ -122,7 +131,8 @@ class ProductController extends Controller
             'defaultCategoryId',
             'defaultBrandId',
             'defaultUnitId',
-            'defaultTaxRateId'
+            'defaultTaxRateId',
+            'selectedCategoryNode'
         ));
     }
 
@@ -134,8 +144,10 @@ class ProductController extends Controller
      */
     public function store(Request $request)
     {
+        $this->resolveCategorySelection($request);
         $request['code'] =  $request->code ? $request->code : $this->getItemCode();
         $this->applyProductDefaults($request);
+        $this->applyProfitPricing($request);
 
         $rawVariants = $request->input('product_variants', []);
         $normalizedVariants = $this->normalizeVariantsInput($rawVariants);
@@ -150,6 +162,11 @@ class ProductController extends Controller
             $this->productValidationMessages(),
             $this->productValidationAttributes()
         );
+        if (!$this->validateUnitOrder($request->input('product_units', []))) {
+            return back()
+                ->withInput()
+                ->withErrors(['product_units' => __('main.product_units_order') ?? 'Units must be ordered from smallest to largest.']);
+        }
         $siteController = new SystemController();
         $settings = SystemSettings::first();
         $exciseEnabled = $this->exciseEnabled();
@@ -201,6 +218,7 @@ class ProductController extends Controller
                 'alert_quantity' => $request->alert_quantity ?? 0,
                 'category_id' => $request->category_id,
                 'subcategory_id' => $request->subcategory_id ?? 0,
+                'salon_department_id' => $request->salon_department_id,
                 'quantity' => $request->quantity ?? 0,
                 'tax' => $request->tax ?? 0,
                 'tax_rate' => $request->tax_rate,
@@ -209,7 +227,15 @@ class ProductController extends Controller
                 'tax_method' => $resolvedTaxMethod,
                 'price_includes_tax' => $request->boolean('price_includes_tax'),
                 'profit_margin' => $request->profit_margin,
+                'profit_type' => $request->profit_type,
+                'profit_amount' => $request->profit_amount,
                 'tax_excise' => max($tax_excise, 0),
+                'shipping_service_type' => $request->shipping_service_type ?? 'free',
+                'shipping_service_amount' => $request->shipping_service_amount ?? 0,
+                'delivery_service_type' => $request->delivery_service_type ?? 'free',
+                'delivery_service_amount' => $request->delivery_service_amount ?? 0,
+                'installation_service_type' => $request->installation_service_type ?? 'free',
+                'installation_service_amount' => $request->installation_service_amount ?? 0,
                 'type' => $request->type,
                 'brand' => $request->brand,
                 'slug' => $resolvedSlug,
@@ -248,11 +274,13 @@ class ProductController extends Controller
 
                 $systemController = new SystemController();
                 $warehouses = $systemController->getAllWarehouses();
+                $warehousePrices = $this->resolveWarehousePrices($request->input('warehouse_prices', []), $product->price);
                 foreach ($warehouses as $warehouse){
                     WarehouseProductModel::create([
                         'warehouse_id' => $warehouse->id,
                         'product_id' => $product->id,
                         'cost' => $product->cost,
+                        'price' => $warehousePrices[$warehouse->id] ?? $product->price,
                         'quantity' => 0
                     ]);
                 }
@@ -289,20 +317,29 @@ class ProductController extends Controller
             $systemController = new SystemController();
             $brands = $systemController->getAllBrands();
             $units = $systemController->getAllUnits();
-            $categories = $systemController->getAllMainCategories();
-            $subCategories = Category::where('parent_id', '<>', 0)
-                ->orderBy('name')
-                ->get()
-                ->groupBy('parent_id');
+            $categories = Category::orderBy('name')->get();
+            $categoryTreeOptions = $this->buildCategoryTreeOptions($categories);
             $taxRages = $systemController->getAllTaxRates();
             $taxTypes = $systemController->getAllTaxTypes();
             $productUnits = ProductUnit::where('product_id',$id)->get();
             $productTaxes = ProductTax::where('product_id',$id)->pluck('tax_rate_id')->toArray();
             $productVariants = ProductVariant::where('product_id',$id)->get();
             $exciseEnabled = $this->exciseEnabled();
+            $warehouses = $systemController->getAllWarehouses();
+            $warehousePrices = WarehouseProductModel::where('product_id', $id)
+                ->pluck('price', 'warehouse_id')
+                ->toArray();
+            $salonDepartments = SalonDepartment::query()
+                ->when(Auth::user()->subscriber_id ?? null, fn($q,$v) => $q->where('subscriber_id', $v))
+                ->orderBy('name')
+                ->get();
+            $selectedCategoryNode = old('category_node_id')
+                ?? old('subcategory_id')
+                ?? old('category_id')
+                ?? ($product->subcategory_id ?: $product->category_id);
 
             return view('admin.products.update',
-            compact('product','brands','categories','subCategories','taxRages','taxTypes','units','productUnits','productTaxes','productVariants','exciseEnabled'));
+            compact('product','brands','categories','categoryTreeOptions','taxRages','taxTypes','units','productUnits','productTaxes','productVariants','exciseEnabled','selectedCategoryNode','warehouses','warehousePrices','salonDepartments'));
         }
         }
 
@@ -386,7 +423,9 @@ class ProductController extends Controller
  
         $product = Product::find($id);
         if($product){
+            $this->resolveCategorySelection($request);
             $this->applyProductDefaults($request, $product);
+            $this->applyProfitPricing($request);
             $rawVariants = $request->input('product_variants', []);
             $normalizedVariants = $this->normalizeVariantsInput($rawVariants);
             if (!empty($rawVariants) && empty($normalizedVariants)) {
@@ -399,6 +438,11 @@ class ProductController extends Controller
                 $this->productValidationMessages(),
                 $this->productValidationAttributes()
             );
+            if (!$this->validateUnitOrder($request->input('product_units', []))) {
+                return back()
+                    ->withInput()
+                    ->withErrors(['product_units' => __('main.product_units_order') ?? 'Units must be ordered from smallest to largest.']);
+            }
 
             $exciseEnabled = $this->exciseEnabled();
             $tax_excise = $product->getRawOriginal('tax_excise') ?? 0;
@@ -447,6 +491,7 @@ class ProductController extends Controller
                     'alert_quantity' => $request->alert_quantity ?? 0,
                     'category_id' => $request->category_id,
                     'subcategory_id' => $request->subcategory_id ?? 0,
+                    'salon_department_id' => $request->salon_department_id,
                     'quantity' => $request->quantity ?? 0,
                     'tax' => $request->tax ?? 0,
                     'tax_rate' => $request->tax_rate,
@@ -455,7 +500,15 @@ class ProductController extends Controller
                     'tax_method' => $resolvedTaxMethod,
                     'price_includes_tax' => $request->boolean('price_includes_tax'),
                     'profit_margin' => $request->profit_margin,
+                    'profit_type' => $request->profit_type,
+                    'profit_amount' => $request->profit_amount,
                     'tax_excise' => max($tax_excise, 0),
+                    'shipping_service_type' => $request->shipping_service_type ?? 'free',
+                    'shipping_service_amount' => $request->shipping_service_amount ?? 0,
+                    'delivery_service_type' => $request->delivery_service_type ?? 'free',
+                    'delivery_service_amount' => $request->delivery_service_amount ?? 0,
+                    'installation_service_type' => $request->installation_service_type ?? 'free',
+                    'installation_service_amount' => $request->installation_service_amount ?? 0,
                     'type' => $request->type,
                     'brand' => $request->brand,
                     'slug' => $slugValue,
@@ -469,6 +522,7 @@ class ProductController extends Controller
                 ]);
                 $this->syncProductTaxes($product->id, $request->input('tax_rates_multi', []));
                 $this->syncProductVariants($product->id, $normalizedVariants);
+                $this->syncWarehousePrices($product->id, $request->input('warehouse_prices', []), $product->price);
 
                 $units = ProductUnit::where('product_id' , '=' , $product -> id) -> get();
                 foreach ($units as $unit){
@@ -544,6 +598,7 @@ class ProductController extends Controller
             'brand' => ['required', 'exists:brands,id'],
             'category_id' => ['required', 'exists:categories,id'],
             'subcategory_id' => ['nullable', 'exists:categories,id'],
+            'salon_department_id' => ['nullable', 'exists:salon_departments,id'],
             'cost' => ['required', 'numeric', 'min:0'],
             'price' => ['required', 'numeric', 'min:0'],
             'quantity' => ['nullable', 'numeric', 'min:0'],
@@ -553,6 +608,14 @@ class ProductController extends Controller
             'tax_rates_multi.*' => ['integer', 'exists:tax_rates,id'],
             'price_includes_tax' => ['nullable', 'in:0,1'],
             'profit_margin' => ['nullable', 'numeric', 'min:0'],
+            'profit_type' => ['nullable', 'in:percent,amount'],
+            'profit_amount' => ['nullable', 'numeric', 'min:0'],
+            'shipping_service_type' => ['nullable', 'in:paid,included,free'],
+            'shipping_service_amount' => ['nullable', 'numeric', 'min:0'],
+            'delivery_service_type' => ['nullable', 'in:paid,included,free'],
+            'delivery_service_amount' => ['nullable', 'numeric', 'min:0'],
+            'installation_service_type' => ['nullable', 'in:paid,included,free'],
+            'installation_service_amount' => ['nullable', 'numeric', 'min:0'],
             'type' => ['required', 'in:1,2,3'],
             'lista' => ['nullable', 'numeric', 'min:0'],
             'alert_quantity' => ['nullable', 'numeric', 'min:0'],
@@ -576,6 +639,8 @@ class ProductController extends Controller
             'product_units.*.price' => ['nullable', 'numeric', 'min:0'],
             'product_units.*.conversion_factor' => ['nullable', 'numeric', 'min:0.0001'],
             'product_units.*.barcode' => ['nullable', 'string', 'max:191'],
+            'warehouse_prices' => ['nullable', 'array'],
+            'warehouse_prices.*' => ['nullable', 'numeric', 'min:0'],
         ];
 
         for ($i = 1; $i <= 6; $i++) {
@@ -596,6 +661,89 @@ class ProductController extends Controller
         $settings = $query->first();
 
         return (bool) optional($settings)->is_tobacco;
+    }
+
+    private function validateUnitOrder(array $rows): bool
+    {
+        $previous = null;
+        foreach ($rows as $row) {
+            $row = is_array($row) ? $row : [];
+            if (empty($row['unit']) || $row['price'] === '' || $row['price'] === null) {
+                continue;
+            }
+            $factor = 1.0;
+            if (array_key_exists('conversion_factor', $row) && $row['conversion_factor'] !== '' && $row['conversion_factor'] !== null) {
+                $factor = (float) $row['conversion_factor'];
+            }
+            if ($previous !== null && $factor < $previous) {
+                return false;
+            }
+            $previous = $factor;
+        }
+
+        return true;
+    }
+
+    private function resolveCategorySelection(Request $request): void
+    {
+        $nodeId = $request->input('category_node_id');
+        if (!$nodeId) {
+            return;
+        }
+
+        $node = Category::find($nodeId);
+        if (!$node) {
+            return;
+        }
+
+        $rootId = $node->parent_id ? $this->findRootCategoryId($node) : $node->id;
+        $request->merge([
+            'category_id' => $rootId,
+            'subcategory_id' => $node->parent_id ? $node->id : null,
+        ]);
+    }
+
+    private function findRootCategoryId(Category $node): int
+    {
+        $current = $node;
+        while ($current && $current->parent_id) {
+            $parent = Category::find($current->parent_id);
+            if (!$parent) {
+                break;
+            }
+            $current = $parent;
+        }
+
+        return $current?->id ?? $node->id;
+    }
+
+    private function buildCategoryTreeOptions($categories): array
+    {
+        $byParent = [];
+        foreach ($categories as $category) {
+            $parentId = (int) ($category->parent_id ?? 0);
+            $byParent[$parentId][] = $category;
+        }
+
+        foreach ($byParent as &$list) {
+            usort($list, fn ($a, $b) => strcmp((string) $a->name, (string) $b->name));
+        }
+        unset($list);
+
+        $options = [];
+        $walk = function ($parentId, $depth) use (&$walk, &$options, $byParent) {
+            foreach ($byParent[$parentId] ?? [] as $category) {
+                $options[] = [
+                    'id' => $category->id,
+                    'label' => str_repeat('-- ', $depth) . $category->name,
+                    'tax_excise' => $category->tax_excise ?? 0,
+                ];
+                $walk($category->id, $depth + 1);
+            }
+        };
+        $walk(0, 0);
+
+        return $options;
     }
 
     private function applyProductDefaults(Request $request, ?Product $product = null): void
@@ -629,6 +777,83 @@ class ProductController extends Controller
             'cost' => $this->resolveNumericInput($request, 'cost', $product?->cost ?? 0),
             'price' => $this->resolveNumericInput($request, 'price', $product?->price ?? 0),
         ]);
+    }
+
+    private function applyProfitPricing(Request $request): void
+    {
+        $profitType = $request->input('profit_type');
+        $profitAmount = $request->input('profit_amount');
+        $profitMargin = $request->input('profit_margin');
+
+        if ($profitAmount === null || $profitAmount === '') {
+            $profitAmount = $profitMargin;
+        }
+
+        if (!$profitType && $profitAmount !== null && $profitAmount !== '') {
+            $profitType = 'percent';
+        }
+
+        $profitAmount = $profitAmount !== null && $profitAmount !== '' ? (float) $profitAmount : null;
+        $cost = (float) $request->input('cost', 0);
+
+        if ($profitType && $profitAmount !== null) {
+            if ($profitType === 'percent') {
+                $request->merge([
+                    'price' => $cost + ($cost * ($profitAmount / 100)),
+                    'profit_margin' => $profitAmount,
+                    'profit_type' => 'percent',
+                    'profit_amount' => $profitAmount,
+                ]);
+            } elseif ($profitType === 'amount') {
+                $request->merge([
+                    'price' => $cost + $profitAmount,
+                    'profit_type' => 'amount',
+                    'profit_amount' => $profitAmount,
+                    'profit_margin' => null,
+                ]);
+            }
+        }
+    }
+
+    private function resolveWarehousePrices(array $prices, float $defaultPrice): array
+    {
+        $resolved = [];
+        foreach ($prices as $warehouseId => $price) {
+            if ($price === '' || $price === null) {
+                continue;
+            }
+            $resolved[(int) $warehouseId] = (float) $price;
+        }
+        if (empty($resolved)) {
+            return [];
+        }
+        foreach ($resolved as $warehouseId => $price) {
+            if ($price < 0) {
+                $resolved[$warehouseId] = $defaultPrice;
+            }
+        }
+        return $resolved;
+    }
+
+    private function syncWarehousePrices(int $productId, array $prices, float $fallbackPrice): void
+    {
+        $resolved = $this->resolveWarehousePrices($prices, $fallbackPrice);
+        if (empty($resolved)) {
+            return;
+        }
+
+        foreach ($resolved as $warehouseId => $price) {
+            $record = WarehouseProductModel::firstOrNew([
+                'product_id' => $productId,
+                'warehouse_id' => $warehouseId,
+            ]);
+            $record->price = $price;
+            if (!$record->exists) {
+                $record->cost = 0;
+                $record->quantity = 0;
+            }
+            $record->save();
+        }
     }
 
     private function resolveInputOrDefault($input, $current, $fallback)
@@ -730,6 +955,16 @@ class ProductController extends Controller
             'product_units.*.unit.exists' => 'الوحدة الإضافية المختارة غير صحيحة.',
             'product_variants.*.price.numeric' => 'سعر المتغير يجب أن يكون رقمياً.',
             'product_variants.*.quantity.numeric' => 'كمية المتغير يجب أن تكون رقمية.',
+            'profit_type.in' => 'نوع احتساب الربح غير صحيح.',
+            'profit_amount.numeric' => 'قيمة الربح يجب أن تكون رقمية.',
+            'shipping_service_type.in' => 'نوع خدمة الشحن غير صحيح.',
+            'shipping_service_amount.numeric' => 'قيمة خدمة الشحن يجب أن تكون رقمية.',
+            'delivery_service_type.in' => 'نوع خدمة التوصيل غير صحيح.',
+            'delivery_service_amount.numeric' => 'قيمة خدمة التوصيل يجب أن تكون رقمية.',
+            'installation_service_type.in' => 'نوع خدمة التركيب غير صحيح.',
+            'installation_service_amount.numeric' => 'قيمة خدمة التركيب يجب أن تكون رقمية.',
+            'salon_department_id.exists' => 'قسم المشغل المختار غير صحيح.',
+            'warehouse_prices.*.numeric' => 'سعر المستودع يجب أن يكون رقمياً.',
         ];
 
         for ($i = 1; $i <= 6; $i++) {
@@ -750,6 +985,7 @@ class ProductController extends Controller
             'brand' => 'الماركة',
             'category_id' => 'التصنيف الرئيسي',
             'subcategory_id' => 'التصنيف الفرعي',
+            'salon_department_id' => 'قسم المشغل',
             'cost' => 'التكلفة',
             'price' => 'سعر البيع',
             'quantity' => 'الكمية',
@@ -757,6 +993,8 @@ class ProductController extends Controller
             'tax_rate' => 'ضريبة المنتج',
             'price_includes_tax' => 'سعر يشمل الضريبة',
             'profit_margin' => 'هامش الربح',
+            'profit_type' => 'نوع احتساب الربح',
+            'profit_amount' => 'قيمة الربح',
             'type' => 'نوع الصنف',
             'lista' => 'ليستا',
             'alert_quantity' => 'الكمية الحرجة',
@@ -776,6 +1014,14 @@ class ProductController extends Controller
             'product_variants.*.barcode' => 'باركود المتغير',
             'product_variants.*.price' => 'سعر المتغير',
             'product_variants.*.quantity' => 'كمية المتغير',
+            'shipping_service_type' => 'خدمة الشحن',
+            'shipping_service_amount' => 'قيمة خدمة الشحن',
+            'delivery_service_type' => 'خدمة التوصيل',
+            'delivery_service_amount' => 'قيمة خدمة التوصيل',
+            'installation_service_type' => 'خدمة التركيب',
+            'installation_service_amount' => 'قيمة خدمة التركيب',
+            'warehouse_prices' => 'أسعار المستودعات',
+            'warehouse_prices.*' => 'سعر المستودع',
         ];
 
         for ($i = 1; $i <= 6; $i++) {
@@ -879,6 +1125,12 @@ class ProductController extends Controller
             return null;
         }
 
+        if (property_exists($product, 'warehouse_price') && $product->warehouse_price !== null) {
+            $warehousePrice = (float) $product->warehouse_price;
+            if ($warehousePrice > 0) {
+                $product->price = $warehousePrice;
+            }
+        }
         $product->track_batch = (bool) ($product->track_batch ?? false);
         $product->last_sale_price = $this->getLastSalePrice($product->id);
         $product->units_options = $this->getUnitsForProduct($product->id,$product);
@@ -984,7 +1236,7 @@ class ProductController extends Controller
     {
         $query = Product::with('units')
             ->join('warehouse_products', 'products.id', '=', 'warehouse_products.product_id')
-            ->select('products.*', 'warehouse_products.quantity as qty')
+            ->select('products.*', 'warehouse_products.quantity as qty', 'warehouse_products.price as warehouse_price')
             ->where('warehouse_products.warehouse_id', $warehouseId)
             ->where('products.status', 1);
 
@@ -1306,11 +1558,23 @@ class ProductController extends Controller
 
         $data =  Product::Join('warehouse_products','products.id','=','warehouse_products.product_id')
             ->leftJoin('categories','products.category_id','=','categories.id')
-            ->select('products.*','categories.name as category_name')
+            ->select(
+                'products.*',
+                'categories.name as category_name',
+                'warehouse_products.price as warehouse_price',
+                DB::raw('(SELECT COALESCE(SUM(tax_rates.rate),0) FROM product_taxes pt JOIN tax_rates ON tax_rates.id = pt.tax_rate_id WHERE pt.product_id = products.id) as additional_tax_rate')
+            )
             //->whereIn('warehouse_products.warehouse_id',$warehouses)
             ->where('warehouse_products.warehouse_id',$warehouse_id)
             ->where('products.img','<>','')
             ->get();
+
+        $data->each(function ($row) {
+            if (!empty($row->warehouse_price) && (float) $row->warehouse_price > 0) {
+                $row->price = $row->warehouse_price;
+            }
+            $row->total_tax_rate = (float) ($row->tax ?? 0) + (float) ($row->additional_tax_rate ?? 0);
+        });
         
         echo json_encode ($data);
         exit;
@@ -1330,7 +1594,7 @@ class ProductController extends Controller
 
         $locations = WarehouseProductModel::query()
             ->join('warehouses','warehouses.id','=','warehouse_products.warehouse_id')
-            ->select('warehouses.name as warehouse_name','warehouse_products.quantity','warehouse_products.cost','warehouse_products.warehouse_id')
+            ->select('warehouses.name as warehouse_name','warehouse_products.quantity','warehouse_products.cost','warehouse_products.price','warehouse_products.warehouse_id')
             ->where('warehouse_products.product_id',$id)
             ->get()
             ->map(function($row) use ($salesLast){

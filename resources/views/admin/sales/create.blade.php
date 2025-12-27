@@ -581,6 +581,7 @@ span strong {font-size:12px;}
     var count = 1;
     var itemKey = 1;
     const itemNotePlaceholder = @json(__('main.line_note_hint'));
+    const serviceFeeLabel = @json(__('main.product_service_fee') ?? 'رسوم الخدمات');
     let pendingDuplicateItem = null;
     let pendingBatchItem = null;
     const allowNegativeStock = {{ !empty($allowNegativeStock) ? 'true' : 'false' }};
@@ -1375,6 +1376,20 @@ span strong {font-size:12px;}
         }
     }
 
+    function calculateServiceFee(item){
+        let fee = 0;
+        if (item.shipping_service_type === 'paid' || item.shipping_service_type === 'included') {
+            fee += parseFloat(item.shipping_service_amount ?? 0) || 0;
+        }
+        if (item.delivery_service_type === 'paid' || item.delivery_service_type === 'included') {
+            fee += parseFloat(item.delivery_service_amount ?? 0) || 0;
+        }
+        if (item.installation_service_type === 'paid' || item.installation_service_type === 'included') {
+            fee += parseFloat(item.installation_service_amount ?? 0) || 0;
+        }
+        return fee;
+    }
+
     function finalizeAddItem(item, forceDuplicate){
         var targetVariantId = item.selected_variant ? item.selected_variant.id : null;
         var duplicateExists = Object.values(sItems).some(function(existing){
@@ -1390,6 +1405,7 @@ span strong {font-size:12px;}
         }
 
         var price = item.price;
+        var serviceFee = calculateServiceFee(item);
         if(item.selected_variant && item.selected_variant.price){
             price = item.selected_variant.price;
         }
@@ -1402,7 +1418,7 @@ span strong {font-size:12px;}
             includesTax = Number(taxType ?? 0) === 1;
         }
         var zeroTaxInclusive = false; // we still need to show embedded tax when price is inclusive
-        var taxRate = item.tax;
+        var taxRate = item.total_tax_rate ?? item.tax;
         var itemTax = 0;
         var priceWithoutTax = 0;
         var priceWithTax = 0; 
@@ -1417,6 +1433,8 @@ span strong {font-size:12px;}
                 price = firstUnit.price;
             }
         }
+
+        price = (parseFloat(price) || 0) + (serviceFee || 0);
 
         var Excise = item.tax_excise;
         var totalRate = (taxRate || 0) + (Excise || 0);
@@ -1447,6 +1465,7 @@ span strong {font-size:12px;}
         sItems[key].item_tax = itemTax;
         sItems[key].tax_rate = taxRate;
         sItems[key].tax_excise = Excise; 
+        sItems[key].service_fee = serviceFee;
         sItems[key].zero_tax_inclusive = zeroTaxInclusive;
         sItems[key].qnt = 1;
         sItems[key].discount = 0;
@@ -1539,7 +1558,12 @@ span strong {font-size:12px;}
             var item_id = row.attr('data-item-id');
             var previousUnit = sItems[item_id].selected_unit_id;
             var previousFactor = sItems[item_id].unit_factor;
-            var selectedPrice = parseFloat($(this).find(':selected').data('price')) || sItems[item_id].original_price || 0;
+            var selectedPrice = parseFloat($(this).find(':selected').data('price'));
+            if (isNaN(selectedPrice)) {
+                selectedPrice = sItems[item_id].original_price || 0;
+            } else {
+                selectedPrice += parseFloat(sItems[item_id].service_fee ?? 0) || 0;
+            }
             var factor = parseFloat($(this).find(':selected').data('factor')) || 1;
 
             sItems[item_id].original_price = selectedPrice;
@@ -1652,7 +1676,11 @@ span strong {font-size:12px;}
             if(item.variant_color || item.variant_size){
                 variantTag = '<div class="small text-info">'+escapeHtml(item.variant_color ?? '')+' '+escapeHtml(item.variant_size ?? '')+'</div>';
             }
-            var nameLabel = '<div><strong>'+escapeHtml(item.name ?? '')+'</strong><br><small class="text-muted">'+escapeHtml(item.code ?? '')+'</small>'+variantTag+'</div>';
+            var serviceTag = '';
+            if (Number(item.service_fee ?? 0) > 0) {
+                serviceTag = '<div class="small text-warning">'+escapeHtml(serviceFeeLabel)+': '+Number(item.service_fee ?? 0).toFixed(2)+'</div>';
+            }
+            var nameLabel = '<div><strong>'+escapeHtml(item.name ?? '')+'</strong><br><small class="text-muted">'+escapeHtml(item.code ?? '')+'</small>'+variantTag+serviceTag+'</div>';
             var noteInput = '<div class="mt-2"><input type="text" class="form-control form-control-sm itemNote" name="item_note[]" value="'+escapeHtml(item.note ?? '')+'" placeholder="'+escapeHtml(itemNotePlaceholder)+'"></div>';
             var tr_html ='<td>'
                 +'<input type="hidden" name="product_id[]" value="'+(item.product_id ?? item.id)+'">'

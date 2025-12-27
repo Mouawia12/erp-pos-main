@@ -21,6 +21,10 @@
                                 <input type="date" name="date_to" class="form-control" value="{{ $dateTo }}">
                             </div>
                             <div class="col-md-3">
+                                <label>{{ __('main.batch_no') ?? 'Batch' }}</label>
+                                <input type="text" name="batch_no" class="form-control" value="{{ $batchSelected ?? '' }}">
+                            </div>
+                            <div class="col-md-3">
                                 <label>{{ __('main.branche') }}</label>
                                 @if(empty(Auth::user()->branch_id))
                                     <select name="branch_id" class="form-control">
@@ -33,6 +37,8 @@
                                     <input type="text" class="form-control" value="{{Auth::user()->branch->branch_name}}" readonly>
                                 @endif
                             </div>
+                        </div>
+                        <div class="row mt-2">
                             <div class="col-md-3">
                                 <label>{{ __('main.warehouse') }}</label>
                                 <select name="warehouse_id" class="form-control">
