@@ -15,6 +15,9 @@ use App\Http\Controllers\Admin\CustomerGroupController;
 use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\SystemSettingsController;
 use App\Http\Controllers\Admin\PosSettingsController;
+use App\Http\Controllers\Admin\PosSectionController;
+use App\Http\Controllers\Admin\PosShiftController;
+use App\Http\Controllers\Admin\PosReservationController;
 use App\Http\Controllers\Admin\CashierController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\UserGroupController;
@@ -267,6 +270,17 @@ Route::group(
     Route::get('/pos_settings', [PosSettingsController::class, 'index'])->name('pos_settings');
     Route::post('storePosSettings', [PosSettingsController::class, 'store'])->name('storePosSettings');
     Route::post('updatePosSettings', [PosSettingsController::class, 'update'])->name('updatePosSettings');
+    Route::get('/pos/sections', [PosSectionController::class, 'index'])->name('pos.sections');
+    Route::post('/pos/sections', [PosSectionController::class, 'store'])->name('pos.sections.store');
+    Route::post('/pos/sections/{section}', [PosSectionController::class, 'update'])->name('pos.sections.update');
+    Route::delete('/pos/sections/{section}', [PosSectionController::class, 'destroy'])->name('pos.sections.delete');
+    Route::get('/pos/shifts', [PosShiftController::class, 'index'])->name('pos.shifts');
+    Route::post('/pos/shifts', [PosShiftController::class, 'store'])->name('pos.shifts.store');
+    Route::post('/pos/shifts/{shift}/close', [PosShiftController::class, 'close'])->name('pos.shifts.close');
+    Route::get('/pos/reservations', [PosReservationController::class, 'index'])->name('pos.reservations');
+    Route::post('/pos/reservations', [PosReservationController::class, 'store'])->name('pos.reservations.store');
+    Route::post('/pos/reservations/{reservation}', [PosReservationController::class, 'update'])->name('pos.reservations.update');
+    Route::delete('/pos/reservations/{reservation}', [PosReservationController::class, 'destroy'])->name('pos.reservations.delete');
 
     Route::get('/alerts', [AlertController::class, 'index'])->name('alerts.index');
     Route::post('/alerts/refresh', [AlertController::class, 'refresh'])->name('alerts.refresh');
@@ -425,6 +439,7 @@ Route::group(
     Route::get('/reports/clients-aging', [ReportController::class, 'clientAging'])->name('reports.clients_aging');
     Route::get('/reports/representatives', [ReportController::class, 'representativesReport'])->name('reports.representatives');
     Route::get('/reports/salon-services', [ReportController::class, 'salonServicesReport'])->name('reports.salon.services');
+    Route::get('/reports/pos-end-of-day', [ReportController::class, 'posEndOfDayReport'])->name('reports.pos_end_of_day');
     // Reports: low stock
     Route::get('/reports/low-stock', [ReportController::class, 'lowStockReport'])->name('reports.low_stock');
     Route::post('/reports/low-stock', [ReportController::class, 'lowStockReport'])->name('reports.low_stock.search');

@@ -207,6 +207,21 @@ label.total {
             </div>
         </div>
     @endif
+    @if(!empty($activeShift))
+        <div class="alert alert-info small d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <span>{{ __('main.shift_open') ?? 'الشفت مفتوح' }} #{{ $activeShift->id }}</span>
+            <a class="btn btn-sm btn-outline-primary" href="{{ route('pos.shifts') }}" target="_blank">
+                {{ __('main.manage_shifts') ?? 'إدارة الشفتات' }}
+            </a>
+        </div>
+    @else
+        <div class="alert alert-warning small d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <span>{{ __('main.shift_closed') ?? 'لا يوجد شفت مفتوح' }}</span>
+            <a class="btn btn-sm btn-primary" href="{{ route('pos.shifts') }}" target="_blank">
+                {{ __('main.open_shift') ?? 'فتح شفت' }}
+            </a>
+        </div>
+    @endif
     <div class="row row-lg">
         <section class="forms pos-section col-xl-12">
         
@@ -335,6 +350,45 @@ label.total {
                                             <option value="dine_in" @if($defaultServiceMode === 'dine_in') selected @endif>{{ __('main.service_mode_dine_in') }}</option>
                                             <option value="takeaway" @if($defaultServiceMode === 'takeaway') selected @endif>{{ __('main.service_mode_takeaway') }}</option>
                                             <option value="delivery" @if($defaultServiceMode === 'delivery') selected @endif>{{ __('main.service_mode_delivery') }}</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-lg-4">
+                                    <div class="form-group">
+                                        <label>{{ __('main.section') ?? 'القسم' }}</label>
+                                        <select class="form-control pos-input" name="pos_section_id" id="pos_section_id">
+                                            <option value="">{{ __('main.choose') }}</option>
+                                            @foreach($posSections as $section)
+                                                <option value="{{ $section->id }}"
+                                                    @if(($selectedReservation && $selectedReservation->pos_section_id == $section->id) || old('pos_section_id') == $section->id) selected @endif>
+                                                    {{ $section->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-lg-4">
+                                    <div class="form-group">
+                                        <label>{{ __('main.reservation') ?? 'الحجز' }}</label>
+                                        <select class="form-control pos-input" name="pos_reservation_id" id="pos_reservation_id">
+                                            <option value="">{{ __('main.choose') }}</option>
+                                            @foreach($posReservations as $reservation)
+                                                @php
+                                                    $reservationTime = $reservation->reservation_time ? \Carbon\Carbon::parse($reservation->reservation_time)->format('Y-m-d\\TH:i') : '';
+                                                    $reservationLabelParts = array_filter([$reservation->customer_name, $reservation->customer_phone]);
+                                                    $reservationLabel = implode(' - ', $reservationLabelParts);
+                                                @endphp
+                                                <option value="{{ $reservation->id }}"
+                                                    data-name="{{ $reservation->customer_name }}"
+                                                    data-phone="{{ $reservation->customer_phone }}"
+                                                    data-location="{{ $reservation->session_location }}"
+                                                    data-time="{{ $reservationTime }}"
+                                                    data-guests="{{ $reservation->guests }}"
+                                                    data-section="{{ $reservation->pos_section_id }}"
+                                                    @if(($selectedReservation && $selectedReservation->id == $reservation->id) || old('pos_reservation_id') == $reservation->id) selected @endif>
+                                                    {{ $reservationLabel ?: ('#'.$reservation->id) }}
+                                                </option>
+                                            @endforeach
                                         </select>
                                     </div>
                                 </div>
@@ -590,6 +644,39 @@ label.total {
         }
     }
 
+    function applyReservationSelection(option){
+        if(!option || !option.length){
+            return;
+        }
+        const name = option.data('name') || '';
+        const phone = option.data('phone') || '';
+        const location = option.data('location') || '';
+        const time = option.data('time') || '';
+        const guests = option.data('guests') || '';
+        const sectionId = option.data('section') || '';
+        if(name){
+            $('#customer_name').val(name);
+        }
+        if(phone){
+            $('#customer_phone').val(phone);
+        }
+        if(location){
+            $('#pos_session_location').val(location);
+        }
+        if(sectionId){
+            $('#pos_section_id').val(sectionId);
+        }
+        if(time){
+            $('#reservation_time').val(time);
+        }
+        if(guests){
+            $('#reservation_guests').val(guests);
+        }
+        $('#pos_service_mode').val('dine_in').trigger('change');
+        $('#toggleReservation').prop('checked', true);
+        handleReservationToggle();
+    }
+
     $('#pos_service_mode').on('change', togglePosServiceMeta);
     togglePosServiceMeta();
 
@@ -696,6 +783,13 @@ label.total {
         });
         handleReservationToggle();
         $('#toggleReservation').on('change', handleReservationToggle);
+        $('#pos_reservation_id').on('change', function(){
+            applyReservationSelection($(this).find(':selected'));
+        });
+
+        if($('#pos_reservation_id').val()){
+            applyReservationSelection($('#pos_reservation_id').find(':selected'));
+        }
 
         getBillNo();
         getProductListImg();

@@ -114,6 +114,18 @@
                                                         </select>
                                                     </div>
                                                 </div>
+                                                <div class="col-4">
+                                                    <div class="form-group">
+                                                        <label>
+                                                            {{ __('main.receipt_width') ?? 'عرض الإيصال (مم)' }}
+                                                        </label>
+                                                        <select class="form-control" name="receipt_width" id="receipt_width">
+                                                            @php $width = (int) ($setting->receipt_width ?? 80); @endphp
+                                                            <option value="58" @if($width === 58) selected @endif>58 mm</option>
+                                                            <option value="80" @if($width === 80) selected @endif>80 mm</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
                                             </div>
         
                                             <div class="row">

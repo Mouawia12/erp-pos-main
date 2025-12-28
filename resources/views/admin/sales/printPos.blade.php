@@ -3,6 +3,7 @@
 <head>
     <title>
     @php
+        $posSettings = $posSettings ?? null;
         $typeLabel = __('main.invoice_type_simplified');
         if($data->invoice_type == 'tax_invoice') $typeLabel = __('main.invoice_type_tax');
         if($data->invoice_type == 'non_tax_invoice') $typeLabel = __('main.invoice_type_nontax');
@@ -14,6 +15,8 @@
             'delivery' => __('main.service_mode_delivery'),
         ];
         $serviceLabel = $serviceLabels[$data->service_mode ?? 'dine_in'] ?? __('main.service_mode_dine_in');
+        $receiptWidth = (int) (optional($posSettings)->receipt_width ?? 80);
+        $receiptWidthCss = ($receiptWidth > 0 ? $receiptWidth : 80) . 'mm';
     @endphp
     {{$typeLabel}}{{$returnTag}} {{$data->id}}
     </title>
@@ -35,6 +38,7 @@
             font-weight: bold;
             margin: 0;
             padding: 10px;
+            width: {{ $receiptWidthCss }};
             page-break-before: avoid;
             page-break-after: avoid;
             page-break-inside: avoid;
@@ -76,6 +80,10 @@
         }
     </style>
     <style type="text/css" media="print">
+        @page {
+            size: {{ $receiptWidthCss }} auto;
+            margin: 0;
+        }
         .above-table {
             width: 100% !important;
         }
@@ -101,6 +109,7 @@
             font-family: 'Almarai' !important;
             font-size: 11px !important;
             font-weight: bold !important;
+            width: {{ $receiptWidthCss }};
             page-break-before: avoid;
             page-break-after: avoid;
             page-break-inside: avoid;
@@ -163,6 +172,16 @@
             <h6 class="text-center mt-1" style="font-weight: bold;">
                 {{ __('main.session_location') }} : {{$data->session_location ?? '-'}}
             </h6>
+            @if(!empty($data->pos_section_name))
+                <h6 class="text-center mt-1" style="font-weight: bold;">
+                    {{ __('main.section') ?? 'القسم' }} : {{$data->pos_section_name}}
+                </h6>
+            @endif
+            @if(!empty($data->shift_opened_at))
+                <h6 class="text-center mt-1" style="font-weight: bold;">
+                    {{ __('main.shift') ?? 'الشفت' }} : {{$data->shift_opened_at}}
+                </h6>
+            @endif
             @if(!empty($data->session_type))
                 <h6 class="text-center mt-1" style="font-weight: bold;">
                     {{ __('main.session_type') }} : {{$data->session_type}}

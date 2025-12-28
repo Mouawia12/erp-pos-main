@@ -35,6 +35,7 @@ class PosSettings extends Model
         'header_img',//
         'seller_buyer',
         'pos_mode',
-        'print_format'
+        'print_format',
+        'receipt_width'
         ];
 }

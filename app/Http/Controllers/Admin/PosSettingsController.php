@@ -87,6 +87,7 @@ class PosSettingsController extends Controller
                     'seller_buyer' => $request -> seller_buyer,
                     'pos_mode' => $request->pos_mode ?? 'classic',
                     'print_format' => $request->print_format ?: null,
+                    'receipt_width' => $request->receipt_width ?: null,
                 ]);
 
                 return redirect()->route('pos_settings')->with('success' , __('main.created'));
@@ -168,6 +169,7 @@ class PosSettingsController extends Controller
                     'seller_buyer' => $request -> seller_buyer,
                     'pos_mode' => $request->pos_mode ?? $setting->pos_mode ?? 'classic',
                     'print_format' => $request->print_format ?: $setting->print_format,
+                    'receipt_width' => $request->receipt_width ?: $setting->receipt_width,
 
                 ]);
 

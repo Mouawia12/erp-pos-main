@@ -14,6 +14,9 @@ use App\Http\Requests\StoreSalesRequest;
 use App\Http\Requests\UpdateSalesRequest;
 use App\Models\SystemSettings;
 use App\Models\PosSettings;
+use App\Models\PosShift;
+use App\Models\PosSection;
+use App\Models\PosReservation;
 use App\Models\Warehouse;
 use App\Models\Branch;
 use App\Models\ProductUnit;
@@ -335,6 +338,12 @@ class SalesController extends Controller
             'warehouse_id' => 'required',
             'payment_method' => 'nullable|in:cash,credit,network,cash_network',
         ];
+        if ($request->filled('pos_section_id')) {
+            $baseRules['pos_section_id'] = 'nullable|exists:pos_sections,id';
+        }
+        if ($request->filled('pos_reservation_id')) {
+            $baseRules['pos_reservation_id'] = 'nullable|exists:pos_reservations,id';
+        }
         if ($request->filled('cost_center_id')) {
             $baseRules['cost_center_id'] = 'nullable|exists:cost_centers,id';
         }
@@ -367,6 +376,15 @@ class SalesController extends Controller
         ];
 
         $subscriberId = Auth::user()->subscriber_id ?? null;
+        $currentShiftId = null;
+        if ($request->has('POS')) {
+            $currentShiftId = PosShift::query()
+                ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+                ->where('user_id', Auth::id())
+                ->where('status', 'open')
+                ->orderByDesc('id')
+                ->value('id');
+        }
         $siteController = new SystemController();
         $allowNegativeStock = $siteController->allowSellingWithoutStock();
         $customer = Company::find($request->customer_id);
@@ -608,9 +626,21 @@ class SalesController extends Controller
             'vehicle_name' => $request->vehicle_name ? trim($request->vehicle_name) : null,
             'vehicle_color' => $request->vehicle_color ? trim($request->vehicle_color) : null,
             'vehicle_odometer' => $request->vehicle_odometer,
+            'pos_section_id' => $request->pos_section_id ?: null,
+            'pos_shift_id' => $currentShiftId,
+            'pos_reservation_id' => $request->pos_reservation_id ?: null,
         ];
 
         $sale = Sales::create(array_merge($saleData, $this->resolveServiceMeta($request, $serviceDefaults)));
+
+        if ($sale->pos_reservation_id) {
+            PosReservation::where('id', $sale->pos_reservation_id)
+                ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+                ->update([
+                    'sale_id' => $sale->id,
+                    'status' => 'seated',
+                ]);
+        }
 
         foreach ($products as $product){
             $product['sale_id'] = $sale->id;
@@ -1080,7 +1110,7 @@ class SalesController extends Controller
         return response()->json($vehicles);
     }
 
-    public function pos(){
+    public function pos(Request $request){
         $siteContrller = new SystemController();
         $vendors = Company::where('group_id' , '=' , 3) -> get();
         $warehouses = $siteContrller->getAllWarehouses();
@@ -1089,6 +1119,30 @@ class SalesController extends Controller
         $posSettings = PosSettings::first();
         $posMode = optional($posSettings)->pos_mode ?? 'classic';
         $representatives = Representative::all();
+        $subscriberId = Auth::user()->subscriber_id ?? null;
+        $posSections = PosSection::query()
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->where('is_active', 1)
+            ->orderBy('name')
+            ->get();
+        $posReservations = PosReservation::query()
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->where('status', 'booked')
+            ->orderBy('reservation_time')
+            ->limit(50)
+            ->get();
+        $activeShift = PosShift::query()
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->where('user_id', Auth::id())
+            ->where('status', 'open')
+            ->orderByDesc('id')
+            ->first();
+        $selectedReservation = null;
+        if ($request->filled('reservation_id')) {
+            $selectedReservation = PosReservation::query()
+                ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+                ->find($request->reservation_id);
+        }
         $defaultWarehouseId = optional($warehouses->first())->id;
         if($settings && $settings->branch_id){
             $preferred = $warehouses->firstWhere('id', $settings->branch_id);
@@ -1098,7 +1152,7 @@ class SalesController extends Controller
         }
         $allowNegativeStock = $siteContrller->allowSellingWithoutStock();
      
-       return view('admin.sales.pos' , compact('vendors' , 'warehouses' , 'settings','defaultInvoiceType','posSettings','posMode','defaultWarehouseId','allowNegativeStock','representatives'));
+       return view('admin.sales.pos' , compact('vendors' , 'warehouses' , 'settings','defaultInvoiceType','posSettings','posMode','defaultWarehouseId','allowNegativeStock','representatives','posSections','posReservations','activeShift','selectedReservation'));
     }
 
     private function resolveDefaultInvoiceType(): string
@@ -1221,6 +1275,8 @@ class SalesController extends Controller
             ->join('warehouses','sales.warehouse_id','=','warehouses.id')
             ->join('companies','sales.customer_id','=','companies.id')
             ->join('branches','sales.branch_id','=','branches.id')
+            ->leftJoin('pos_sections', 'sales.pos_section_id', '=', 'pos_sections.id')
+            ->leftJoin('pos_shifts', 'sales.pos_shift_id', '=', 'pos_shifts.id')
             ->select(
                 'sales.*',
                 'warehouses.name as warehouse_name',
@@ -1231,7 +1287,10 @@ class SalesController extends Controller
                 'branches.cr_number',
                 'branches.tax_number as branch_tax_number',
                 'branches.manager_name as branch_manager',
-                'branches.contact_email as branch_email'
+                'branches.contact_email as branch_email',
+                'pos_sections.name as pos_section_name',
+                'pos_sections.type as pos_section_type',
+                'pos_shifts.opened_at as shift_opened_at'
             )
             ->where('sales.id' , '=' , $id)
             ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
@@ -1261,12 +1320,15 @@ class SalesController extends Controller
         $cashier = Cashier::first();
         $company = CompanyInfo::first();
         $settings = SystemSettings::where('subscriber_id', $data->subscriber_id)->first() ?? SystemSettings::first();
+        $posSettings = PosSettings::query()
+            ->when($data->subscriber_id, fn($q) => $q->where('subscriber_id', $data->subscriber_id))
+            ->first();
         $subscriber = $data->subscriber_id ? Subscriber::find($data->subscriber_id) : null;
         $trialMode = $subscriber?->isTrialActive() ?? false;
         $resolvedTaxNumber = $this->resolveTaxNumber($data, $subscriber, $company, $settings);
         $qrCodeImage = $this->buildInvoiceQr($data, $company, $resolvedTaxNumber, $trialMode);
 
-        return compact('data','details','vendor','cashier','payments','company','settings','subscriber','trialMode','resolvedTaxNumber','qrCodeImage');
+        return compact('data','details','vendor','cashier','payments','company','settings','posSettings','subscriber','trialMode','resolvedTaxNumber','qrCodeImage');
     }
 
     private function resolveTaxNumber($sale, ?Subscriber $subscriber, ?CompanyInfo $company, ?SystemSettings $settings): ?string

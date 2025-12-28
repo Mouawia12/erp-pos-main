@@ -11,6 +11,7 @@ use App\Models\UpdateQuntity;
 use App\Models\VendorMovement;
 use App\Models\Warehouse;
 use App\Models\CompanyInfo;
+use App\Models\Payment;
 use App\Models\Sales;
 use App\Models\Purchase;
 use App\Models\Branch;
@@ -20,6 +21,8 @@ use App\Models\SalonDepartment;
 use App\Models\Representative;
 use App\Models\Inventory;
 use App\Models\InventoryDetails;
+use App\Models\PosShift;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -213,6 +216,105 @@ class ReportController extends Controller
             ->get();
 
         return view('admin.Report.purchase_report' , compact('warehouses', 'vendors','branches','costCenters'));
+    }
+
+    public function posEndOfDayReport(Request $request)
+    {
+        $siteContrller = new SystemController();
+        $warehouses = $siteContrller->getAllWarehouses();
+        $branches = $siteContrller->getBranches();
+        $subscriberId = Auth::user()->subscriber_id ?? null;
+        $shifts = PosShift::query()
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->orderByDesc('id')
+            ->limit(200)
+            ->get();
+        $cashiers = User::query()
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->orderBy('name')
+            ->get();
+
+        $filters = [
+            'from' => $request->input('from'),
+            'to' => $request->input('to'),
+            'branch_id' => (int) $request->input('branch_id', 0),
+            'warehouse_id' => (int) $request->input('warehouse_id', 0),
+            'user_id' => (int) $request->input('user_id', 0),
+            'shift_id' => (int) $request->input('shift_id', 0),
+        ];
+
+        $salesQuery = Sales::query()
+            ->where('pos', 1)
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId));
+
+        if (! empty($filters['from'])) {
+            $salesQuery->whereDate('date', '>=', $filters['from']);
+        }
+        if (! empty($filters['to'])) {
+            $salesQuery->whereDate('date', '<=', $filters['to']);
+        }
+        if ($filters['branch_id'] > 0) {
+            $salesQuery->where('branch_id', $filters['branch_id']);
+        }
+        if ($filters['warehouse_id'] > 0) {
+            $salesQuery->where('warehouse_id', $filters['warehouse_id']);
+        }
+        if ($filters['user_id'] > 0) {
+            $salesQuery->where('user_id', $filters['user_id']);
+        }
+        if ($filters['shift_id'] > 0) {
+            $salesQuery->where('pos_shift_id', $filters['shift_id']);
+        }
+
+        $salesTotals = (clone $salesQuery)->where('sale_id', 0)->selectRaw(
+            'SUM(total) as total, SUM(tax) as tax, SUM(tax_excise) as tax_excise, SUM(net) as net, SUM(profit) as profit'
+        )->first();
+
+        $returnTotals = (clone $salesQuery)->where('sale_id', '>', 0)->selectRaw(
+            'SUM(total) as total, SUM(tax) as tax, SUM(tax_excise) as tax_excise, SUM(net) as net, SUM(profit) as profit'
+        )->first();
+
+        $saleIds = (clone $salesQuery)->pluck('id');
+        $quantityTotal = 0;
+        if ($saleIds->isNotEmpty()) {
+            $quantityTotal = DB::table('sale_details')
+                ->when($subscriberId, fn($q) => $q->where('sale_details.subscriber_id', $subscriberId))
+                ->whereIn('sale_id', $saleIds)
+                ->selectRaw('SUM(quantity * COALESCE(unit_factor, 1)) as qty')
+                ->value('qty');
+        }
+
+        $payments = Payment::query()
+            ->whereIn('sale_id', $saleIds)
+            ->selectRaw(\"SUM(CASE WHEN paid_by = 'cash' THEN amount ELSE 0 END) as cash_total\")
+            ->selectRaw(\"SUM(CASE WHEN paid_by = 'bank' THEN amount ELSE 0 END) as bank_total\")
+            ->selectRaw(\"SUM(CASE WHEN paid_by LIKE 'card:%' THEN amount ELSE 0 END) as card_total\")
+            ->first();
+
+        $summary = [
+            'sales' => [
+                'total' => (float) ($salesTotals->total ?? 0),
+                'tax' => (float) ($salesTotals->tax ?? 0),
+                'tax_excise' => (float) ($salesTotals->tax_excise ?? 0),
+                'net' => (float) ($salesTotals->net ?? 0),
+                'profit' => (float) ($salesTotals->profit ?? 0),
+            ],
+            'returns' => [
+                'total' => (float) ($returnTotals->total ?? 0),
+                'tax' => (float) ($returnTotals->tax ?? 0),
+                'tax_excise' => (float) ($returnTotals->tax_excise ?? 0),
+                'net' => (float) ($returnTotals->net ?? 0),
+                'profit' => (float) ($returnTotals->profit ?? 0),
+            ],
+            'quantity' => (float) ($quantityTotal ?? 0),
+            'payments' => [
+                'cash' => (float) ($payments->cash_total ?? 0),
+                'bank' => (float) ($payments->bank_total ?? 0),
+                'card' => (float) ($payments->card_total ?? 0),
+            ],
+        ];
+
+        return view('admin.Report.pos_end_of_day', compact('warehouses', 'branches', 'cashiers', 'shifts', 'filters', 'summary'));
     }
 
     public function purchase_report_search($fdate,$tdate, $warehouse,$bill_no,$vendor,$branch_id, $cost_center_id = 0){

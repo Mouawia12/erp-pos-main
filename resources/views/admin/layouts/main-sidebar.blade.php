@@ -128,6 +128,9 @@
                         @can('اضافة مبيعات') 
                         <li><a class="slide-item" href="{{route('add_sale')}}">{{__('main.add_sale')}}</a></li>
                         <li><a class="slide-item" href="{{route('pos')}}">{{__('main.pos')}}</a></li> 
+                        <li><a class="slide-item" href="{{route('pos.shifts')}}">{{ __('main.pos_shifts') ?? 'شفتات نقاط البيع' }}</a></li>
+                        <li><a class="slide-item" href="{{route('pos.sections')}}">{{ __('main.pos_sections') ?? 'أقسام نقاط البيع' }}</a></li>
+                        <li><a class="slide-item" href="{{route('pos.reservations')}}">{{ __('main.pos_reservations') ?? 'حجوزات نقاط البيع' }}</a></li>
                         @endcan 
                         <li><a class="slide-item" href="{{route('sales')}}">{{__('main.sales_bill')}}</a></li>
                         <li><a class="slide-item" href="{{route('sales.return')}}">{{__('main.sales.return')}}</a></li>
@@ -359,6 +362,7 @@
                     </a> 
                     <ul class="slide-menu">   
                         <li><a class="slide-item" href="{{route('daily_sales_report')}}">{{__('main.daily_sales_report')}}</a></li>
+                        <li><a class="slide-item" href="{{route('reports.pos_end_of_day')}}">{{ __('main.pos_end_of_day_report') ?? 'تقرير نهاية اليوم - نقاط البيع' }}</a></li>
                         <li><a class="slide-item" href="{{route('sales_item_report')}}">{{__('main.sales_report')}}</a></li>
                         <li><a class="slide-item" href="{{route('purchase_report')}}">{{__('main.purchases_report')}}</a></li>
                         <li><a class="slide-item" href="{{route('purchases_return_report')}}">{{__('main.purchases_return_report')}}</a></li>

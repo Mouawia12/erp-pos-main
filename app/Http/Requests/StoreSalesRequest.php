@@ -35,6 +35,8 @@ class StoreSalesRequest extends FormRequest
             'reservation_enabled' => 'nullable|boolean',
             'reservation_time' => 'nullable|date',
             'reservation_guests' => 'nullable|integer|min:1|max:9999',
+            'pos_section_id' => 'nullable|integer|exists:pos_sections,id',
+            'pos_reservation_id' => 'nullable|integer|exists:pos_reservations,id',
             'product_id' => 'required|array|min:1',
             'product_id.*' => 'required|integer|exists:products,id',
             'qnt' => 'required|array|min:1',
