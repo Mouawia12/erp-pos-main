@@ -14,12 +14,12 @@ use App\Http\Requests\StoreSalesRequest;
 use App\Http\Requests\UpdateSalesRequest;
 use App\Models\SystemSettings;
 use App\Models\PosSettings;
-use App\Models\PosSettings;
 use App\Models\Warehouse;
 use App\Models\Branch;
 use App\Models\ProductUnit;
 use App\Models\Unit;
 use App\Models\Representative;
+use App\Models\CostCenter;
 use App\Models\Promotion;
 use App\Models\PromotionItem;
 use App\Models\Subscriber;
@@ -293,6 +293,12 @@ class SalesController extends Controller
         $warehouses = $siteContrller->getAllWarehouses();
         $customers = $siteContrller->getAllClients();
         $representatives = Representative::all();
+        $subscriberId = Auth::user()->subscriber_id ?? null;
+        $costCenters = CostCenter::query()
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->where('is_active', 1)
+            ->orderBy('name')
+            ->get();
         $settings = SystemSettings::with('currency') -> first();
         $branches = Branch::where('status',1)->get();
         $defaultInvoiceType = $this->resolveDefaultInvoiceType();
@@ -305,7 +311,7 @@ class SalesController extends Controller
             })->values();
         }
 
-        return view('admin.sales.create',compact('warehouses','customers','representatives','settings','branches','defaultInvoiceType','allowNegativeStock','walkInCustomer','enableVehicleFeatures'));
+        return view('admin.sales.create',compact('warehouses','customers','representatives','costCenters','settings','branches','defaultInvoiceType','allowNegativeStock','walkInCustomer','enableVehicleFeatures'));
     }
 
     /**
@@ -327,7 +333,14 @@ class SalesController extends Controller
             'invoice_no' => 'required|unique:sales', 
             'customer_id' => 'required',
             'warehouse_id' => 'required',
+            'payment_method' => 'nullable|in:cash,credit,network,cash_network',
         ];
+        if ($request->filled('cost_center_id')) {
+            $baseRules['cost_center_id'] = 'nullable|exists:cost_centers,id';
+        }
+        if ($request->filled('cost_center_id')) {
+            $request->merge(['cost_center' => $request->cost_center]);
+        }
         if($enableVehicleFeatures){
             $baseRules['vehicle_plate'] = 'nullable|string|max:191';
             $baseRules['vehicle_name'] = 'nullable|string|max:191';
@@ -371,6 +384,14 @@ class SalesController extends Controller
             ]);
         }
         $customerPriceLevel = $customer->price_level_id ?? null;
+        if (! $customerPriceLevel && $request->representative_id) {
+            $representative = Representative::query()
+                ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+                ->find($request->representative_id);
+            if ($representative?->price_level_id) {
+                $customerPriceLevel = $representative->price_level_id;
+            }
+        }
         $warehouseMeta = $siteController->getWarehouseById($request->warehouse_id);
         if (! $warehouseMeta) {
             return redirect()->back()
@@ -540,14 +561,25 @@ class SalesController extends Controller
                     ->with('error', __('main.credit_limit_exceeded') ?? 'تم تجاوز الحد الائتماني للعميل.');
             }
         }
+
+        $costCenterId = $request->cost_center_id ?: ($customer->cost_center_id ?? null);
+        $costCenterName = $request->cost_center;
+        if ($costCenterId && empty($costCenterName)) {
+            $costCenterName = CostCenter::query()
+                ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+                ->where('is_active', 1)
+                ->find($costCenterId)?->name;
+        }
  
         $saleData = [
             'date' => $billDate,
             'invoice_no' => $request-> invoice_no,
             'invoice_type' => $request->invoice_type ?? 'tax_invoice',
-            'cost_center' => $request->cost_center,
+            'cost_center' => $costCenterName,
+            'cost_center_id' => $costCenterId,
             'representative_id' => $request->representative_id,
             'tax_mode' => $request->tax_mode ?? 'inclusive',
+            'payment_method' => $request->payment_method ?? 'cash',
             'customer_id' => $request->customer_id,
             'customer_name' => $isWalkInCustomer ? $request->customer_name : $customer->name,
             'customer_phone' => $isWalkInCustomer ? $request->customer_phone : $customer->phone,

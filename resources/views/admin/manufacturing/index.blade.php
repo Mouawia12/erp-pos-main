@@ -221,23 +221,29 @@
     </div>
 @endsection
 
-@section('js')
-<script>
-    const componentsWrapper = document.getElementById('components-wrapper');
-    const componentTemplate = document.getElementById('component-row-template');
-    const recipesPayload = @json($recipes->mapWithKeys(function($recipe){
+@php
+    $recipesPayload = $recipes->mapWithKeys(function($recipe){
         return [$recipe->id => [
             'id' => $recipe->id,
             'product_id' => $recipe->product_id,
             'name' => $recipe->name,
             'yield_quantity' => $recipe->yield_quantity,
             'notes' => $recipe->notes,
-            'items' => $recipe->items->map(fn($item) => [
-                'component_product_id' => $item->component_product_id,
-                'quantity' => $item->quantity,
-            ])->toArray(),
+            'items' => $recipe->items->map(function($item){
+                return [
+                    'component_product_id' => $item->component_product_id,
+                    'quantity' => $item->quantity,
+                ];
+            })->toArray(),
         ]];
-    })->toArray());
+    })->toArray();
+@endphp
+
+@section('js')
+<script>
+    const componentsWrapper = document.getElementById('components-wrapper');
+    const componentTemplate = document.getElementById('component-row-template');
+    const recipesPayload = @json($recipesPayload);
 
     function addComponentRow(productId = '', quantity = '') {
         const clone = componentTemplate.content.cloneNode(true);

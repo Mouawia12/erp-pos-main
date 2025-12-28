@@ -85,6 +85,10 @@
                                     @csrf
                                     <button class="btn btn-sm btn-danger" type="submit">{{ __('main.close') ?? 'إقفال' }}</button>
                                 </form>
+                                <form method="POST" action="{{ route('fiscal_years.close_entries', $year) }}" class="d-inline" onsubmit="return confirm('{{ __('main.confirm_close_fiscal_year_entries') ?? 'إقفال السنة المالية مع قيد الإقفال؟' }}');">
+                                    @csrf
+                                    <button class="btn btn-sm btn-info" type="submit">{{ __('main.close_with_entries') ?? 'إقفال مع قيد' }}</button>
+                                </form>
                             @endif
                         </td>
                     </tr>

@@ -66,6 +66,17 @@
                             </div>
                         </div> 
                         <div class="col-md-6">
+                            <div class="form-group">
+                                <label>{{ __('main.cost_center') }}</label>
+                                <select class="js-example-basic-single w-100" name="cost_center_id" id="cost_center_id">
+                                    <option value="0">{{ __('main.all') }}</option>
+                                    @foreach($costCenters as $center)
+                                        <option value="{{$center->id}}">{{$center->name}}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
                              <div class="form-group">
                                  <label>{{ __('main.bill_number') }} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
                                  <input type="text"  id="bill_no" name="bill_no"
@@ -158,10 +169,11 @@
             const bill = document.getElementById('bill_no').value;
             const vendor = document.getElementById('vendor_id').value;
             const branch_id = document.getElementById('branch_id').value ;
+            const cost_center_id = document.getElementById('cost_center_id').value;
 
             var bill_no  ='empty';
             if(bill) bill_no = bill ;
-            showReport(fromDate,toDate,warehouse,bill_no,vendor,branch_id);
+            showReport(fromDate,toDate,warehouse,bill_no,vendor,branch_id,cost_center_id);
 
         });
 
@@ -194,13 +206,14 @@
         document.title = "{{__('main.purchases_report')}}";
     });
 
-    function showReport(fdate, tdate, warehouse,bill_no,vendor,branch_id) {
-        var route = '{{route('purchase.report.search',[":fdate", ":tdate", ":warehouse",":bill_no", ":vendor",":branch_id"] )}}';
+    function showReport(fdate, tdate, warehouse,bill_no,vendor,branch_id,cost_center_id) {
+        var route = '{{route('purchase.report.search',[":fdate", ":tdate", ":warehouse",":bill_no", ":vendor",":branch_id",":cost_center"] )}}';
 
         route = route.replace(":fdate",fdate );
         route = route.replace(":tdate",tdate );
         route = route.replace(":warehouse", warehouse ? warehouse : 0);
         route = route.replace(":branch_id", branch_id ? branch_id : 0);
+        route = route.replace(":cost_center", cost_center_id ? cost_center_id : 0);
         route = route.replace(":bill_no",bill_no );
         route = route.replace(":vendor",vendor );
         console.log(route);

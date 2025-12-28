@@ -16,6 +16,7 @@ class Promotion extends Model
         'end_date',
         'status',
         'branch_id',
+        'representative_id',
         'subscriber_id',
         'note',
     ];
@@ -28,5 +29,10 @@ class Promotion extends Model
     public function items()
     {
         return $this->hasMany(PromotionItem::class);
+    }
+
+    public function representative()
+    {
+        return $this->belongsTo(Representative::class, 'representative_id');
     }
 }

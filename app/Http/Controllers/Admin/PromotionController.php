@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Promotion;
 use App\Models\PromotionItem;
+use App\Models\Representative;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -14,14 +15,18 @@ class PromotionController extends Controller
 {
     public function index()
     {
-        $promotions = Promotion::withCount('items')->latest()->get();
+        $promotions = Promotion::withCount('items')
+            ->with('representative')
+            ->latest()
+            ->get();
         return view('admin.promotions.index', compact('promotions'));
     }
 
     public function create()
     {
         $products = Product::with('variants')->get();
-        return view('admin.promotions.create', compact('products'));
+        $representatives = Representative::all();
+        return view('admin.promotions.create', compact('products', 'representatives'));
     }
 
     public function store(Request $request)
@@ -35,6 +40,7 @@ class PromotionController extends Controller
             'items.*.min_qty' => 'nullable|integer|min:1',
             'items.*.discount_value' => 'required|numeric',
             'items.*.discount_type' => 'required|in:percent,amount',
+            'representative_id' => 'nullable|integer|exists:representatives,id',
         ]);
 
         $promotion = Promotion::create([
@@ -43,6 +49,7 @@ class PromotionController extends Controller
             'end_date' => $request->end_date,
             'status' => $request->status ?? 'active',
             'branch_id' => $request->branch_id,
+            'representative_id' => $request->representative_id ?: null,
             'subscriber_id' => Auth::user()->subscriber_id ?? null,
             'note' => $request->note,
         ]);
@@ -62,7 +69,8 @@ class PromotionController extends Controller
     {
         $promotion->load('items');
         $products = Product::with('variants')->get();
-        return view('admin.promotions.edit', compact('promotion','products'));
+        $representatives = Representative::all();
+        return view('admin.promotions.edit', compact('promotion','products','representatives'));
     }
 
     public function update(Request $request, Promotion $promotion)
@@ -76,6 +84,7 @@ class PromotionController extends Controller
             'items.*.min_qty' => 'nullable|integer|min:1',
             'items.*.discount_value' => 'required|numeric',
             'items.*.discount_type' => 'required|in:percent,amount',
+            'representative_id' => 'nullable|integer|exists:representatives,id',
         ]);
 
         $promotion->update([
@@ -84,6 +93,7 @@ class PromotionController extends Controller
             'end_date' => $request->end_date,
             'status' => $request->status ?? 'active',
             'branch_id' => $request->branch_id,
+            'representative_id' => $request->representative_id ?: null,
             'note' => $request->note,
         ]);
 

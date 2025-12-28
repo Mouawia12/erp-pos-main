@@ -268,6 +268,7 @@ class SystemController extends Controller
             
         $headerData = [
             'branch_id' => $saleInvoice->branch_id,
+            'cost_center_id' => $saleInvoice->cost_center_id ?? null,
             'date' => $saleInvoice->date,
             'basedon_no' => $saleInvoice->invoice_no,
             'basedon_id' => $id,
@@ -359,6 +360,7 @@ class SystemController extends Controller
         //journal header
         $headerData = [
             'branch_id' => $saleInvoice->branch_id,
+            'cost_center_id' => $saleInvoice->cost_center_id ?? null,
             'date' => $saleInvoice->date,
             'basedon_no' => $saleInvoice->invoice_no,
             'basedon_id' => $id,
@@ -450,6 +452,7 @@ class SystemController extends Controller
 
         $headerData = [
             'branch_id' => $purchaseInvoice->branch_id,
+            'cost_center_id' => $purchaseInvoice->cost_center_id ?? null,
             'date' => $purchaseInvoice->date,
             'basedon_no' => $purchaseInvoice->invoice_no,
             'basedon_id' => $id,
@@ -520,6 +523,7 @@ class SystemController extends Controller
         //journal header
         $headerData = [
             'branch_id' => $purchaseInvoice->branch_id,
+            'cost_center_id' => $purchaseInvoice->cost_center_id ?? null,
             'date' => $purchaseInvoice->date,
             'basedon_no' => $purchaseInvoice->invoice_no,
             'basedon_id' => $id,
@@ -688,25 +692,42 @@ class SystemController extends Controller
             $detailsData = [];
 
             $from_account = $this->resolveAccountId($bill->from_account);
-            $to_account = $this->resolveAccountId($bill->to_account);
-            if (!$from_account || !$to_account) {
+            if (!$from_account) {
                 return;
             }
             $taxAccount = $settings->purchase_tax_account ?? $settings->sales_tax_account ?? null;
-            $taxAmount = $bill->tax_amount ?? 0;
-            $totalOut = $bill->amount + $taxAmount;
+
+            $details = $bill->details()->get();
+            if ($details->isEmpty()) {
+                $to_account = $this->resolveAccountId($bill->to_account);
+                if (!$to_account) {
+                    return;
+                }
+                $details = collect([[
+                    'account_id' => $to_account,
+                    'amount' => $bill->amount,
+                    'tax_amount' => $bill->tax_amount ?? 0,
+                ]]);
+            }
+
+            $taxAmount = (float) $details->sum('tax_amount');
+            $totalOut = (float) $details->sum('amount') + $taxAmount;
 
             if (!$this->pushDetail($detailsData, $from_account, 0, $totalOut, 0, '')) {
                 return;
             }
-            if (!$this->pushDetail($detailsData, $to_account, $bill->amount, 0, 0, '')) {
-                return;
-            }
-            if($taxAccount && $taxAmount > 0){
-                if (!$this->pushDetail($detailsData, $taxAccount, $taxAmount, 0, 0, 'ضريبة مصروف')) {
+
+            foreach ($details as $detail) {
+                if (!$this->pushDetail($detailsData, $detail['account_id'], $detail['amount'], 0, 0, '')) {
                     return;
                 }
+                if ($taxAccount && !empty($detail['tax_amount'])) {
+                    if (!$this->pushDetail($detailsData, $taxAccount, $detail['tax_amount'], 0, 0, 'ضريبة مصروف')) {
+                        return;
+                    }
+                }
             }
+
             $this->insertJournal($headerData, $detailsData);
 
         }
@@ -734,17 +755,32 @@ class SystemController extends Controller
             $detailsData = [];
 
             $from_account = $this->resolveAccountId($bill->from_account);
-            $to_account = $this->resolveAccountId($bill->to_account);
-            if (!$from_account || !$to_account) {
+            if (!$from_account) {
                 return;
             }
 
-            if (!$this->pushDetail($detailsData, $from_account, $bill->amount, 0, 0, '')) {
+            $details = $bill->details()->get();
+            if ($details->isEmpty()) {
+                $to_account = $this->resolveAccountId($bill->to_account);
+                if (!$to_account) {
+                    return;
+                }
+                $details = collect([[
+                    'account_id' => $to_account,
+                    'amount' => $bill->amount,
+                ]]);
+            }
+
+            $total = (float) $details->sum('amount');
+            if (!$this->pushDetail($detailsData, $from_account, $total, 0, 0, '')) {
                 return;
             }
-            if (!$this->pushDetail($detailsData, $to_account, 0, $bill->amount, 0, '')) {
-                return;
+            foreach ($details as $detail) {
+                if (!$this->pushDetail($detailsData, $detail['account_id'], 0, $detail['amount'], 0, '')) {
+                    return;
+                }
             }
+
             $this->insertJournal($headerData, $detailsData);
 
         }

@@ -351,14 +351,17 @@ class PaymentController extends Controller
     
             return Datatables::of($data)->addIndexColumn()
                 ->addColumn('payment_method', function($row){
-    
                     if($row->paid_by == 'cash'){
-                        $span = 'كاش (نقدي)';
-                    }else{
-                        $span = 'فيزا (صراف)';
+                        return 'كاش (نقدي)';
                     }
-    
-                    return $span; 
+                    if($row->paid_by == 'bank'){
+                        return 'تحويل بنكي';
+                    }
+                    if(str_starts_with($row->paid_by, 'card:')){
+                        $bank = trim(substr($row->paid_by, 5));
+                        return 'شبكة/فيزا'.($bank ? ' - '.$bank : '');
+                    }
+                    return $row->paid_by;
                 }) 
                 ->addColumn('based_on', function($row){ 
                     if(auth()->user()->can('عرض مبيعات')){  
@@ -402,14 +405,17 @@ class PaymentController extends Controller
     
             return Datatables::of($data)->addIndexColumn()
                 ->addColumn('payment_method', function($row){
-    
                     if($row->paid_by == 'cash'){
-                        $span = 'كاش (نقدي)';
-                    }else{
-                        $span = 'فيزا (صراف)';
+                        return 'كاش (نقدي)';
                     }
-    
-                    return $span; 
+                    if($row->paid_by == 'bank'){
+                        return 'تحويل بنكي';
+                    }
+                    if(str_starts_with($row->paid_by, 'card:')){
+                        $bank = trim(substr($row->paid_by, 5));
+                        return 'شبكة/فيزا'.($bank ? ' - '.$bank : '');
+                    }
+                    return $row->paid_by;
                 }) 
                 ->addColumn('based_on', function($row){ 
                     if(auth()->user()->can('عرض مشتريات')){  

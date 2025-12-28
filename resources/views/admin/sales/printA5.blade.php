@@ -34,6 +34,7 @@
     <div class="invoice">
         <div class="header">
             @php
+                $isReturn = ($data->sale_id ?? 0) > 0;
                 $serviceLabels = [
                     'dine_in' => __('main.service_mode_dine_in'),
                     'takeaway' => __('main.service_mode_takeaway'),
@@ -52,6 +53,7 @@
                 @if($data->invoice_type == 'tax_invoice') {{ __('main.invoice_type_tax') }}
                 @elseif($data->invoice_type == 'simplified_tax_invoice') {{ __('main.invoice_type_simplified') }}
                 @else {{ __('main.invoice_type_nontax') }} @endif
+                @if($isReturn) - {{ __('main.return_tag') ?? 'مردود' }} @endif
             </div>
             <div>{{ __('main.invoice_no') }}: {{ $data->invoice_no }} | {{ __('main.bill_date') }}: {{ $data->date }}</div>
             <div>{{ __('main.service_mode') }}: {{ $serviceLabel }}</div>

@@ -12,7 +12,7 @@ class Inventory extends Model
     use BelongsToSubscriber, GuardsFiscalYear;
     protected $table = "inventorys";
     protected $fillable = [
-        'date', 'branch_id', 'warehouse_id','state', 'user_id',
+        'date', 'branch_id', 'warehouse_id','state', 'is_matched', 'user_id',
     ];
 
     public function detalis(){

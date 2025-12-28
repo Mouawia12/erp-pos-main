@@ -8,6 +8,7 @@ use App\Models\Company;
 use App\Http\Requests\StoreCompanyRequest;
 use App\Http\Requests\UpdateCompanyRequest;
 use App\Models\CustomerGroup;
+use App\Models\CostCenter;
 use App\Models\SystemSettings;
 use App\Models\Representative;
 use Illuminate\Database\QueryException;
@@ -43,6 +44,11 @@ class CompanyController extends Controller
 
         $representatives = Representative::query()
             ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->get();
+        $costCenters = CostCenter::query()
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->where('is_active', 1)
+            ->orderBy('name')
             ->get();
 
         $parentCode = $type == 3 ? 1107 : 2101;
@@ -90,7 +96,7 @@ class CompanyController extends Controller
         }
         $settings = $settingsQuery->first() ?? SystemSettings::first();
 
-        $viewData = compact('type', 'companies', 'groups', 'accounts', 'settings', 'parentCompanies', 'representatives');
+        $viewData = compact('type', 'companies', 'groups', 'accounts', 'settings', 'parentCompanies', 'representatives', 'costCenters');
 
         return $type == 3
             ? view('admin.company.clients', $viewData)
@@ -129,6 +135,7 @@ class CompanyController extends Controller
                 'parent_company_id' => ['nullable','integer'],
                 'price_level_id' => ['nullable','integer'],
                 'default_discount' => ['nullable','numeric','min:0'],
+                'cost_center_id' => ['nullable','integer','exists:cost_centers,id'],
                 'email' => ['nullable','email','max:191'],
                 'phone' => ['nullable','string','max:50'],
                 'account_id' => ['nullable','integer','exists:accounts_trees,id'],
@@ -186,6 +193,8 @@ class CompanyController extends Controller
                         'account_id' => $request->account_id ?? 0,
                         'user_id' => Auth::user() -> id,
                         'representative_id_' => $request->representative_id_ ?? 0,
+                        'cost_center_id' => $request->cost_center_id ?: null,
+                        'is_default_supplier' => $request->has('is_default_supplier') ? 1 : 0,
                         'subscriber_id' => $subscriberId,
                         'national_address_short' => $request->national_address_short ?? null,
                         'national_address_building_no' => $request->national_address_building_no ?? null,
@@ -206,6 +215,14 @@ class CompanyController extends Controller
                             return redirect()->route('clients' , $request -> type)
                                 ->with('error', __('main.account_settings') . ': ' . __('validation.required', ['attribute' => __('main.accounting')]));
                         }
+                    }
+
+                    if ($request->has('is_default_supplier')) {
+                        Company::query()
+                            ->where('group_id', 4)
+                            ->where('id', '!=', $company->id)
+                            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+                            ->update(['is_default_supplier' => 0]);
                     }
                 } else {
                     return redirect()->route('clients' , $request -> type)
@@ -267,6 +284,7 @@ class CompanyController extends Controller
                 'opening_balance' => 'required', 
                 'type' => 'required',
                 'account_id' => 'nullable|integer|exists:accounts_trees,id',
+                'cost_center_id' => ['nullable','integer','exists:cost_centers,id'],
                 'national_address_short' => ['nullable','string','max:191'],
                 'national_address_building_no' => ['nullable','string','max:50'],
                 'national_address_street' => ['nullable','string','max:191'],
@@ -315,6 +333,8 @@ class CompanyController extends Controller
                     'price_level_id' => $request->price_level_id ?? $company->price_level_id,
                     'default_discount' => $request->default_discount ?? $company->default_discount,
                     'representative_id_' => $request->representative_id_ ?? $company->representative_id_,
+                    'cost_center_id' => $request->cost_center_id ?: null,
+                    'is_default_supplier' => $request->has('is_default_supplier') ? 1 : 0,
                     'national_address_short' => $request->national_address_short ?? $company->national_address_short,
                     'national_address_building_no' => $request->national_address_building_no ?? $company->national_address_building_no,
                     'national_address_street' => $request->national_address_street ?? $company->national_address_street,
@@ -332,6 +352,14 @@ class CompanyController extends Controller
 
                 if (!$company->account_id) {
                     $company->ensureAccount();
+                }
+
+                if ($request->has('is_default_supplier')) {
+                    Company::query()
+                        ->where('group_id', 4)
+                        ->where('id', '!=', $company->id)
+                        ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+                        ->update(['is_default_supplier' => 0]);
                 }
 
                 if($company->vat_no > 1 && $company->account_id){

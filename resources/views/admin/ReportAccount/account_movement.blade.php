@@ -56,6 +56,30 @@
                                     </div>
                                 </div> 
                                 <div class="row">
+                                    <div class="col-6">
+                                        <div class="form-group">
+                                            <label>{{ __('main.branche') }}</label>
+                                            <select class="form-control" name="branch_id" id="branch_id">
+                                                <option value="0">{{ __('main.all') }}</option>
+                                                @foreach($branches as $branch)
+                                                    <option value="{{$branch->id}}">{{$branch->branch_name}}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="form-group">
+                                            <label>{{ __('main.cost_center') }}</label>
+                                            <select class="form-control" name="cost_center_id" id="cost_center_id">
+                                                <option value="0">{{ __('main.all') }}</option>
+                                                @foreach($costCenters as $center)
+                                                    <option value="{{$center->id}}">{{$center->name}}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
                                     <div class="col-6" style="display: block; margin: 20px auto; text-align: center;">
                                         <button type="submit" class="btn btn-labeled btn-primary"  >
                                             {{__('main.search_btn')}}</button>

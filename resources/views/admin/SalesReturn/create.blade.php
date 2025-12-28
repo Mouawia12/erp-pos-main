@@ -41,7 +41,7 @@
                                     <div class="form-group">
                                         <label>{{ __('main.bill_date') }} <span class="text-danger">*</span> </label>
                                         <input type="datetime-local"  id="bill_date" name="bill_date"
-                                               class="form-control"
+                                               class="form-control" readonly
                                               />
                                     </div>
                                 </div>

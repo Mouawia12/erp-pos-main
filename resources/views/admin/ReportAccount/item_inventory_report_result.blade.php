@@ -55,6 +55,9 @@
                                             <th>{{__('main.code')}}</th>
                                             <th>{{__('main.item')}}</th>
                                             <th>{{__('main.unit')}}</th>
+                                            <th>{{__('main.batch_no')}}</th>
+                                            <th>{{__('main.production_date')}}</th>
+                                            <th>{{__('main.expiry_date')}}</th>
                                             <th>{{__('main.balance_book')}}</th> 
                                             <th>{{__('main.balance_now')}}</th> 
                                             <th>{{__('الفارق')}}</th> 
@@ -74,13 +77,16 @@
                                     ?>
                                     @foreach($inventory_items as $item)
                                         <?php  
-                                            $new_quantity = $item -> new_quantity > 0 ? $item -> new_quantity : $item -> quantity;
+                                            $new_quantity = $item->is_counted ? $item->new_quantity : $item->quantity;
                                         ?>
                                         <tr>
                                             <td class="text-center">{{$loop -> index + 1}}</td>
                                             <td class="text-center">{{$item ->item-> code}}</td>
                                             <td class="text-center">{{$item ->item-> name}}</td> 
                                             <td class="text-center">{{$item ->units-> name}}</td>
+                                            <td class="text-center">{{$item -> batch_no ?? '-'}}</td>
+                                            <td class="text-center">{{$item -> production_date ?? '-'}}</td>
+                                            <td class="text-center">{{$item -> expiry_date ?? '-'}}</td>
                                             <td class="text-center">{{$item -> quantity}}</td>
                                             <td class="text-center">{{$new_quantity}}</td>  
                                             <td class="text-center">@if($new_quantity == $item -> quantity) {{0}} @else {{$new_quantity - $item -> quantity}} @endif</td>  
@@ -100,7 +106,7 @@
                                     </tbody>  
                                     <tfoot>
                                         <tr> 
-                                            <td class="text-center bg-primary text-white" colspan="4">{{__('main.total')}}</td> 
+                                            <td class="text-center bg-primary text-white" colspan="7">{{__('main.total')}}</td> 
                                             <td class="text-center bg-primary text-white">{{$sum_quantity}}</td> 
                                             <td class="text-center bg-primary text-white">{{$sum_new_quantity}}</td>  
                                             <td class="text-center bg-primary text-white">
@@ -141,6 +147,4 @@
 </script> 
 @endsection 
  
-
-
 

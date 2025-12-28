@@ -13,6 +13,7 @@
         <div class="card-body">
             <p><strong>{{ __('main.date') }}:</strong> {{ optional($promotion->start_date)->format('Y-m-d') }} - {{ optional($promotion->end_date)->format('Y-m-d') }}</p>
             <p><strong>{{ __('main.status') }}:</strong> {{ $promotion->status }}</p>
+            <p><strong>{{ __('main.representatives') }}:</strong> {{ $promotion->representative?->user_name ?? __('main.all') }}</p>
             <p><strong>{{ __('main.note') ?? 'ملاحظات' }}:</strong> {{ $promotion->note }}</p>
 
             <table class="table table-bordered text-center">

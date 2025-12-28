@@ -75,6 +75,17 @@
                        </div>
                        <div class="col-md-6">
                            <div class="form-group">
+                               <label>{{ __('main.cost_center') }}</label>
+                               <select class="js-example-basic-single w-100" name="cost_center_id" id="cost_center_id">
+                                   <option value="0">{{ __('main.all') }}</option>
+                                   @foreach($costCenters as $center)
+                                       <option value="{{$center->id}}">{{$center->name}}</option>
+                                   @endforeach
+                               </select>
+                           </div>
+                       </div>
+                       <div class="col-md-6">
+                           <div class="form-group">
                                <label>{{ __('main.vehicle_plate') }}</label>
                                <input type="text"  id="vehicle_plate" name="vehicle_plate"
                                       class="form-control" list="dailyVehicleOptions"
@@ -169,8 +180,9 @@
             const warehouse = document.getElementById('warehouse_id').value ;
             const branch_id = document.getElementById('branch_id').value ;
             const customer_id = document.getElementById('customer_id').value || 0;
+            const cost_center_id = document.getElementById('cost_center_id').value || 0;
             const vehicle_plate = vehicleInput.val() ? vehicleInput.val().trim() : 'empty';
-            showReport(date , warehouse, branch_id, customer_id, vehicle_plate);
+            showReport(date , warehouse, branch_id, customer_id, vehicle_plate, cost_center_id);
         });
 
         if(customerSelect.length){
@@ -209,9 +221,9 @@
         document.title = "{{__('main.daily_sales_report')}}";
     });
 
-    function showReport(date , warehouse, branch_id, customer_id, vehicle_plate) {
+    function showReport(date , warehouse, branch_id, customer_id, vehicle_plate, cost_center_id) {
 
-        var route = '{{route('daily.sales.report.search',[":date" , ":warehouse",":branch_id",":customer",":vehicle"] )}}';
+        var route = '{{route('daily.sales.report.search',[":date" , ":warehouse",":branch_id",":customer",":vehicle",":cost_center"] )}}';
 
         route = route.replace(":date", date);
         route = route.replace(":warehouse", warehouse ? warehouse : 0);
@@ -219,6 +231,7 @@
         route = route.replace(":customer", customer_id ? customer_id : 0);
         var encodedPlate = vehicle_plate ? encodeURIComponent(vehicle_plate) : 'empty';
         route = route.replace(":vehicle", encodedPlate ? encodedPlate : 'empty');
+        route = route.replace(":cost_center", cost_center_id ? cost_center_id : 0);
 
         $.get(route, function( data ) {
             $(".show_modal" ).html( data );

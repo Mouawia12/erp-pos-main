@@ -155,30 +155,52 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="col-6" >
+                        <div class="col-12">
                             <div class="form-group">
-                                <label>{{ __('main.to') }} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
-                                <select id="to_account" name="to_account" class="js-example-basic-single w-100">
-                                    @foreach($accounts as $account)
-                                        <option value="{{$account -> id}}">{{$account -> name}}</option>
-                                    @endforeach
-                                </select>
+                                <label>{{ __('main.details') ?? __('main.accounts') }}</label>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered" id="expense_details_table">
+                                        <thead>
+                                        <tr>
+                                            <th class="text-center">{{ __('main.to') }}</th>
+                                            <th class="text-center">{{ __('main.money') }}</th>
+                                            <th class="text-center">{{ __('main.tax') }}</th>
+                                            <th class="text-center">{{ __('main.notes') }}</th>
+                                            <th class="text-center">{{ __('main.actions') }}</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <tr>
+                                            <td>
+                                                <select id="to_account" name="detail_account_id[]" class="js-example-basic-single w-100 detail-account">
+                                                    @foreach($accounts as $account)
+                                                        <option value="{{$account -> id}}">{{$account -> name}}</option>
+                                                    @endforeach
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <input class="form-control" id="amount" name="detail_amount[]" type="number" step="0.01">
+                                            </td>
+                                            <td>
+                                                <input class="form-control" id="tax_amount" name="detail_tax_amount[]" type="number" step="0.01" value="0">
+                                            </td>
+                                            <td>
+                                                <input class="form-control" name="detail_notes[]" type="text">
+                                            </td>
+                                            <td class="text-center">
+                                                <button type="button" class="btn btn-sm btn-danger remove-detail">-</button>
+                                            </td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-secondary mt-2" id="add_expense_detail">
+                                    {{ __('main.add_new') }}
+                                </button>
                             </div>
                         </div> 
                     </div>
                     <div class="row">
-                        <div class="col-6">
-                            <div class="form-group">
-                                <label>{{ __('main.money') }} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
-                                <input class="form-control" id="amount" name="amount" type="number">
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="form-group">
-                                <label>{{ __('main.tax') }}</label>
-                                <input class="form-control" id="tax_amount" name="tax_amount" type="number" step="0.01" value="0">
-                            </div>
-                        </div>
                         <div class="col-6">
                             <div class="form-group">
                                 <label>{{ __('main.bill_expense_client') }} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
@@ -278,10 +300,31 @@
         document.title = "{{__('main.expenses')}}";
 
         getBillNo();   
+
+        const $createModal = $('#createModal');
+        function initExpenseSelects(context){
+            if (!$.fn || !$.fn.select2) {
+                return;
+            }
+            const $context = context ? $(context) : $(document);
+            $context.find('.detail-account').each(function(){
+                const $select = $(this);
+                if ($select.hasClass('select2-hidden-accessible')) {
+                    $select.select2('destroy');
+                }
+                $select.next('.select2-container').remove();
+                $select.select2({ dropdownParent: $createModal, width: '100%' });
+            });
+            $('#branch_id').select2({ dropdownParent: $createModal, width: '100%' });
+            $('#from_account').select2({ dropdownParent: $createModal, width: '100%' });
+        }
+        $createModal.on('shown.bs.modal', function(){
+            initExpenseSelects($(this));
+        });
         $(document).on('change', '#branch_id', function () {
             getBillNo();   
             $('#payment_type').val(0).trigger("change"); 
-            $('#amount').val(0); 
+            $('#expense_details_table tbody').html($('#expense_details_table tbody tr:first').prop('outerHTML'));
             $('#client').val('');  
             $('#notes').val(''); 
         });
@@ -317,7 +360,7 @@
 
             $(".modal-body #id").val( 0 );
             $(".modal-body #type_id").val(0);
-            $(".modal-body #amount").val(0);
+            $('#expense_details_table tbody').html($('#expense_details_table tbody tr:first').prop('outerHTML'));
 
             $(".modal-body #date").attr('readOnly' , false);
             $(".modal-body #amount").attr('readOnly' , false);
@@ -325,6 +368,25 @@
             $(".modal-body #notes").attr('disabled' , false);
             $(".modal-body #submitBtn").show();
             $(".modal-body #printtBtn").hide(); 
+        });
+
+        $(document).on('click', '#add_expense_detail', function(){
+            const $row = $('#expense_details_table tbody tr:first').clone();
+            $row.find('input').val('');
+            $row.find('.select2-container').remove();
+            $row.find('select').val('').removeAttr('id');
+            $row.find('#amount').removeAttr('id');
+            $row.find('#tax_amount').removeAttr('id');
+            $('#expense_details_table tbody').append($row);
+            initExpenseSelects($row);
+        });
+
+        $(document).on('click', '.remove-detail', function(){
+            const $rows = $('#expense_details_table tbody tr');
+            if ($rows.length <= 1) {
+                return;
+            }
+            $(this).closest('tr').remove();
         });
 
         $(document).on('click', '.editBtn', function(event) {
@@ -437,10 +499,6 @@
 </script> 
 @endsection 
  
-
-
-
-
 
 
 

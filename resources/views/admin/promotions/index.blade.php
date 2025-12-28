@@ -19,6 +19,7 @@
                 <tr>
                     <th>#</th>
                     <th>{{ __('main.name') }}</th>
+                    <th>{{ __('main.representatives') }}</th>
                     <th>{{ __('main.date') }}</th>
                     <th>{{ __('main.status') }}</th>
                     <th>{{ __('main.actions') }}</th>
@@ -29,6 +30,7 @@
                     <tr>
                         <td>{{ $promotion->id }}</td>
                         <td>{{ $promotion->name }}</td>
+                        <td>{{ $promotion->representative?->user_name ?? __('main.all') }}</td>
                         <td>{{ optional($promotion->start_date)->format('Y-m-d') }} - {{ optional($promotion->end_date)->format('Y-m-d') }}</td>
                         <td><span class="badge badge-{{ $promotion->status === 'active' ? 'success' : 'secondary' }}">{{ $promotion->status }}</span></td>
                         <td class="text-nowrap">

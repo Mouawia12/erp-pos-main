@@ -48,9 +48,11 @@ use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\BranchController; 
 use App\Http\Controllers\Admin\CatchReciptController;
+use App\Http\Controllers\Admin\CostCenterController;
 use App\Http\Controllers\Admin\StockCountController;
 use App\Http\Controllers\Admin\FiscalYearController;
 use App\Http\Controllers\Admin\OpeningBalanceController;
+use App\Http\Controllers\Admin\FinancialStatementController;
 use App\Http\Controllers\Admin\PosController;
 use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\SubscriberController;
@@ -195,6 +197,7 @@ Route::group(
     
     Route::post('/updateProduct', [InventoryController::class, 'update_weight_item' ] )->name('admin.inventory.update');
     Route::post('/add-item', [InventoryController::class, 'inventory_weight_item' ] )->name('admin.inventory.add');
+    Route::post('/inventory/match', [InventoryController::class, 'match_inventory'])->name('admin.inventory.match');
     Route::get('/getItemInventory/{code}', [InventoryController::class, 'getProduct'])->name('getItems');
 
     Route::get('manufacturing', [ManufacturingController::class, 'index'])->name('admin.manufacturing.index');
@@ -208,6 +211,10 @@ Route::group(
     
     Route::get('/units', [UnitController::class, 'index'])->name('units');
     Route::post('storeUnit', [UnitController::class, 'store'])->name('storeUnit');
+    Route::get('/cost_centers', [CostCenterController::class, 'index'])->name('cost_centers');
+    Route::post('/cost_centers', [CostCenterController::class, 'store'])->name('cost_centers.store');
+    Route::get('/cost_centers/{id}', [CostCenterController::class, 'edit'])->name('cost_centers.edit');
+    Route::get('/cost_centers/delete/{id}', [CostCenterController::class, 'destroy'])->name('cost_centers.delete');
     Route::get('/deleteUnit/{id}', [UnitController::class, 'destroy'])->name('deleteUnit');
     Route::get('/getUnit/{id}', [UnitController::class, 'edit'])->name('getUnit');
     
@@ -290,6 +297,8 @@ Route::group(
     Route::get('/getRepresentativeClients/{id}', [RepresentativeController::class, 'show'])->name('getRepresentativeClients');
     Route::post('connect_to_client', [RepresentativeController::class, 'connect_to_client'])->name('connect_to_client');
     Route::get('disconnectClientRep/{id}', [RepresentativeController::class, 'disconnectClientRep'])->name('disconnectClientRep');
+    Route::post('/representatives/{representative}/documents', [RepresentativeController::class, 'storeDocument'])->name('representatives.documents.store');
+    Route::delete('/representatives/documents/{document}', [RepresentativeController::class, 'deleteDocument'])->name('representatives.documents.delete');
 
     Route::get('/products', [ProductController::class, 'index'])->name('products');
     Route::get('/products/create', [ProductController::class, 'create'])->name('createProduct');
@@ -339,6 +348,7 @@ Route::group(
     Route::get('fiscal_years', [FiscalYearController::class, 'index'])->name('fiscal_years.index');
     Route::post('fiscal_years', [FiscalYearController::class, 'store'])->name('fiscal_years.store');
     Route::post('fiscal_years/{fiscal_year}/close', [FiscalYearController::class, 'close'])->name('fiscal_years.close');
+    Route::post('fiscal_years/{fiscal_year}/close-entries', [FiscalYearController::class, 'closeWithEntries'])->name('fiscal_years.close_entries');
     Route::post('fiscal_years/{fiscal_year}/open', [FiscalYearController::class, 'open'])->name('fiscal_years.open');
 
     // Financial reports
@@ -346,6 +356,9 @@ Route::group(
     Route::get('reports/general-ledger', [FinancialReportController::class, 'generalLedger'])->name('reports.general_ledger');
     Route::get('reports/account-balances', [FinancialReportController::class, 'accountBalances'])->name('reports.account_balances');
     Route::get('reports/income-statement', [FinancialStatementController::class, 'incomeStatement'])->name('reports.income_statement');
+    Route::get('reports/income-statement-totals', [FinancialStatementController::class, 'incomeStatementTotals'])->name('reports.income_statement_totals');
+    Route::get('reports/trading-account', [FinancialStatementController::class, 'tradingAccount'])->name('reports.trading_account');
+    Route::get('reports/profit-loss', [FinancialStatementController::class, 'profitAndLoss'])->name('reports.profit_loss');
     Route::get('reports/balance-sheet', [FinancialStatementController::class, 'balanceSheet'])->name('reports.balance_sheet');
 
     Route::get('/update_qnt', [UpdateQuntityController::class, 'index'])->name('update_qnt');
@@ -401,6 +414,16 @@ Route::group(
     // Reports: expiry / near-expiry items
     Route::get('/reports/expiry', [ReportController::class, 'expiryReport'])->name('reports.expiry');
     Route::post('/reports/expiry', [ReportController::class, 'expiryReport'])->name('reports.expiry.search');
+    Route::get('/reports/quotations', [ReportController::class, 'quotationsReport'])->name('reports.quotations');
+    Route::get('/reports/inventory-value', [ReportController::class, 'inventoryValueReport'])->name('reports.inventory_value');
+    Route::get('/reports/inventory-aging', [ReportController::class, 'inventoryAgingReport'])->name('reports.inventory_aging');
+    Route::get('/reports/inventory-variance', [ReportController::class, 'inventoryVarianceReport'])->name('reports.inventory_variance');
+    Route::get('/reports/clients-balance', [ReportController::class, 'clientsBalanceReport'])->name('reports.clients_balance');
+    Route::get('/reports/vendors-balance', [ReportController::class, 'vendorsBalanceReport'])->name('reports.vendors_balance');
+    Route::get('/reports/clients-movement', [ReportController::class, 'clientsMovementReport'])->name('reports.clients_movement');
+    Route::get('/reports/vendors-movement', [ReportController::class, 'vendorsMovementReport'])->name('reports.vendors_movement');
+    Route::get('/reports/clients-aging', [ReportController::class, 'clientAging'])->name('reports.clients_aging');
+    Route::get('/reports/representatives', [ReportController::class, 'representativesReport'])->name('reports.representatives');
     Route::get('/reports/salon-services', [ReportController::class, 'salonServicesReport'])->name('reports.salon.services');
     // Reports: low stock
     Route::get('/reports/low-stock', [ReportController::class, 'lowStockReport'])->name('reports.low_stock');
@@ -506,23 +529,23 @@ Route::group(
 
       
     Route::get('/daily_sales_report', [ReportController::class, 'daily_sales_report'])->name('daily_sales_report');
-    Route::get('/daily-sales-report-search/{date}/{warehouse}/{branch_id}/{customer_id?}/{vehicle_plate?}', [ReportController::class, 'daily_sales_report_search'])
+    Route::get('/daily-sales-report-search/{date}/{warehouse}/{branch_id}/{customer_id?}/{vehicle_plate?}/{cost_center_id?}', [ReportController::class, 'daily_sales_report_search'])
         ->name('daily.sales.report.search');
 
     Route::get('/sales_item_report', [ReportController::class, 'sales_item_report'])->name('sales_item_report');
-    Route::get('/sales_item_report_search/{fdate}/{tdate}/{warehouse}/{branch_id}/{item}/{supplier}/{vehicle_plate?}', [ReportController::class, 'sales_item_report_search'])
+    Route::get('/sales_item_report_search/{fdate}/{tdate}/{warehouse}/{branch_id}/{item}/{supplier}/{vehicle_plate?}/{cost_center_id?}', [ReportController::class, 'sales_item_report_search'])
         ->name('sales.item.report.search');
 
     Route::get('/sales_return_report', [ReportController::class, 'sales_return_report'])->name('sales.return.report');
-    Route::get('/sales-return-report-search/{fdate}/{tdate}/{warehouse}/{bill_no}/{vendor}/{branch_id}', [ReportController::class, 'sales_return_report_search'])
+    Route::get('/sales-return-report-search/{fdate}/{tdate}/{warehouse}/{bill_no}/{vendor}/{branch_id}/{cost_center_id?}', [ReportController::class, 'sales_return_report_search'])
         ->name('sales.return.report.search');
 
     Route::get('/purchase_report', [ReportController::class, 'purchase_report'])->name('purchase_report');
-    Route::get('/purchase-report-search/{fdate}/{tdate}/{warehouse}/{bill_no}/{vendor}/{branch_id}', [ReportController::class, 'purchase_report_search'])
+    Route::get('/purchase-report-search/{fdate}/{tdate}/{warehouse}/{bill_no}/{vendor}/{branch_id}/{cost_center_id?}', [ReportController::class, 'purchase_report_search'])
         ->name('purchase.report.search');
 
     Route::get('/purchases_return_report', [ReportController::class, 'purchases_return_report'])->name('purchases_return_report');
-    Route::get('/purchases-return-report-search/{fdate}/{tdate}/{warehouse}/{bill_no}/{vendor}/{branch_id}', [ReportController::class, 'purchases_return_report_search'])
+    Route::get('/purchases-return-report-search/{fdate}/{tdate}/{warehouse}/{bill_no}/{vendor}/{branch_id}/{cost_center_id?}', [ReportController::class, 'purchases_return_report_search'])
         ->name('purchases.return.report.search');
 
     Route::get('/items_report', [ReportController::class, 'items_report'])->name('items_report');

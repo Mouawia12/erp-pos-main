@@ -18,6 +18,7 @@ use App\Models\PurchaseDetails;
 use App\Models\Inventory; 
 use App\Models\InventoryDetails;  
 use App\Models\Branch;
+use App\Models\CostCenter;
 use App\Models\Sales;
 use App\Models\Purchase;
 use Carbon\Carbon; 
@@ -923,14 +924,24 @@ class ReportAccountController extends Controller
             $period_ar .= ' -- '  . 'حتى اليوم' ;
         }
 
+        $branchId = (int) ($request->branch_id ?? 0);
+        $costCenterId = (int) ($request->cost_center_id ?? 0);
+
         $accounts = DB::table('accounts_trees')
             ->join('account_movements','accounts_trees.id','=','account_movements.account_id')
+            ->join('journals','journals.id','=','account_movements.journal_id')
             ->select('accounts_trees.code','accounts_trees.name',
                 DB::raw('sum(account_movements.credit) as credit'),
                 DB::raw('sum(account_movements.debit) as debit'))
             ->groupBy('accounts_trees.id','accounts_trees.code','accounts_trees.name')
             ->where('account_movements.date','>=',$startDate)
             ->where('account_movements.date','<=',$endDate)
+            ->when($branchId > 0, function ($q) use ($branchId) {
+                $q->where('journals.branch_id', $branchId);
+            })
+            ->when($costCenterId > 0, function ($q) use ($costCenterId) {
+                $q->where('journals.cost_center_id', $costCenterId);
+            })
             ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
                 $q->where('accounts_trees.subscriber_id',$sub);
             })
@@ -939,12 +950,19 @@ class ReportAccountController extends Controller
         foreach ($accounts as $account){
             $accountBalance = DB::table('accounts_trees')
                 ->join('account_movements','accounts_trees.id','=','account_movements.account_id')
+                ->join('journals','journals.id','=','account_movements.journal_id')
                 ->select('accounts_trees.code','accounts_trees.name',
                     DB::raw('SUM(account_movements.credit) credit'),
                     DB::raw('SUM(account_movements.debit) debit'))
                 ->groupBy('accounts_trees.id','accounts_trees.code','accounts_trees.name')
                 ->where('account_movements.date','<',$startDate)
                 ->where('accounts_trees.code','<',$account->code)
+                ->when($branchId > 0, function ($q) use ($branchId) {
+                    $q->where('journals.branch_id', $branchId);
+                })
+                ->when($costCenterId > 0, function ($q) use ($costCenterId) {
+                    $q->where('journals.cost_center_id', $costCenterId);
+                })
                 ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
                     $q->where('accounts_trees.subscriber_id',$sub);
                 })
@@ -964,7 +982,16 @@ class ReportAccountController extends Controller
     }
 
     public function account_balance(){
-        return view('admin.ReportAccount.account_balance');
+        $subscriberId = Auth::user()->subscriber_id ?? null;
+        $branches = Branch::where('status',1)
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->get();
+        $costCenters = CostCenter::query()
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->where('is_active', 1)
+            ->orderBy('name')
+            ->get();
+        return view('admin.ReportAccount.account_balance', compact('branches', 'costCenters'));
     }
 
     public function box_movement_report(){ 
@@ -1622,8 +1649,17 @@ class ReportAccountController extends Controller
     }
 
     public function account_movement_report(){ 
+        $subscriberId = Auth::user()->subscriber_id ?? null;
         $accounts = AccountsTree::all();
-        return view('admin.ReportAccount.account_movement' , compact( 'accounts'));
+        $branches = Branch::where('status',1)
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->get();
+        $costCenters = CostCenter::query()
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->where('is_active', 1)
+            ->orderBy('name')
+            ->get();
+        return view('admin.ReportAccount.account_movement' , compact('accounts','branches','costCenters'));
     }
 
     public function account_movement_report_search(Request $request){
@@ -1651,6 +1687,9 @@ class ReportAccountController extends Controller
             $period_ar .= ' -- '  . 'حتى اليوم' ;
         }
 
+        $branchId = (int) ($request->branch_id ?? 0);
+        $costCenterId = (int) ($request->cost_center_id ?? 0);
+
         $accounts = DB::table('accounts_trees')
                         ->join('account_movements','accounts_trees.id','=','account_movements.account_id')
                         ->join('journals','journals.id','=','account_movements.journal_id')
@@ -1662,6 +1701,12 @@ class ReportAccountController extends Controller
                         ->where('account_movements.date','>=',$startDate)
                         ->where('account_movements.date','<=',$endDate)
                         ->where('accounts_trees.id' , '=' , $request -> account_id) 
+                        ->when($branchId > 0, function ($q) use ($branchId) {
+                            $q->where('journals.branch_id', $branchId);
+                        })
+                        ->when($costCenterId > 0, function ($q) use ($costCenterId) {
+                            $q->where('journals.cost_center_id', $costCenterId);
+                        })
                         ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
                             if (Schema::hasColumn('accounts_trees','subscriber_id')) {
                                 $q->where('accounts_trees.subscriber_id',$sub);
@@ -1671,12 +1716,19 @@ class ReportAccountController extends Controller
 
         $account_balance = DB::table('accounts_trees')
                         ->join('account_movements','accounts_trees.id','=','account_movements.account_id')
+                        ->join('journals','journals.id','=','account_movements.journal_id')
                         ->select('accounts_trees.code','accounts_trees.name as account_name','accounts_trees.side',
                             DB::raw('SUM(account_movements.credit) before_credit'),
                             DB::raw('SUM(account_movements.debit) before_debit'))
                         ->groupBy('accounts_trees.id','accounts_trees.code','accounts_trees.name','accounts_trees.side')
                         ->where('account_movements.date','<',$startDate)
                         ->where('accounts_trees.id' , '=' , $request -> account_id) 
+                        ->when($branchId > 0, function ($q) use ($branchId) {
+                            $q->where('journals.branch_id', $branchId);
+                        })
+                        ->when($costCenterId > 0, function ($q) use ($costCenterId) {
+                            $q->where('journals.cost_center_id', $costCenterId);
+                        })
                         ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
                             if (Schema::hasColumn('accounts_trees','subscriber_id')) {
                                 $q->where('accounts_trees.subscriber_id',$sub);
@@ -1730,8 +1782,16 @@ class ReportAccountController extends Controller
  
     public function account_companies_details_report(){ 
         $accounts = AccountsTree::where('parent_code',2101) -> get();
-        $branches = Branch::where('status',1)->get(); 
-        return view('admin.ReportAccount.account_companies_details' , compact( 'accounts','branches'));
+        $subscriberId = Auth::user()->subscriber_id ?? null;
+        $branches = Branch::where('status',1)
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->get();
+        $costCenters = CostCenter::query()
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->where('is_active', 1)
+            ->orderBy('name')
+            ->get();
+        return view('admin.ReportAccount.account_companies_details' , compact('accounts','branches','costCenters'));
     }
 
     public function account_companies_details_search(Request $request){
@@ -1759,6 +1819,7 @@ class ReportAccountController extends Controller
             $period_ar .= ' -- '  . 'حتى اليوم' ;
         }
 
+        $costCenterId = (int) ($request->cost_center_id ?? 0);
         $accounts = DB::table('accounts_trees')
                         ->join('account_movements','accounts_trees.id','=','account_movements.account_id')
                         ->join('journals','journals.id','=','account_movements.journal_id')
@@ -1771,10 +1832,12 @@ class ReportAccountController extends Controller
                         ->where('accounts_trees.id' , '=' , $request -> account_id); 
 
         if($request -> branch_id > 0){
-            $accounts = $accounts->where('journals.branch_id', $request -> branch_id)->get();
-        }else{
-            $accounts = $accounts->get();
+            $accounts = $accounts->where('journals.branch_id', $request -> branch_id);
         }
+        if ($costCenterId > 0) {
+            $accounts = $accounts->where('journals.cost_center_id', $costCenterId);
+        }
+        $accounts = $accounts->get();
          
         if($request -> branch_id > 0){
             $account_balance = DB::table('accounts_trees')
@@ -1787,6 +1850,9 @@ class ReportAccountController extends Controller
                 ->where('account_movements.date','<',$startDate)
                 ->where('accounts_trees.id' , '=' , $request -> account_id)
                 ->where('journals.branch_id' , '=' , $request -> branch_id)
+                ->when($costCenterId > 0, function ($q) use ($costCenterId) {
+                    $q->where('journals.cost_center_id', $costCenterId);
+                })
                 ->first();
         }else{
             $account_balance = DB::table('accounts_trees')
@@ -1798,6 +1864,9 @@ class ReportAccountController extends Controller
                 ->groupBy('accounts_trees.id','accounts_trees.code','accounts_trees.name','accounts_trees.side')
                 ->where('account_movements.date','<',$startDate)
                 ->where('accounts_trees.id' , '=' , $request -> account_id)
+                ->when($costCenterId > 0, function ($q) use ($costCenterId) {
+                    $q->where('journals.cost_center_id', $costCenterId);
+                })
                 ->first();
         }
   
@@ -2016,7 +2085,7 @@ class ReportAccountController extends Controller
         $inventory = Inventory::FindOrFail($id);    
 
         $inventory_sum = Product::join('inventory_details','products.id','=','inventory_details.item_id')
-            ->selectRaw('sum(inventory_details.new_quantity * products.cost) sum_weight_new,sum(inventory_details.quantity * products.cost) sum_weight_old')
+            ->selectRaw('sum((case when inventory_details.is_counted = 1 then inventory_details.new_quantity else inventory_details.quantity end) * products.cost) sum_weight_new, sum(inventory_details.quantity * products.cost) sum_weight_old')
             ->where('inventory_details.inventory_id' ,$id)    
             ->first(); 
 

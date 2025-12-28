@@ -78,19 +78,28 @@
                             </div>
                             <div class="row g-3 mt-1">
                                 <div class="col-md-4" >
-                                    <div class="form-group">
-                                        <label>{{ __('main.supplier') }} <span class="text-danger">*</span> </label>
-                                        <select class="js-example-basic-single w-100"
-                                            name="customer_id" id="customer_id" required>
-                                            <option  value="0" selected>{{ __('main.choose') }}</option>
+                                <div class="form-group">
+                                    <label>{{ __('main.supplier') }} <span class="text-danger">*</span> </label>
+                                    @php
+                                        $defaultSupplierId = optional($defaultSupplier)->id ?? 0;
+                                        $selectedSupplier = old('customer_id', $defaultSupplierId);
+                                    @endphp
+                                    <select class="js-example-basic-single w-100"
+                                        name="customer_id" id="customer_id" required>
+                                            <option value="0" @if($selectedSupplier == 0) selected @endif>{{ __('main.choose') }}</option>
                                             @foreach ($customers as $supplier)
                                                 <option value="{{$supplier -> id}}"
                                                     data-representative="{{$supplier->representative_id_ ?? ''}}"
                                                     data-phone="{{$supplier->phone ?? ''}}"
                                                     data-address="{{$supplier->address ?? ''}}"
                                                     data-tax="{{$supplier->tax_number ?? $supplier->vat_no ?? ''}}"
-                                                    data-name="{{$supplier->name}}">
+                                                    data-name="{{$supplier->name}}"
+                                                    data-cost-center-id="{{$supplier->cost_center_id ?? ''}}"
+                                                    @if($selectedSupplier == $supplier->id) selected @endif>
                                                     {{ $supplier -> name}}
+                                                    @if($defaultSupplierId && $defaultSupplierId == $supplier->id)
+                                                        ({{ __('main.default_supplier') ?? 'مورد افتراضي' }})
+                                                    @endif
                                                 </option>
                                             @endforeach
                                         </select>
@@ -140,18 +149,26 @@
                                 <div class="col-md-3">
                                     <div class="form-group">
                                         <label>{{ __('main.cost_center') }}</label>
+                                        <select class="form-control mb-1" name="cost_center_id" id="cost_center_id">
+                                            <option value="">{{ __('main.choose') }}</option>
+                                            @foreach($costCenters as $center)
+                                                <option value="{{$center->id}}">{{$center->name}}</option>
+                                            @endforeach
+                                        </select>
                                         <input type="text" class="form-control" name="cost_center" id="cost_center" placeholder="{{__('main.cost_center')}}">
                                     </div>
                                 </div>
                                 <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label>{{ __('main.invoice_payment_method') ?? __('main.payment_method') }}</label>
-                                        <select class="form-control" name="payment_method" id="payment_method">
-                                            <option value="cash">{{ __('main.cash') }}</option>
-                                            <option value="credit" selected>{{ __('main.credit') }}</option>
-                                        </select>
-                                    </div>
+                                <div class="form-group">
+                                    <label>{{ __('main.invoice_payment_method') ?? __('main.payment_method') }}</label>
+                                    <select class="form-control" name="payment_method" id="payment_method">
+                                        <option value="cash">{{ __('main.cash') }}</option>
+                                        <option value="credit" selected>{{ __('main.credit') }}</option>
+                                        <option value="network">{{ __('main.network') ?? __('main.visa') }}</option>
+                                        <option value="cash_network">{{ __('main.cash') }} + {{ __('main.network') ?? __('main.visa') }}</option>
+                                    </select>
                                 </div>
+                            </div>
                                 <div class="col-md-3">
                                     <div class="form-group">
                                         <label>{{ __('main.supplier_invoice_no') }}</label>
@@ -424,6 +441,12 @@
                 $('#cost_center').val(txt);
             }
         });
+        $('#cost_center_id').on('change', function(){
+            const txt = $(this).find('option:selected').text().trim();
+            if(txt && !$('#cost_center').val()){
+                $('#cost_center').val(txt);
+            }
+        });
         $('#customer_id').on('change', function(){
             const selected = $(this).find(':selected');
             if(!selected.val() || selected.val() === '0'){
@@ -435,6 +458,16 @@
             const repId = selected.data('representative') || '';
             if(repId){
                 $('#representative_id').val(repId).trigger('change');
+            }
+            const costCenterId = selected.data('cost-center-id') || '';
+            if(costCenterId){
+                $('#cost_center_id').val(costCenterId).trigger('change');
+                if(!$('#cost_center').val()){
+                    const costText = $('#cost_center_id').find('option:selected').text().trim();
+                    if(costText){
+                        $('#cost_center').val(costText);
+                    }
+                }
             }
             const name = selected.data('name') || selected.text().trim();
             if(name){

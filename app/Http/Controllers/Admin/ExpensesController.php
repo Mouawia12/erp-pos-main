@@ -91,28 +91,70 @@ class ExpensesController extends Controller
         $validated = $request->validate([
             'docNumber' =>  'required|unique:expenses',
             'date' => 'required', 
-            'amount' => 'required',
+            'amount' => 'nullable|numeric|min:0',
             'tax_amount' => 'nullable|numeric',
             'from_account' => 'required',
-            'to_account' => 'required',
+            'to_account' => 'nullable|integer',
+            'detail_account_id' => 'nullable|array',
+            'detail_account_id.*' => 'required|integer',
+            'detail_amount' => 'nullable|array',
+            'detail_amount.*' => 'required|numeric|min:0.01',
+            'detail_tax_amount' => 'nullable|array',
+            'detail_tax_amount.*' => 'nullable|numeric|min:0',
         ]);
 
-        $taxAmount = $request->tax_amount ?? 0;
-        $totalWithTax = $request->amount + $taxAmount;
+        $detailAccounts = $request->detail_account_id ?? [];
+        $detailAmounts = $request->detail_amount ?? [];
+        $detailTaxes = $request->detail_tax_amount ?? [];
+        $detailNotes = $request->detail_notes ?? [];
+        $details = [];
+        if (!empty($detailAccounts)) {
+            foreach ($detailAccounts as $idx => $accountId) {
+                $amount = (float) ($detailAmounts[$idx] ?? 0);
+                if ($amount <= 0) {
+                    continue;
+                }
+                $details[] = [
+                    'account_id' => (int) $accountId,
+                    'amount' => $amount,
+                    'tax_amount' => (float) ($detailTaxes[$idx] ?? 0),
+                    'notes' => $detailNotes[$idx] ?? null,
+                ];
+            }
+        } elseif ($request->to_account && $request->amount) {
+            $details[] = [
+                'account_id' => (int) $request->to_account,
+                'amount' => (float) $request->amount,
+                'tax_amount' => (float) ($request->tax_amount ?? 0),
+                'notes' => $request->notes ?? null,
+            ];
+        }
+
+        if (empty($details)) {
+            return redirect()->route('expenses')->with('error', __('main.invoice_details_required'));
+        }
+
+        $taxAmount = collect($details)->sum('tax_amount');
+        $totalAmount = collect($details)->sum('amount');
 
         $id =  Expenses::create([
             'docNumber' => $request -> docNumber,
             'date' => Carbon::parse($request -> date) ,
             'from_account' => $request -> from_account,
-            'to_account' => $request -> to_account,
+            'to_account' => $details[0]['account_id'] ?? $request->to_account,
             'client' => $request -> client ?? '',
-            'amount' => $request -> amount,
+            'amount' => $totalAmount,
             'tax_amount' => $taxAmount,
             'notes' => $request -> notes ?? '',  
             'payment_type' => $request -> payment_type ?? 0,
             'branch_id' => $request -> branch_id,
             'user_id' => Auth::user() -> id
         ]) -> id   ;
+
+        foreach ($details as $detail) {
+            $detail['expense_id'] = $id;
+            \App\Models\ExpenseDetail::create($detail);
+        }
 
         $auto_accounting =  env("AUTO_ACCOUNTING", 1);
         if($auto_accounting == 1){

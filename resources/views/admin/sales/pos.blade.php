@@ -306,7 +306,10 @@ label.total {
                                         <select class="form-control pos-input" name="representative_id" id="representative_id">
                                             <option value="">{{ __('main.choose') }}</option>
                                             @foreach($representatives as $rep)
-                                                <option value="{{$rep->id}}">{{$rep->user_name}}</option>
+                                                <option value="{{$rep->id}}"
+                                                    data-discount="{{$rep->discount_percent ?? ''}}"
+                                                    data-price-level="{{$rep->price_level_id ?? ''}}"
+                                                    data-warehouse="{{$rep->warehouse_id ?? ''}}">{{$rep->user_name}}</option>
                                             @endforeach
                                         </select>
                                     </div>
@@ -817,6 +820,24 @@ label.total {
                 $('#discount_input').val(0);
             }
             updatePosDiscountSummary();
+        });
+
+        $('#representative_id').on('change', function(){
+            const selected = $(this).find(':selected');
+            const repDiscount = parseFloat(selected.data('discount')) || 0;
+            const repWarehouse = selected.data('warehouse');
+            if(repDiscount > 0){
+                const currentDiscount = parseFloat($('#discount_input').val()) || 0;
+                if(currentDiscount === 0){
+                    $('#discount_input').val(repDiscount);
+                    updatePosDiscountSummary();
+                }
+            }
+            if(repWarehouse && $('#warehouse_id').length){
+                if(!$('#warehouse_id').val()){
+                    $('#warehouse_id').val(repWarehouse).trigger('change');
+                }
+            }
         });
        
         $('input[name=add_item]').change(function() {

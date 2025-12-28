@@ -6,6 +6,7 @@ use App\Models\Traits\BelongsToSubscriber;
 use App\Models\Traits\GuardsFiscalYear;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\CatchReciptDetail;
 
 class CatchRecipt extends Model
 {
@@ -27,6 +28,11 @@ class CatchRecipt extends Model
     
     public function branch(){
         return $this -> belongsTo(Branch::class, 'branch_id');
+    }
+
+    public function details()
+    {
+        return $this->hasMany(CatchReciptDetail::class, 'catch_recipt_id');
     }
 
 }

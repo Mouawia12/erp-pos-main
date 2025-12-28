@@ -61,6 +61,19 @@
                                 <div class="row">
                                     <div class="col-6">
                                         <div class="form-group">
+                                            <label>{{ __('main.cost_center') }}</label>
+                                            <select class="form-control" name="cost_center_id" id="cost_center_id">
+                                                <option value="0">{{ __('main.all') }}</option>
+                                                @foreach($costCenters as $center)
+                                                    <option value="{{$center->id}}">{{$center->name}}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div class="form-group">
                                             <label> تاريخ البداية <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
                                             <input type="checkbox" id="isStartDate" name="isStartDate">
                                             <input type="date" id="StartDate" name="StartDate"  class="form-control">

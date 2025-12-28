@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Traits\BelongsToSubscriber;
 use App\Models\Traits\GuardsFiscalYear;
+use App\Models\ExpenseDetail;
 
 class Expenses extends Model
 {
@@ -28,5 +29,10 @@ class Expenses extends Model
 
     public function branch(){
       return $this -> belongsTo(Branch::class, 'branch_id');
+    }
+
+    public function details()
+    {
+      return $this->hasMany(ExpenseDetail::class, 'expense_id');
     }
 }

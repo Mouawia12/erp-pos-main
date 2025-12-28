@@ -24,6 +24,48 @@ class FinancialStatementController extends Controller
         return view('admin.finance.income_statement', compact('start','end','revenue','cost','expenses','grossProfit','netProfit'));
     }
 
+    public function incomeStatementTotals(Request $request)
+    {
+        $start = $request->start_date ?? now()->startOfYear()->toDateString();
+        $end = $request->end_date ?? now()->toDateString();
+
+        $revenue = $this->sumByType('revenue', $start, $end);
+        $cost = $this->sumByType('cost', $start, $end);
+        $expenses = $this->sumByType('expense', $start, $end);
+
+        $grossProfit = $revenue - $cost;
+        $netProfit = $grossProfit - $expenses;
+
+        return view('admin.finance.income_statement_totals', compact('start','end','revenue','cost','expenses','grossProfit','netProfit'));
+    }
+
+    public function tradingAccount(Request $request)
+    {
+        $start = $request->start_date ?? now()->startOfYear()->toDateString();
+        $end = $request->end_date ?? now()->toDateString();
+
+        $revenue = $this->sumByType('revenue', $start, $end);
+        $cost = $this->sumByType('cost', $start, $end);
+        $grossProfit = $revenue - $cost;
+
+        return view('admin.finance.trading_account', compact('start','end','revenue','cost','grossProfit'));
+    }
+
+    public function profitAndLoss(Request $request)
+    {
+        $start = $request->start_date ?? now()->startOfYear()->toDateString();
+        $end = $request->end_date ?? now()->toDateString();
+
+        $revenue = $this->sumByType('revenue', $start, $end);
+        $cost = $this->sumByType('cost', $start, $end);
+        $expenses = $this->sumByType('expense', $start, $end);
+
+        $grossProfit = $revenue - $cost;
+        $netProfit = $grossProfit - $expenses;
+
+        return view('admin.finance.profit_loss', compact('start','end','revenue','cost','expenses','grossProfit','netProfit'));
+    }
+
     public function balanceSheet(Request $request)
     {
         $assets = $this->sumByType('asset');

@@ -67,6 +67,17 @@
                         </div>
                         <div class="col-md-4">
                             <div class="form-group">
+                                <label>{{ __('main.cost_center') }}</label>
+                                <select class="js-example-basic-single w-100" name="cost_center_id" id="cost_center_id">
+                                    <option value="0">{{ __('main.all') }}</option>
+                                    @foreach($costCenters as $center)
+                                        <option value="{{$center->id}}">{{$center->name}}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
                                 <label>{{ __('main.vehicle_plate') }}</label>
                                 <input type="text" id="vehicle_plate" name="vehicle_plate"
                                        class="form-control" list="salesVehicleOptions"
@@ -229,6 +240,7 @@
             const warehouse = document.getElementById('warehouse_id').value;
             const supplier = document.getElementById('supplier_id').value;
             const branch_id = document.getElementById('branch_id').value;
+            const cost_center_id = document.getElementById('cost_center_id').value;
 
             var item ;
             var item_id ;
@@ -241,7 +253,7 @@
             }
 
             const vehicle_plate = vehicleInput.val() ? vehicleInput.val().trim() : 'empty';
-           showReport( fromDate,toDate,warehouse,branch_id,item_id,supplier , vehicle_plate); 
+           showReport( fromDate,toDate,warehouse,branch_id,item_id,supplier , vehicle_plate, cost_center_id); 
         });
 
         if(supplierSelect.length){
@@ -297,9 +309,9 @@
         document.title = "{{__('تقرير المبيعات تفصيلي')}}";
     });
 
-    function showReport(fdate, tdate,warehouse,branch_id,item,supplier,vehicle_plate) {
+    function showReport(fdate, tdate,warehouse,branch_id,item,supplier,vehicle_plate, cost_center_id) {
 
-        var route = '{{route('sales.item.report.search',[":fdate",":tdate",":warehouse",":branch_id",":item",":supplier",":vehicle"])}}';
+        var route = '{{route('sales.item.report.search',[":fdate",":tdate",":warehouse",":branch_id",":item",":supplier",":vehicle",":cost_center"])}}';
 
         route = route.replace(":fdate",fdate );
         route = route.replace(":tdate",tdate );
@@ -309,6 +321,7 @@
         route = route.replace(":supplier",supplier );
         var encodedPlate = vehicle_plate ? encodeURIComponent(vehicle_plate) : 'empty';
         route = route.replace(":vehicle", encodedPlate ? encodedPlate : 'empty');
+        route = route.replace(":cost_center", cost_center_id ? cost_center_id : 0);
         console.log(route);
 
         $.get( route, function( data ) {

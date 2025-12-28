@@ -162,7 +162,11 @@ class InventoryController extends Controller
                 'unit' => $request->unit ?? 0,
                 'item_id' => $request->id ?? 0,
                 'quantity' => $request->quantity ?? 0,
+                'batch_no' => $request->batch_no ?? null,
+                'production_date' => $request->production_date ?? null,
+                'expiry_date' => $request->expiry_date ?? null,
                 'new_quantity' => 0,
+                'is_counted' => 0,
                 'state' => 1, 
                 'user_id' => Auth::user() -> id
             ]);
@@ -188,12 +192,48 @@ class InventoryController extends Controller
         $inventory_details = InventoryDetails::where('inventory_id',$request->inventory_id)
             ->where('item_id',$request->id)
             ->first();
-        if(isset($item) and $request->new_quantity > 0 ) { 
-            $inventory_details->update([  
-                'new_quantity' => $request->new_quantity ?? 0,
+        if(isset($item) && $inventory_details && $request->new_quantity !== null && $request->new_quantity !== '') { 
+            $inventory_details->update([
+                'new_quantity' => $request->new_quantity,
+                'batch_no' => $request->batch_no ?? $inventory_details->batch_no,
+                'production_date' => $request->production_date ?? $inventory_details->production_date,
+                'expiry_date' => $request->expiry_date ?? $inventory_details->expiry_date,
+                'is_counted' => 1,
             ]);
         }          
 
+    }
+
+    public function match_inventory(Request $request)
+    {
+        $inventory = Inventory::findOrFail($request->inventory_id);
+
+        if (!empty(Auth::user()->branch_id) && $inventory->branch_id != Auth::user()->branch_id) {
+            return redirect()->back()->with('error', __('main.unauthorized'));
+        }
+
+        if ($inventory->is_matched) {
+            return redirect()->back()->with('success', __('main.inventory_already_matched'));
+        }
+
+        $details = InventoryDetails::where('inventory_id', $inventory->id)
+            ->where('is_counted', 1)
+            ->get();
+
+        foreach ($details as $detail) {
+            $warehouseProduct = WarehouseProducts::firstOrNew([
+                'warehouse_id' => $inventory->warehouse_id,
+                'product_id' => $detail->item_id,
+            ]);
+            $warehouseProduct->quantity = $detail->new_quantity;
+            $warehouseProduct->save();
+        }
+
+        $inventory->update([
+            'is_matched' => 1,
+        ]);
+
+        return redirect()->back()->with('success', __('main.inventory_matched'));
     }
     /**
      * Remove the specified resource from storage.

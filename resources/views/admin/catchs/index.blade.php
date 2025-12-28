@@ -182,30 +182,49 @@
                                 </select> 
                             </div>
                         </div>
-                        <div class="col-6" >
+                        <div class="col-12">
                             <div class="form-group">
-                                <label>{{ __('الحساب') }} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
-                                <select id="account_id" name="account_id" class="form-control select2 @error('account_id') is-invalid @enderror" required>
-                                    <option value=""></option>
-                                    @foreach($accounts as $account)
-                                        <option  value="{{$account -> id}}" @if(old('account_id')==$account->id) selected @endif>
-                                            {{$account -> name}}
-                                        </option>
-                                    @endforeach 
-                                </select>
-                                @error('account_id')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
+                                <label>{{ __('main.details') ?? __('main.accounts') }}</label>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered" id="catch_details_table">
+                                        <thead>
+                                        <tr>
+                                            <th class="text-center">{{ __('الحساب') }}</th>
+                                            <th class="text-center">{{ __('main.money') }}</th>
+                                            <th class="text-center">{{ __('main.notes') }}</th>
+                                            <th class="text-center">{{ __('main.actions') }}</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <tr>
+                                            <td>
+                                                <select id="account_id" name="detail_account_id[]" class="form-control select2 detail-account @error('detail_account_id.0') is-invalid @enderror" required>
+                                                    <option value=""></option>
+                                                    @foreach($accounts as $account)
+                                                        <option value="{{$account->id}}" @if(old('detail_account_id.0')==$account->id) selected @endif>{{$account->name}}</option>
+                                                    @endforeach
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <input class="form-control @error('detail_amount.0') is-invalid @enderror" id="amount" name="detail_amount[]" type="number" step="0.01" value="{{ old('detail_amount.0') }}">
+                                            </td>
+                                            <td>
+                                                <input class="form-control" name="detail_notes[]" type="text" value="{{ old('detail_notes.0') }}">
+                                            </td>
+                                            <td class="text-center">
+                                                <button type="button" class="btn btn-sm btn-danger remove-detail">-</button>
+                                            </td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-secondary mt-2" id="add_catch_detail">
+                                    {{ __('main.add_new') }}
+                                </button>
                             </div>
                         </div>
-                    </div> 
+                    </div>
                     <div class="row">
-                        <div class="col-6">
-                            <div class="form-group">
-                                <label>{{ __('main.money') }} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
-                                <input class="form-control @error('amount') is-invalid @enderror" id="amount" name="amount" type="number" value="{{ old('amount') }}">
-                                @error('amount')<span class="invalid-feedback">{{ $message }}</span>@enderror
-
-                            </div>
-                        </div>
                         <div class="col-6 " >
                             <div class="form-group">
                                 <label>{{ __('main.payment_method') }} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
@@ -295,16 +314,31 @@
         @endif
         const $createModal = $('#createModal');
         const select2Options = { dropdownParent: $createModal, width: '100%' };
-        function initCatchSelects() {
+        function initCatchSelects(context) {
             if (!$.fn || !$.fn.select2) {
                 setTimeout(initCatchSelects, 150);
                 return;
             }
-            $('#account_id').select2({ ...select2Options, placeholder: '{{ __("main.choose") ?? "اختر الحساب" }}', allowClear: true });
+            const $context = context ? $(context) : $(document);
+            $context.find('.detail-account').each(function(){
+                const $select = $(this);
+                if ($select.hasClass('select2-hidden-accessible')) {
+                    $select.select2('destroy');
+                }
+                $select.next('.select2-container').remove();
+                $select.select2({ ...select2Options, placeholder: '{{ __("main.choose") ?? "اختر الحساب" }}', allowClear: true });
+            });
             $('#parent_code').select2({ ...select2Options, placeholder: '{{ __("main.choose") ?? "حدد الاختيار" }}', allowClear: true });
             $('#branch_id').select2(select2Options);
         }
-        initCatchSelects();
+        initCatchSelects(document);
+        $createModal.on('shown.bs.modal', function(){
+            if (!$.fn || !$.fn.select2) {
+                return;
+            }
+            $(this).find('.detail-account').select2('destroy');
+            initCatchSelects($(this));
+        });
         const catchNoUrl = "{{ route('get.catch.recipt.no', ['branch_id' => 'BRANCH_ID']) }}";
         const supplierAccountsUrl = "{{ route('getSupplierAccount', ['id' => 'ACCOUNT_TYPE']) }}";
         const getCatchUrl = "{{ route('getCatch', ['id' => 'CATCH_ID']) }}";
@@ -316,7 +350,7 @@
         getBillNo(); 
         document.title = "{{__('main.catches')}}";
         const oldParent = "{{ old('parent_code') }}";
-        const oldAccount = "{{ old('account_id') }}";
+        const oldAccount = "{{ old('detail_account_id.0') }}";
         if (oldParent) {
             $('#parent_code').val(oldParent).trigger('change');
             loadAccounts(oldParent, oldAccount);
@@ -330,7 +364,8 @@
             getBillNo(); 
             $('#amount').val(0); 
             $('#parent_code').val('').trigger("change"); 
-            $('#account_id').empty(); 
+            $('#catch_details_table tbody').html($('#catch_details_table tbody tr:first').prop('outerHTML'));
+            initCatchSelects($('#catch_details_table tbody'));
             $('#payment_type').val(0).trigger("change"); 
             $('#amount').val(0); 
             $('#notes').val(''); 
@@ -369,7 +404,8 @@
             $(".modal-body #notes").val("");
             getBillNo();
             $(".modal-body #id").val(0);  
-            $(".modal-body #account_id").val('').trigger("change");  
+            $('#catch_details_table tbody').html($('#catch_details_table tbody tr:first').prop('outerHTML'));
+            initCatchSelects($('#catch_details_table tbody'));
             const defaultParent = '3';
             $(".modal-body #parent_code").val(defaultParent).trigger('change'); 
             loadAccounts(defaultParent, '');
@@ -385,7 +421,9 @@
 
         function loadAccounts(parentCode, selectedId = '') {
             if (!parentCode) {
-                $('#account_id').empty().append('<option value=""></option>').val('').trigger('change');
+                $('.detail-account').each(function(){
+                    $(this).empty().append('<option value=""></option>').val('').trigger('change');
+                });
                 return;
             }
             $.ajax({
@@ -393,13 +431,16 @@
                 url: supplierAccountsUrl.replace('ACCOUNT_TYPE', parentCode),
                 dataType: 'json',
                 success: function (response) {
-                    $('#account_id').empty().append('<option value=""></option>');
-                    if (response) {
-                        for (let i = 0; i < response.length; i++) {
-                            $('#account_id').append('<option value="' + response[i].id + '">' + response[i].name + '</option>');
+                    $('.detail-account').each(function(){
+                        const $select = $(this);
+                        $select.empty().append('<option value=""></option>');
+                        if (response) {
+                            for (let i = 0; i < response.length; i++) {
+                                $select.append('<option value="' + response[i].id + '">' + response[i].name + '</option>');
+                            }
                         }
-                    }
-                    $('#account_id').val(selectedId).trigger('change');
+                        $select.val(selectedId).trigger('change');
+                    });
                 }
             });
         }
@@ -407,6 +448,24 @@
         $('#parent_code').on('change select2:select', function (){
             loadAccounts(this.value);
         });   
+
+        $(document).on('click', '#add_catch_detail', function(){
+            const $row = $('#catch_details_table tbody tr:first').clone();
+            $row.find('input').val('');
+            $row.find('.select2-container').remove();
+            $row.find('select').val('').removeAttr('id').trigger('change');
+            $row.find('#amount').removeAttr('id');
+            $('#catch_details_table tbody').append($row);
+            initCatchSelects($row);
+        });
+
+        $(document).on('click', '.remove-detail', function(){
+            const $rows = $('#catch_details_table tbody tr');
+            if ($rows.length <= 1) {
+                return;
+            }
+            $(this).closest('tr').remove();
+        });
 
         $(document).on('click', '.editBtn', function(event) {
 

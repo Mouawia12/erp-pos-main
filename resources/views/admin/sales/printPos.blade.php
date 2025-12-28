@@ -6,6 +6,8 @@
         $typeLabel = __('main.invoice_type_simplified');
         if($data->invoice_type == 'tax_invoice') $typeLabel = __('main.invoice_type_tax');
         if($data->invoice_type == 'non_tax_invoice') $typeLabel = __('main.invoice_type_nontax');
+        $isReturn = ($data->sale_id ?? 0) > 0;
+        $returnTag = $isReturn ? (' - ' . (__('main.return_tag') ?? 'مردود')) : '';
         $serviceLabels = [
             'dine_in' => __('main.service_mode_dine_in'),
             'takeaway' => __('main.service_mode_takeaway'),
@@ -13,7 +15,7 @@
         ];
         $serviceLabel = $serviceLabels[$data->service_mode ?? 'dine_in'] ?? __('main.service_mode_dine_in');
     @endphp
-    {{$typeLabel}} {{$data->id}}
+    {{$typeLabel}}{{$returnTag}} {{$data->id}}
     </title>
     <meta charset="utf-8"/>
     <link href="{{asset('/assets/css/bootstrap.min.css')}}" rel="stylesheet"/>
@@ -128,7 +130,7 @@
                 </div>
             @endif
             <h2 class="text-center mt-1" style="font-weight: bold;">
-                {{$typeLabel}}
+                {{$typeLabel}}@if($isReturn) - {{ __('main.return_tag') ?? 'مردود' }} @endif
                 <br>
                 <small style="font-size:12px;">
                     @if($data->invoice_type == 'tax_invoice')

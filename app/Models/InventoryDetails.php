@@ -11,8 +11,9 @@ class InventoryDetails extends Model
     use BelongsToSubscriber;
     protected $table = "inventory_details";
     protected $fillable = [
-        'inventory_id', 'date', 'unit', 'item_id','quantity'
-        , 'new_quantity', 'state', 'user_id'
+        'inventory_id', 'date', 'unit', 'item_id','quantity',
+        'batch_no', 'production_date', 'expiry_date',
+        'new_quantity', 'is_counted', 'state', 'user_id'
     ];
 
     public function units(){

@@ -14,8 +14,12 @@ use App\Models\CompanyInfo;
 use App\Models\Sales;
 use App\Models\Purchase;
 use App\Models\Branch;
+use App\Models\CostCenter;
 use App\Models\WarehouseProducts;
 use App\Models\SalonDepartment;
+use App\Models\Representative;
+use App\Models\Inventory;
+use App\Models\InventoryDetails;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -37,10 +41,16 @@ class ReportController extends Controller
         $warehouses = $siteContrller->getAllWarehouses();
         $branches = $siteContrller->getBranches(); 
         $customers = Company::where('group_id',3)->get();
-        return view('admin.Report.daily_sales_report' , compact('warehouses','branches','customers'));
+        $subscriberId = Auth::user()->subscriber_id ?? null;
+        $costCenters = CostCenter::query()
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->where('is_active', 1)
+            ->orderBy('name')
+            ->get();
+        return view('admin.Report.daily_sales_report' , compact('warehouses','branches','customers','costCenters'));
     }
 
-    public function daily_sales_report_search($date , $warehouse, $branch_id, $customer_id = 0, $vehicle_plate = 'empty'){
+    public function daily_sales_report_search($date , $warehouse, $branch_id, $customer_id = 0, $vehicle_plate = 'empty', $cost_center_id = 0){
         $query = Sales::with(['branch','warehouse','customer'])
                     ->where('sale_id',0)
                     ->when(Auth::user()->subscriber_id ?? null, function($q,$sub){
@@ -51,6 +61,7 @@ class ReportController extends Controller
         if( $warehouse >0 ) $query->where('warehouse_id',$warehouse);  
         if( $branch_id >0 ) $query->where('branch_id',$branch_id);
         if( $customer_id >0 ) $query->where('customer_id',$customer_id);
+        if( $cost_center_id >0 ) $query->where('cost_center_id',$cost_center_id);
         if(!empty($vehicle_plate) && $vehicle_plate !== 'empty'){
             $query->where('vehicle_plate','like','%'.$vehicle_plate.'%');
         }
@@ -75,11 +86,17 @@ class ReportController extends Controller
         $warehouses = $siteContrller->getAllWarehouses();
         $branches = $siteContrller->getBranches(); 
         $vendors = Company::where('group_id' , '=' , 3) -> get(); 
+        $subscriberId = Auth::user()->subscriber_id ?? null;
+        $costCenters = CostCenter::query()
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->where('is_active', 1)
+            ->orderBy('name')
+            ->get();
 
-        return view('admin.Report.sales_item_report' , compact('warehouses','vendors','branches'));
+        return view('admin.Report.sales_item_report' , compact('warehouses','vendors','branches','costCenters'));
     }
 
-    public function sales_item_report_search($fdate,$tdate,$warehouse,$branch_id,$item_id,$supplier,$vehicle_plate = 'empty' ){
+    public function sales_item_report_search($fdate,$tdate,$warehouse,$branch_id,$item_id,$supplier,$vehicle_plate = 'empty', $cost_center_id = 0){
 
         $dataQuery = DB::table('sale_details')
                     ->join('sales' , 'sales.id' , 'sale_details.sale_id')
@@ -104,6 +121,7 @@ class ReportController extends Controller
         }
         if( $warehouse > 0 ) $dataQuery->where('sales.warehouse_id',$warehouse);
         if( $branch_id > 0 ) $dataQuery->where('sales.branch_id',$branch_id);
+        if( $cost_center_id > 0 ) $dataQuery->where('sales.cost_center_id',$cost_center_id);
         if($item_id>0) $dataQuery->where('sale_details.product_id',$item_id);
         if($supplier > 0) $dataQuery->where('sales.customer_id',$supplier);  
         if(!empty($vehicle_plate) && $vehicle_plate !== 'empty'){
@@ -138,10 +156,16 @@ class ReportController extends Controller
         $warehouses = $siteContrller->getAllWarehouses();
         $branches = $siteContrller->getBranches(); 
         $vendors = Company::where('group_id', 3)->get();
-        return view('admin.Report.sales_return_report' , compact('warehouses','vendors','branches'));
+        $subscriberId = Auth::user()->subscriber_id ?? null;
+        $costCenters = CostCenter::query()
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->where('is_active', 1)
+            ->orderBy('name')
+            ->get();
+        return view('admin.Report.sales_return_report' , compact('warehouses','vendors','branches','costCenters'));
     }
 
-    public function sales_return_report_search($fdate, $tdate, $warehouse,$bill_no,$vendor,$branch_id){
+    public function sales_return_report_search($fdate, $tdate, $warehouse,$bill_no,$vendor,$branch_id, $cost_center_id = 0){
 
         $data = Sales::where('sale_id' , '<>' , 0)
                     ->get();
@@ -151,7 +175,8 @@ class ReportController extends Controller
         if($warehouse > 0) $data = $data->where('warehouse_id',$warehouse);
         if(isset($bill_no) and $bill_no<>'empty') $data = $data->where('invoice_no',$bill_no);
         if($vendor > 0) $data = $data->where('customer_id',$vendor);
-        if($branch_id > 0) $data = $data->where('branch_id',$branch_id);    
+        if($branch_id > 0) $data = $data->where('branch_id',$branch_id);
+        if($cost_center_id > 0) $data = $data->where('cost_center_id',$cost_center_id);
 
         $period_ar = 'الفترة :';
         if($fdate){
@@ -180,11 +205,17 @@ class ReportController extends Controller
         $warehouses = $siteContrller->getAllWarehouses();
         $branches = $siteContrller->getBranches(); 
         $vendors = Company::where('group_id' , '=' , 4) -> get();
+        $subscriberId = Auth::user()->subscriber_id ?? null;
+        $costCenters = CostCenter::query()
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->where('is_active', 1)
+            ->orderBy('name')
+            ->get();
 
-        return view('admin.Report.purchase_report' , compact('warehouses', 'vendors','branches'));
+        return view('admin.Report.purchase_report' , compact('warehouses', 'vendors','branches','costCenters'));
     }
 
-    public function purchase_report_search($fdate,$tdate, $warehouse,$bill_no,$vendor,$branch_id){
+    public function purchase_report_search($fdate,$tdate, $warehouse,$bill_no,$vendor,$branch_id, $cost_center_id = 0){
 
         $data = Purchase::where('returned_bill_id', 0)
                     ->get();
@@ -194,7 +225,8 @@ class ReportController extends Controller
         if($warehouse > 0) $data = $data->where('warehouse_id',$warehouse); 
         if(isset($bill_no) and $bill_no<>'empty') $data = $data->where('invoice_no',$bill_no);
         if($vendor > 0) $data = $data->where('customer_id',$vendor);
-        if($branch_id > 0) $data = $data->where('branch_id',$branch_id);    
+        if($branch_id > 0) $data = $data->where('branch_id',$branch_id);
+        if($cost_center_id > 0) $data = $data->where('cost_center_id',$cost_center_id);
        
         $period_ar = 'الفترة :';
         if($fdate){
@@ -221,10 +253,16 @@ class ReportController extends Controller
         $warehouses = $siteContrller->getAllWarehouses();
         $branches = $siteContrller->getBranches(); 
         $vendors = Company::where('group_id', 4)->get();
-        return view('admin.Report.purchase_return_report' , compact('warehouses','vendors','branches'));
+        $subscriberId = Auth::user()->subscriber_id ?? null;
+        $costCenters = CostCenter::query()
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->where('is_active', 1)
+            ->orderBy('name')
+            ->get();
+        return view('admin.Report.purchase_return_report' , compact('warehouses','vendors','branches','costCenters'));
     }
 
-    public function purchases_return_report_search($fdate, $tdate, $warehouse,$bill_no,$vendor,$branch_id){
+    public function purchases_return_report_search($fdate, $tdate, $warehouse,$bill_no,$vendor,$branch_id, $cost_center_id = 0){
 
         $data = Purchase::where('returned_bill_id' , '<>' , 0)
                     ->get();
@@ -234,7 +272,8 @@ class ReportController extends Controller
         if($warehouse > 0) $data = $data->where('warehouse_id',$warehouse);
         if(isset($bill_no) and $bill_no<>'empty') $data = $data->where('invoice_no',$bill_no);
         if($vendor > 0) $data = $data->where('customer_id',$vendor);
-        if($branch_id > 0) $data = $data->where('branch_id',$branch_id);    
+        if($branch_id > 0) $data = $data->where('branch_id',$branch_id);
+        if($cost_center_id > 0) $data = $data->where('cost_center_id',$cost_center_id);
 
         $period_ar = 'الفترة :';
         if($fdate){
@@ -666,6 +705,377 @@ class ReportController extends Controller
 
     }
 
+    public function quotationsReport(Request $request)
+    {
+        $siteContrller = new SystemController();
+        $warehouses = $siteContrller->getAllWarehouses();
+        $branches = $siteContrller->getBranches();
+        $customers = Company::where('group_id', 3)->get();
+        $representatives = Representative::all();
+        $subscriberId = Auth::user()->subscriber_id ?? null;
+        $costCenters = CostCenter::query()
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->where('is_active', 1)
+            ->orderBy('name')
+            ->get();
+
+        $query = DB::table('quotations as q')
+            ->leftJoin('companies as c', 'c.id', '=', 'q.customer_id')
+            ->leftJoin('warehouses as w', 'w.id', '=', 'q.warehouse_id')
+            ->leftJoin('branches as b', 'b.id', '=', 'q.branch_id')
+            ->leftJoin('representatives as r', 'r.id', '=', 'q.representative_id')
+            ->leftJoin('cost_centers as cc', 'cc.id', '=', 'q.cost_center_id')
+            ->select(
+                'q.*',
+                'c.name as customer_name_display',
+                'w.name as warehouse_name',
+                'b.branch_name',
+                'r.user_name as representative_name',
+                'cc.name as cost_center_name'
+            );
+
+        if (Auth::user()->subscriber_id ?? null) {
+            if (Schema::hasColumn('quotations', 'subscriber_id')) {
+                $query->where('q.subscriber_id', Auth::user()->subscriber_id);
+            }
+        }
+
+        if (!empty(Auth::user()->branch_id)) {
+            $query->where('q.branch_id', Auth::user()->branch_id);
+        }
+
+        $dateFrom = $request->date_from;
+        $dateTo = $request->date_to;
+
+        $query
+            ->when($request->quotation_no, fn($q, $v) => $q->where('q.quotation_no', 'like', '%' . $v . '%'))
+            ->when($request->customer_id, fn($q, $v) => $q->where('q.customer_id', $v))
+            ->when($request->representative_id, fn($q, $v) => $q->where('q.representative_id', $v))
+            ->when($request->warehouse_id, fn($q, $v) => $q->where('q.warehouse_id', $v))
+            ->when($request->status, fn($q, $v) => $q->where('q.status', $v))
+            ->when($request->cost_center_id, fn($q, $v) => $q->where('q.cost_center_id', $v))
+            ->when($dateFrom, fn($q) => $q->whereDate('q.date', '>=', $dateFrom))
+            ->when($dateTo, fn($q) => $q->whereDate('q.date', '<=', $dateTo));
+
+        if (empty(Auth::user()->branch_id) && $request->branch_id) {
+            $query->where('q.branch_id', $request->branch_id);
+        }
+
+        $quotations = $query->orderByDesc('q.date')->get();
+
+        $summary = [
+            'total' => $quotations->sum('total'),
+            'discount' => $quotations->sum('discount'),
+            'tax' => $quotations->sum('tax'),
+            'net' => $quotations->sum('net'),
+        ];
+
+        return view('admin.Report.quotations_report', compact(
+            'warehouses',
+            'branches',
+            'customers',
+            'representatives',
+            'costCenters',
+            'quotations',
+            'summary',
+            'dateFrom',
+            'dateTo'
+        ));
+    }
+
+    public function inventoryValueReport(Request $request)
+    {
+        $siteContrller = new SystemController();
+        $warehouses = $siteContrller->getAllWarehouses();
+        $branches = $siteContrller->getBranches();
+        $categories = Category::orderBy('name')->get();
+        $brands = Brand::orderBy('name')->get();
+
+        $branchSelected = $request->branch_id ?? 0;
+        if (!empty(Auth::user()->branch_id)) {
+            $branchSelected = Auth::user()->branch_id;
+        }
+
+        $query = WarehouseProducts::query()
+            ->join('products', 'products.id', '=', 'warehouse_products.product_id')
+            ->join('warehouses', 'warehouses.id', '=', 'warehouse_products.warehouse_id')
+            ->leftJoin('branches', 'branches.id', '=', 'warehouses.branch_id')
+            ->select(
+                'products.id',
+                'products.code',
+                'products.name',
+                'products.category_id',
+                'products.brand',
+                'products.cost as product_cost',
+                'warehouse_products.quantity',
+                'warehouse_products.cost as warehouse_cost',
+                'warehouses.name as warehouse_name',
+                'branches.branch_name',
+                'warehouses.branch_id',
+            )
+            ->where('warehouse_products.quantity', '>', 0);
+
+        if ($branchSelected > 0) {
+            $query->where('warehouses.branch_id', $branchSelected);
+        }
+
+        if ($request->warehouse_id) {
+            $query->where('warehouse_products.warehouse_id', $request->warehouse_id);
+        }
+
+        if ($request->category_id) {
+            $query->where('products.category_id', $request->category_id);
+        }
+
+        if ($request->brand_id) {
+            $query->where('products.brand', $request->brand_id);
+        }
+
+        $data = $query->orderBy('products.name')->get()->map(function ($row) {
+            $cost = $row->warehouse_cost ?? $row->product_cost ?? 0;
+            $row->unit_cost = (float) $cost;
+            $row->value = (float) $row->quantity * $row->unit_cost;
+            return $row;
+        });
+
+        $totalValue = $data->sum('value');
+
+        return view('admin.Report.inventory_value_report', [
+            'warehouses' => $warehouses,
+            'branches' => $branches,
+            'categories' => $categories,
+            'brands' => $brands,
+            'data' => $data,
+            'totalValue' => $totalValue,
+            'branchSelected' => $branchSelected,
+            'warehouseSelected' => $request->warehouse_id,
+            'categorySelected' => $request->category_id,
+            'brandSelected' => $request->brand_id,
+        ]);
+    }
+
+    public function inventoryAgingReport(Request $request)
+    {
+        $siteContrller = new SystemController();
+        $warehouses = $siteContrller->getAllWarehouses();
+        $branches = $siteContrller->getBranches();
+        $categories = Category::orderBy('name')->get();
+        $brands = Brand::orderBy('name')->get();
+
+        $branchSelected = $request->branch_id ?? 0;
+        if (!empty(Auth::user()->branch_id)) {
+            $branchSelected = Auth::user()->branch_id;
+        }
+
+        $lastPurchaseSub = DB::table('purchase_details as pd')
+            ->join('purchases as p', 'p.id', '=', 'pd.purchase_id')
+            ->select('pd.product_id', 'pd.warehouse_id', DB::raw('MAX(p.date) as last_purchase_date'))
+            ->when(Auth::user()->subscriber_id ?? null, fn($q, $v) => $q->where('p.subscriber_id', $v))
+            ->groupBy('pd.product_id', 'pd.warehouse_id');
+
+        $query = WarehouseProducts::query()
+            ->join('products', 'products.id', '=', 'warehouse_products.product_id')
+            ->join('warehouses', 'warehouses.id', '=', 'warehouse_products.warehouse_id')
+            ->leftJoin('branches', 'branches.id', '=', 'warehouses.branch_id')
+            ->leftJoinSub($lastPurchaseSub, 'lp', function ($join) {
+                $join->on('warehouse_products.product_id', '=', 'lp.product_id')
+                    ->on('warehouse_products.warehouse_id', '=', 'lp.warehouse_id');
+            })
+            ->select(
+                'products.id',
+                'products.code',
+                'products.name',
+                'products.category_id',
+                'products.brand',
+                'products.cost as product_cost',
+                'warehouse_products.quantity',
+                'warehouse_products.cost as warehouse_cost',
+                'warehouses.name as warehouse_name',
+                'branches.branch_name',
+                'warehouses.branch_id',
+                'lp.last_purchase_date'
+            )
+            ->where('warehouse_products.quantity', '>', 0);
+
+        if ($branchSelected > 0) {
+            $query->where('warehouses.branch_id', $branchSelected);
+        }
+
+        if ($request->warehouse_id) {
+            $query->where('warehouse_products.warehouse_id', $request->warehouse_id);
+        }
+
+        if ($request->category_id) {
+            $query->where('products.category_id', $request->category_id);
+        }
+
+        if ($request->brand_id) {
+            $query->where('products.brand', $request->brand_id);
+        }
+
+        $agingTotals = [
+            'current' => 0,
+            '30' => 0,
+            '60' => 0,
+            '90' => 0,
+            'over' => 0,
+        ];
+
+        $data = $query->orderBy('products.name')->get()->map(function ($row) use (&$agingTotals) {
+            $cost = $row->warehouse_cost ?? $row->product_cost ?? 0;
+            $row->unit_cost = (float) $cost;
+            $row->value = (float) $row->quantity * $row->unit_cost;
+
+            if ($row->last_purchase_date) {
+                $days = Carbon::parse($row->last_purchase_date)->diffInDays(now());
+            } else {
+                $days = null;
+            }
+
+            $row->days_since = $days;
+            $row->aging_bucket = 'N/A';
+
+            if ($days !== null) {
+                if ($days <= 30) {
+                    $row->aging_bucket = '0-30';
+                    $agingTotals['current'] += $row->value;
+                } elseif ($days <= 60) {
+                    $row->aging_bucket = '31-60';
+                    $agingTotals['30'] += $row->value;
+                } elseif ($days <= 90) {
+                    $row->aging_bucket = '61-90';
+                    $agingTotals['60'] += $row->value;
+                } elseif ($days <= 120) {
+                    $row->aging_bucket = '91-120';
+                    $agingTotals['90'] += $row->value;
+                } else {
+                    $row->aging_bucket = '120+';
+                    $agingTotals['over'] += $row->value;
+                }
+            }
+
+            return $row;
+        });
+
+        return view('admin.Report.inventory_aging_report', [
+            'warehouses' => $warehouses,
+            'branches' => $branches,
+            'categories' => $categories,
+            'brands' => $brands,
+            'data' => $data,
+            'agingTotals' => $agingTotals,
+            'branchSelected' => $branchSelected,
+            'warehouseSelected' => $request->warehouse_id,
+            'categorySelected' => $request->category_id,
+            'brandSelected' => $request->brand_id,
+        ]);
+    }
+
+    public function inventoryVarianceReport(Request $request)
+    {
+        $inventories = Inventory::query()
+            ->with(['warehouse', 'branch'])
+            ->orderByDesc('date')
+            ->get();
+
+        $selectedInventoryId = $request->has('inventory_id') ? (int) $request->inventory_id : null;
+        if ($selectedInventoryId === null && $inventories->isNotEmpty()) {
+            $selectedInventoryId = $inventories->first()->id;
+        }
+
+        $branchSelected = $request->branch_id ?? 0;
+        if (!empty(Auth::user()->branch_id)) {
+            $branchSelected = Auth::user()->branch_id;
+        }
+
+        $query = InventoryDetails::query()
+            ->join('inventorys as i', 'i.id', '=', 'inventory_details.inventory_id')
+            ->join('products as p', 'p.id', '=', 'inventory_details.item_id')
+            ->leftJoin('warehouses as w', 'w.id', '=', 'i.warehouse_id')
+            ->leftJoin('branches as b', 'b.id', '=', 'i.branch_id')
+            ->leftJoin('units as u', 'u.id', '=', 'inventory_details.unit')
+            ->select(
+                'inventory_details.*',
+                'p.code as product_code',
+                'p.name as product_name',
+                'p.cost as product_cost',
+                'w.name as warehouse_name',
+                'b.branch_name',
+                'i.date as inventory_date',
+                'i.id as inventory_id',
+                'u.name as unit_name',
+                'i.branch_id',
+                'i.warehouse_id'
+            );
+
+        if ($selectedInventoryId) {
+            $query->where('inventory_details.inventory_id', $selectedInventoryId);
+        }
+
+        if ($branchSelected > 0) {
+            $query->where('i.branch_id', $branchSelected);
+        }
+
+        if ($request->warehouse_id) {
+            $query->where('i.warehouse_id', $request->warehouse_id);
+        }
+
+        if ($request->date_from) {
+            $query->whereDate('i.date', '>=', $request->date_from);
+        }
+
+        if ($request->date_to) {
+            $query->whereDate('i.date', '<=', $request->date_to);
+        }
+
+        $differenceType = $request->difference_type ?? 'all';
+        if ($differenceType === 'shortage') {
+            $query->whereRaw('inventory_details.new_quantity < inventory_details.quantity');
+        } elseif ($differenceType === 'excess') {
+            $query->whereRaw('inventory_details.new_quantity > inventory_details.quantity');
+        } else {
+            $query->whereRaw('inventory_details.new_quantity <> inventory_details.quantity');
+        }
+
+        if (Auth::user()->subscriber_id ?? null) {
+            if (Schema::hasColumn('inventorys', 'subscriber_id')) {
+                $query->where('i.subscriber_id', Auth::user()->subscriber_id);
+            }
+            if (Schema::hasColumn('inventory_details', 'subscriber_id')) {
+                $query->where('inventory_details.subscriber_id', Auth::user()->subscriber_id);
+            }
+        }
+
+        $data = $query->orderBy('inventory_details.id')->get()->map(function ($row) {
+            $row->difference = (float) $row->new_quantity - (float) $row->quantity;
+            $row->difference_value = $row->difference * ((float) ($row->product_cost ?? 0));
+            return $row;
+        });
+
+        $totals = [
+            'shortage' => $data->where('difference', '<', 0)->sum('difference_value'),
+            'excess' => $data->where('difference', '>', 0)->sum('difference_value'),
+        ];
+
+        $siteContrller = new SystemController();
+        $warehouses = $siteContrller->getAllWarehouses();
+        $branches = $siteContrller->getBranches();
+
+        return view('admin.Report.inventory_variance_report', [
+            'inventories' => $inventories,
+            'warehouses' => $warehouses,
+            'branches' => $branches,
+            'data' => $data,
+            'totals' => $totals,
+            'branchSelected' => $branchSelected,
+            'warehouseSelected' => $request->warehouse_id,
+            'inventorySelected' => $selectedInventoryId,
+            'differenceType' => $differenceType,
+            'dateFrom' => $request->date_from,
+            'dateTo' => $request->date_to,
+        ]);
+    }
+
     public function client_balance_report($id , $slag){
         $data = VendorMovement::query()->where('vendor_id',$id)->get();
         $company = CompanyInfo::first();
@@ -835,32 +1245,355 @@ class ReportController extends Controller
 
     public function vendorAging(Request $request)
     {
-        $vendors = VendorMovement::select('vendor_id')
-            ->selectRaw('SUM(debit - credit) as balance')
-            ->groupBy('vendor_id')
-            ->with('company')
-            ->get();
+        return $this->companyAgingReport($request, 4);
+    }
 
-        $report = [];
-        foreach($vendors as $v){
-            $movs = VendorMovement::where('vendor_id',$v->vendor_id)->orderBy('date')->get();
-            $aging = ['current'=>0,'30'=>0,'60'=>0,'90'=>0,'over'=>0];
-            foreach($movs as $mv){
-                $days = now()->diffInDays(Carbon::parse($mv->date));
-                $val = ($mv->debit - $mv->credit);
-                if($days <= 30) $aging['current'] += $val;
-                elseif($days <= 60) $aging['30'] += $val;
-                elseif($days <= 90) $aging['60'] += $val;
-                elseif($days <= 120) $aging['90'] += $val;
-                else $aging['over'] += $val;
-            }
-            $report[] = [
-                'vendor' => optional($v->company)->name ?? '',
-                'balance' => $v->balance,
-                'aging' => $aging,
-            ];
+    public function clientAging(Request $request)
+    {
+        return $this->companyAgingReport($request, 3);
+    }
+
+    public function clientsBalanceReport(Request $request)
+    {
+        return $this->companyBalanceReport($request, 3);
+    }
+
+    public function vendorsBalanceReport(Request $request)
+    {
+        return $this->companyBalanceReport($request, 4);
+    }
+
+    public function clientsMovementReport(Request $request)
+    {
+        return $this->companyMovementReport($request, 3);
+    }
+
+    public function vendorsMovementReport(Request $request)
+    {
+        return $this->companyMovementReport($request, 4);
+    }
+
+    public function representativesReport(Request $request)
+    {
+        $branches = (new SystemController())->getBranches();
+        $representatives = Representative::all();
+
+        $salesQuery = Sales::query()
+            ->where('sale_id', 0)
+            ->when(Auth::user()->subscriber_id ?? null, fn($q, $v) => $q->where('subscriber_id', $v));
+
+        $purchaseQuery = Purchase::query()
+            ->where('returned_bill_id', 0)
+            ->when(Auth::user()->subscriber_id ?? null, fn($q, $v) => $q->where('subscriber_id', $v));
+
+        if (!empty(Auth::user()->branch_id)) {
+            $salesQuery->where('branch_id', Auth::user()->branch_id);
+            $purchaseQuery->where('branch_id', Auth::user()->branch_id);
+        } elseif ($request->branch_id) {
+            $salesQuery->where('branch_id', $request->branch_id);
+            $purchaseQuery->where('branch_id', $request->branch_id);
         }
 
-        return view('admin.Report.vendor_aging', compact('report'));
+        if ($request->date_from) {
+            $salesQuery->whereDate('date', '>=', $request->date_from);
+            $purchaseQuery->whereDate('date', '>=', $request->date_from);
+        }
+        if ($request->date_to) {
+            $salesQuery->whereDate('date', '<=', $request->date_to);
+            $purchaseQuery->whereDate('date', '<=', $request->date_to);
+        }
+
+        if ($request->representative_id) {
+            $salesQuery->where('representative_id', $request->representative_id);
+            $purchaseQuery->where('representative_id', $request->representative_id);
+        }
+
+        $sales = $salesQuery
+            ->select('representative_id', DB::raw('COUNT(*) as invoices'), DB::raw('SUM(net) as net'), DB::raw('SUM(paid) as paid'))
+            ->groupBy('representative_id')
+            ->get()
+            ->keyBy('representative_id');
+
+        $purchases = $purchaseQuery
+            ->select('representative_id', DB::raw('SUM(net) as net'))
+            ->groupBy('representative_id')
+            ->get()
+            ->keyBy('representative_id');
+
+        $rows = $representatives->map(function ($rep) use ($sales, $purchases) {
+            $salesRow = $sales->get($rep->id);
+            $purchaseRow = $purchases->get($rep->id);
+            $net = (float) ($salesRow->net ?? 0);
+            $paid = (float) ($salesRow->paid ?? 0);
+            return [
+                'id' => $rep->id,
+                'name' => $rep->user_name,
+                'invoices' => (int) ($salesRow->invoices ?? 0),
+                'sales_net' => $net,
+                'sales_paid' => $paid,
+                'sales_remain' => $net - $paid,
+                'purchase_net' => (float) ($purchaseRow->net ?? 0),
+            ];
+        })->filter(function ($row) use ($request) {
+            if ($request->representative_id) {
+                return $row['id'] == $request->representative_id;
+            }
+            return true;
+        })->values();
+
+        $totals = [
+            'invoices' => $rows->sum('invoices'),
+            'sales_net' => $rows->sum('sales_net'),
+            'sales_paid' => $rows->sum('sales_paid'),
+            'sales_remain' => $rows->sum('sales_remain'),
+            'purchase_net' => $rows->sum('purchase_net'),
+        ];
+
+        return view('admin.Report.representatives_report', [
+            'branches' => $branches,
+            'representatives' => $representatives,
+            'rows' => $rows,
+            'totals' => $totals,
+            'branchSelected' => $request->branch_id,
+            'dateFrom' => $request->date_from,
+            'dateTo' => $request->date_to,
+            'representativeSelected' => $request->representative_id,
+        ]);
+    }
+
+    private function companyBalanceReport(Request $request, int $groupId)
+    {
+        $branches = (new SystemController())->getBranches();
+        $companies = Company::where('group_id', $groupId)->orderBy('name')->get();
+        $representatives = Representative::all();
+
+        $query = VendorMovement::query()
+            ->join('companies', 'companies.id', '=', 'vendor_movements.vendor_id')
+            ->leftJoin('representatives', 'representatives.id', '=', 'companies.representative_id_')
+            ->select(
+                'vendor_movements.vendor_id',
+                'companies.name as company_name',
+                'representatives.user_name as representative_name',
+                DB::raw('SUM(vendor_movements.debit) as debit'),
+                DB::raw('SUM(vendor_movements.credit) as credit')
+            )
+            ->where('companies.group_id', $groupId);
+
+        if (Auth::user()->subscriber_id ?? null) {
+            if (Schema::hasColumn('vendor_movements', 'subscriber_id')) {
+                $query->where('vendor_movements.subscriber_id', Auth::user()->subscriber_id);
+            }
+            if (Schema::hasColumn('companies', 'subscriber_id')) {
+                $query->where('companies.subscriber_id', Auth::user()->subscriber_id);
+            }
+        }
+
+        if (!empty(Auth::user()->branch_id)) {
+            $query->where('vendor_movements.branch_id', Auth::user()->branch_id);
+        } elseif ($request->branch_id) {
+            $query->where('vendor_movements.branch_id', $request->branch_id);
+        }
+
+        if ($request->company_id) {
+            $query->where('vendor_movements.vendor_id', $request->company_id);
+        }
+
+        if ($request->representative_id) {
+            $query->where('companies.representative_id_', $request->representative_id);
+        }
+
+        if ($request->date_from) {
+            $query->whereDate('vendor_movements.date', '>=', $request->date_from);
+        }
+        if ($request->date_to) {
+            $query->whereDate('vendor_movements.date', '<=', $request->date_to);
+        }
+
+        $rows = $query
+            ->groupBy('vendor_movements.vendor_id', 'companies.name', 'representatives.user_name')
+            ->orderBy('companies.name')
+            ->get()
+            ->map(function ($row) use ($groupId) {
+                $debit = (float) $row->debit;
+                $credit = (float) $row->credit;
+                $row->balance = $groupId === 3 ? ($debit - $credit) : ($credit - $debit);
+                return $row;
+            });
+
+        $totalBalance = $rows->sum('balance');
+
+        return view($groupId === 3 ? 'admin.Report.clients_balance_report' : 'admin.Report.vendors_balance_report', [
+            'rows' => $rows,
+            'branches' => $branches,
+            'companies' => $companies,
+            'representatives' => $representatives,
+            'totalBalance' => $totalBalance,
+            'branchSelected' => $request->branch_id,
+            'companySelected' => $request->company_id,
+            'representativeSelected' => $request->representative_id,
+            'dateFrom' => $request->date_from,
+            'dateTo' => $request->date_to,
+        ]);
+    }
+
+    private function companyMovementReport(Request $request, int $groupId)
+    {
+        $branches = (new SystemController())->getBranches();
+        $companies = Company::where('group_id', $groupId)->orderBy('name')->get();
+        $representatives = Representative::all();
+
+        $query = VendorMovement::query()
+            ->join('companies', 'companies.id', '=', 'vendor_movements.vendor_id')
+            ->leftJoin('representatives', 'representatives.id', '=', 'companies.representative_id_')
+            ->select(
+                'vendor_movements.*',
+                'companies.name as company_name',
+                'representatives.user_name as representative_name'
+            )
+            ->where('companies.group_id', $groupId);
+
+        if (Auth::user()->subscriber_id ?? null) {
+            if (Schema::hasColumn('vendor_movements', 'subscriber_id')) {
+                $query->where('vendor_movements.subscriber_id', Auth::user()->subscriber_id);
+            }
+            if (Schema::hasColumn('companies', 'subscriber_id')) {
+                $query->where('companies.subscriber_id', Auth::user()->subscriber_id);
+            }
+        }
+
+        if (!empty(Auth::user()->branch_id)) {
+            $query->where('vendor_movements.branch_id', Auth::user()->branch_id);
+        } elseif ($request->branch_id) {
+            $query->where('vendor_movements.branch_id', $request->branch_id);
+        }
+
+        if ($request->company_id) {
+            $query->where('vendor_movements.vendor_id', $request->company_id);
+        }
+
+        if ($request->representative_id) {
+            $query->where('companies.representative_id_', $request->representative_id);
+        }
+
+        if ($request->date_from) {
+            $query->whereDate('vendor_movements.date', '>=', $request->date_from);
+        }
+        if ($request->date_to) {
+            $query->whereDate('vendor_movements.date', '<=', $request->date_to);
+        }
+
+        $rows = $query->orderBy('vendor_movements.date')->get();
+
+        $totalDebit = $rows->sum('debit');
+        $totalCredit = $rows->sum('credit');
+        $balance = $groupId === 3 ? ($totalDebit - $totalCredit) : ($totalCredit - $totalDebit);
+
+        return view($groupId === 3 ? 'admin.Report.clients_movement_report' : 'admin.Report.vendors_movement_report', [
+            'rows' => $rows,
+            'branches' => $branches,
+            'companies' => $companies,
+            'representatives' => $representatives,
+            'totalDebit' => $totalDebit,
+            'totalCredit' => $totalCredit,
+            'balance' => $balance,
+            'branchSelected' => $request->branch_id,
+            'companySelected' => $request->company_id,
+            'representativeSelected' => $request->representative_id,
+            'dateFrom' => $request->date_from,
+            'dateTo' => $request->date_to,
+        ]);
+    }
+
+    private function companyAgingReport(Request $request, int $groupId)
+    {
+        $branches = (new SystemController())->getBranches();
+        $companies = Company::where('group_id', $groupId)->orderBy('name')->get();
+        $representatives = Representative::all();
+
+        $query = VendorMovement::query()
+            ->join('companies', 'companies.id', '=', 'vendor_movements.vendor_id')
+            ->leftJoin('representatives', 'representatives.id', '=', 'companies.representative_id_')
+            ->select(
+                'vendor_movements.vendor_id',
+                'vendor_movements.debit',
+                'vendor_movements.credit',
+                'vendor_movements.date',
+                'companies.name as company_name',
+                'representatives.user_name as representative_name'
+            )
+            ->where('companies.group_id', $groupId);
+
+        if (Auth::user()->subscriber_id ?? null) {
+            if (Schema::hasColumn('vendor_movements', 'subscriber_id')) {
+                $query->where('vendor_movements.subscriber_id', Auth::user()->subscriber_id);
+            }
+            if (Schema::hasColumn('companies', 'subscriber_id')) {
+                $query->where('companies.subscriber_id', Auth::user()->subscriber_id);
+            }
+        }
+
+        if (!empty(Auth::user()->branch_id)) {
+            $query->where('vendor_movements.branch_id', Auth::user()->branch_id);
+        } elseif ($request->branch_id) {
+            $query->where('vendor_movements.branch_id', $request->branch_id);
+        }
+
+        if ($request->company_id) {
+            $query->where('vendor_movements.vendor_id', $request->company_id);
+        }
+
+        if ($request->representative_id) {
+            $query->where('companies.representative_id_', $request->representative_id);
+        }
+
+        if ($request->date_from) {
+            $query->whereDate('vendor_movements.date', '>=', $request->date_from);
+        }
+        if ($request->date_to) {
+            $query->whereDate('vendor_movements.date', '<=', $request->date_to);
+        }
+
+        $movements = $query->orderBy('vendor_movements.date')->get();
+
+        $report = $movements->groupBy('vendor_id')->map(function ($rows) use ($groupId) {
+            $aging = ['current' => 0, '30' => 0, '60' => 0, '90' => 0, 'over' => 0];
+            $company = $rows->first();
+            foreach ($rows as $row) {
+                $days = now()->diffInDays(Carbon::parse($row->date));
+                $val = $groupId === 3
+                    ? ((float) $row->debit - (float) $row->credit)
+                    : ((float) $row->credit - (float) $row->debit);
+                if ($days <= 30) {
+                    $aging['current'] += $val;
+                } elseif ($days <= 60) {
+                    $aging['30'] += $val;
+                } elseif ($days <= 90) {
+                    $aging['60'] += $val;
+                } elseif ($days <= 120) {
+                    $aging['90'] += $val;
+                } else {
+                    $aging['over'] += $val;
+                }
+            }
+            return [
+                'company_id' => $rows->first()->vendor_id,
+                'company' => $company->company_name ?? '',
+                'representative_name' => $company->representative_name ?? '',
+                'balance' => array_sum($aging),
+                'aging' => $aging,
+            ];
+        })->values();
+
+        return view($groupId === 3 ? 'admin.Report.clients_aging_report' : 'admin.Report.vendors_aging_report', [
+            'report' => $report,
+            'branches' => $branches,
+            'companies' => $companies,
+            'representatives' => $representatives,
+            'branchSelected' => $request->branch_id,
+            'companySelected' => $request->company_id,
+            'representativeSelected' => $request->representative_id,
+            'dateFrom' => $request->date_from,
+            'dateTo' => $request->date_to,
+        ]);
     }
 }

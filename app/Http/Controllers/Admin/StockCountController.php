@@ -35,6 +35,9 @@ class StockCountController extends Controller
             'items' => 'required|array',
             'items.*.product_id' => 'required|integer',
             'is_opening' => 'nullable|boolean',
+            'items.*.batch_no' => 'nullable|string|max:191',
+            'items.*.production_date' => 'nullable|date',
+            'items.*.expiry_date' => 'nullable|date',
         ]);
 
         $isOpening = $request->boolean('is_opening');
@@ -62,6 +65,9 @@ class StockCountController extends Controller
                 'variant_color' => $item['variant_color'] ?? null,
                 'variant_size' => $item['variant_size'] ?? null,
                 'variant_barcode' => $item['variant_barcode'] ?? null,
+                'batch_no' => $item['batch_no'] ?? null,
+                'production_date' => $item['production_date'] ?? null,
+                'expiry_date' => $item['expiry_date'] ?? null,
                 'expected_qty' => $expected,
                 'counted_qty' => $item['counted_qty'] ?? 0,
                 'difference' => ($item['counted_qty'] ?? 0) - $expected,

@@ -13,6 +13,35 @@
                     <label class="mr-1">{{ __('main.end_date') ?? 'إلى' }}</label>
                     <input type="date" name="end_date" class="form-control" value="{{ $end }}">
                 </div>
+                <div class="form-group mr-2">
+                    <label class="mr-1">{{ __('main.account_level') }}</label>
+                    <select name="level" class="form-control">
+                        <option value="">{{ __('main.all') ?? 'الكل' }}</option>
+                        @for($i = 1; $i <= ($maxLevel ?? 1); $i++)
+                            <option value="{{$i}}" @if(isset($level) && (int)$level === $i) selected @endif>
+                                {{ __('main.level') ?? 'مستوى' }} {{$i}}
+                            </option>
+                        @endfor
+                    </select>
+                </div>
+                <div class="form-group mr-2">
+                    <label class="mr-1">{{ __('main.branche') }}</label>
+                    <select name="branch_id" class="form-control">
+                        <option value="0">{{ __('main.all') ?? 'الكل' }}</option>
+                        @foreach($branches as $branch)
+                            <option value="{{$branch->id}}" @if(($branchId ?? 0) == $branch->id) selected @endif>{{$branch->branch_name}}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="form-group mr-2">
+                    <label class="mr-1">{{ __('main.cost_center') }}</label>
+                    <select name="cost_center_id" class="form-control">
+                        <option value="0">{{ __('main.all') ?? 'الكل' }}</option>
+                        @foreach($costCenters as $center)
+                            <option value="{{$center->id}}" @if(($costCenterId ?? 0) == $center->id) selected @endif>{{$center->name}}</option>
+                        @endforeach
+                    </select>
+                </div>
                 <button class="btn btn-primary">{{ __('main.search') ?? 'عرض' }}</button>
             </form>
         </div>
@@ -25,6 +54,7 @@
                     <th>#</th>
                     <th>{{ __('main.code') }}</th>
                     <th>{{ __('main.name') }}</th>
+                    <th>{{ __('main.account_level') }}</th>
                     <th>{{ __('main.debit') ?? 'مدين' }}</th>
                     <th>{{ __('main.credit') ?? 'دائن' }}</th>
                 </tr>
@@ -37,6 +67,7 @@
                         <td>{{ $loop->index+1 }}</td>
                         <td>{{ $acc->code }}</td>
                         <td class="text-left">{{ $acc->name }}</td>
+                        <td>{{ $acc->level }}</td>
                         <td>{{ number_format($acc->debit,2) }}</td>
                         <td>{{ number_format($acc->credit,2) }}</td>
                     </tr>
@@ -44,7 +75,7 @@
                 </tbody>
                 <tfoot>
                 <tr>
-                    <th colspan="3">{{ __('main.total') }}</th>
+                    <th colspan="4">{{ __('main.total') }}</th>
                     <th>{{ number_format($sumDebit,2) }}</th>
                     <th>{{ number_format($sumCredit,2) }}</th>
                 </tr>

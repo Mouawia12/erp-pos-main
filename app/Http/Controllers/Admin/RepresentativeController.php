@@ -5,10 +5,13 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller; 
 use App\Models\Company;
 use App\Models\Representative;
+use App\Models\RepresentativeDocument;
+use App\Models\Warehouse;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class RepresentativeController extends Controller
@@ -20,8 +23,16 @@ class RepresentativeController extends Controller
      */
     public function index()
     {
-        $representatives = Representative::all();
-        return view('representatives.index' , compact('representatives'));
+        $subscriberId = Auth::user()->subscriber_id;
+        $representatives = Representative::query()
+            ->with(['documents', 'warehouse'])
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->get();
+        $warehouses = Warehouse::query()
+            ->when(Auth::user()->branch_id ?? null, fn($q,$v) => $q->where('branch_id', $v))
+            ->orderBy('name')
+            ->get();
+        return view('representatives.index' , compact('representatives', 'warehouses'));
     }
 
     /**
@@ -61,8 +72,32 @@ class RepresentativeController extends Controller
                 'document_name' => 'nullable|string|max:191',
                 'document_number' => 'nullable|string|max:191',
                 'document_expiry_date' => 'nullable|date',
+                'warehouse_id' => 'nullable|exists:warehouses,id',
+                'price_level_id' => 'nullable|integer|min:1|max:6',
+                'profit_margin' => 'nullable|numeric|min:0',
+                'discount_percent' => 'nullable|numeric|min:0|max:100',
+                'create_warehouse' => 'nullable|in:0,1',
             ]);
             try {
+                $warehouseId = $request->warehouse_id;
+                if (!$warehouseId && $request->boolean('create_warehouse')) {
+                    $warehouse = Warehouse::create([
+                        'code' => $request->code,
+                        'name' => 'مستودع - ' . $request->name,
+                        'phone' => '',
+                        'email' => '',
+                        'address' => '',
+                        'tax_number' => '',
+                        'commercial_registration' => '',
+                        'serial_prefix' => null,
+                        'branch_id' => Auth::user()->branch_id ?? 0,
+                        'user_id' => Auth::id(),
+                        'status' => 1,
+                        'subscriber_id' => $subscriberId,
+                    ]);
+                    $warehouseId = $warehouse->id;
+                }
+
                 Representative::create([
                     'code' => $request -> code,
                     'name' => $request -> name,
@@ -73,6 +108,10 @@ class RepresentativeController extends Controller
                     'document_name' => $request->document_name,
                     'document_number' => $request->document_number,
                     'document_expiry_date' => $request->document_expiry_date,
+                    'warehouse_id' => $warehouseId,
+                    'price_level_id' => $request->price_level_id,
+                    'profit_margin' => $request->profit_margin,
+                    'discount_percent' => $request->discount_percent,
                     'subscriber_id' => $subscriberId,
                 ]);
                 return redirect()->route('representatives')->with('success' , __('main.created'));
@@ -128,8 +167,32 @@ class RepresentativeController extends Controller
                 'document_name' => 'nullable|string|max:191',
                 'document_number' => 'nullable|string|max:191',
                 'document_expiry_date' => 'nullable|date',
+                'warehouse_id' => 'nullable|exists:warehouses,id',
+                'price_level_id' => 'nullable|integer|min:1|max:6',
+                'profit_margin' => 'nullable|numeric|min:0',
+                'discount_percent' => 'nullable|numeric|min:0|max:100',
+                'create_warehouse' => 'nullable|in:0,1',
             ]);
             try {
+                $warehouseId = $request->warehouse_id;
+                if (!$warehouseId && $request->boolean('create_warehouse')) {
+                    $warehouse = Warehouse::create([
+                        'code' => $request->code,
+                        'name' => 'مستودع - ' . $request->name,
+                        'phone' => '',
+                        'email' => '',
+                        'address' => '',
+                        'tax_number' => '',
+                        'commercial_registration' => '',
+                        'serial_prefix' => null,
+                        'branch_id' => Auth::user()->branch_id ?? 0,
+                        'user_id' => Auth::id(),
+                        'status' => 1,
+                        'subscriber_id' => $subscriberId,
+                    ]);
+                    $warehouseId = $warehouse->id;
+                }
+
                 $user -> update([
                     'code' => $request -> code,
                     'name' => $request -> name,
@@ -140,6 +203,10 @@ class RepresentativeController extends Controller
                     'document_name' => $request->document_name,
                     'document_number' => $request->document_number,
                     'document_expiry_date' => $request->document_expiry_date,
+                    'warehouse_id' => $warehouseId,
+                    'price_level_id' => $request->price_level_id,
+                    'profit_margin' => $request->profit_margin,
+                    'discount_percent' => $request->discount_percent,
                 ]);
                 return redirect()->route('representatives')->with('success' , __('main.created'));
             } catch(QueryException $ex){
@@ -217,5 +284,47 @@ class RepresentativeController extends Controller
             $client -> update();
             return redirect()->route('representatives')->with('success' , __('main.done'));
         }
+    }
+
+    public function storeDocument(Request $request, Representative $representative)
+    {
+        $subscriberId = Auth::user()->subscriber_id;
+        if ($subscriberId && $representative->subscriber_id !== $subscriberId) {
+            return redirect()->route('representatives')->with('error', __('main.could_not_find_record'));
+        }
+
+        $validated = $request->validate([
+            'document' => ['required', 'file', 'max:4096'],
+            'title' => ['nullable', 'string', 'max:191'],
+            'document_type' => ['nullable', 'string', 'max:191'],
+            'expiry_date' => ['nullable', 'date'],
+        ]);
+
+        $path = $request->file('document')->store('representatives', 'public');
+        RepresentativeDocument::create([
+            'representative_id' => $representative->id,
+            'title' => $validated['title'] ?? $request->file('document')->getClientOriginalName(),
+            'document_type' => $validated['document_type'] ?? null,
+            'expiry_date' => $validated['expiry_date'] ?? null,
+            'file_path' => $path,
+            'uploaded_by' => Auth::id(),
+        ]);
+
+        return redirect()->route('representatives')->with('success', __('main.created'));
+    }
+
+    public function deleteDocument(RepresentativeDocument $document)
+    {
+        $subscriberId = Auth::user()->subscriber_id;
+        if ($subscriberId && optional($document->representative)->subscriber_id !== $subscriberId) {
+            return redirect()->route('representatives')->with('error', __('main.could_not_find_record'));
+        }
+
+        if ($document->file_path) {
+            Storage::disk('public')->delete($document->file_path);
+        }
+        $document->delete();
+
+        return redirect()->route('representatives')->with('success', __('main.deleted'));
     }
 }

@@ -45,6 +45,13 @@
                             <h4  class="alert alert-primary text-center">
                                محضر جرد جديد  &nbsp&nbsp&nbsp&nbsp
                                <a class="btn btn-primary" href="{{ route('inventory.report',$inventorys->id) }}" target="_blank" role="button"><i class="fa fa-print"></i></a>
+                               <form method="POST" action="{{ route('admin.inventory.match') }}" class="d-inline" onsubmit="return confirm('{{ __('main.confirm_inventory_match') }}');">
+                                   @csrf
+                                   <input type="hidden" name="inventory_id" value="{{$inventorys->id}}">
+                                   <button type="submit" class="btn btn-success" @if($inventorys->is_matched) disabled @endif>
+                                       {{ __('main.match_inventory') }}
+                                   </button>
+                               </form>
                             </h4> 
                             
                         </div> 
@@ -98,6 +105,9 @@
                                                         <th class="text-center">#</th>
                                                         <th class="text-center">{{__('main.item')}}</th>
                                                         <th class="text-center">{{__('main.unit')}}</th>
+                                                        <th class="text-center">{{__('main.batch_no')}}</th>
+                                                        <th class="text-center">{{__('main.production_date')}}</th>
+                                                        <th class="text-center">{{__('main.expiry_date')}}</th>
                                                         <th class="text-center">{{__('main.balance_book')}}</th> 
                                                         <th class="text-center">{{__('main.balance_now')}}</th>
                                                         <th></th>
@@ -152,8 +162,14 @@
         $(document).on('click', ".cb_items", function () {
             const item_id = $(this).val();
             document.getElementById('new_quantity['+ item_id +']').readOnly = true; 
+            document.getElementById('batch_no['+ item_id +']').readOnly = true;
+            document.getElementById('production_date['+ item_id +']').readOnly = true;
+            document.getElementById('expiry_date['+ item_id +']').readOnly = true;
             if ($(this).is(':checked')) {  
                 document.getElementById('new_quantity['+ item_id +']').readOnly = false; 
+                document.getElementById('batch_no['+ item_id +']').readOnly = false;
+                document.getElementById('production_date['+ item_id +']').readOnly = false;
+                document.getElementById('expiry_date['+ item_id +']').readOnly = false;
             } 
         });
  
@@ -298,7 +314,10 @@
             tr_html ='<td>' + count + '</span> </td>'; 
             tr_html +='<td><input type="hidden" name="item_id[]" value="' + item.id + '"><span>' + item.name + ' [ ' + (item.code) +  ' ] ' +'</span> </td>';
             tr_html +='<td><input type="hidden" name="unit[]" value="' + item.unit + '"> <span>' + item.units.name + '</span> </td>';
-            tr_html +='<td><input type="text" readonly="readonly" class="form-control text-center iNewQuantity" name="quantity[]" value="' + item.qty + '" ></td>'; 
+            tr_html +='<td><input type="text" readonly="readonly" class="form-control text-center batch-input" name="batch_no[]" id="batch_no[' + item.id + ']" value="" ></td>';
+            tr_html +='<td><input type="date" readonly="readonly" class="form-control text-center batch-input" name="production_date[]" id="production_date[' + item.id + ']" value="" ></td>';
+            tr_html +='<td><input type="date" readonly="readonly" class="form-control text-center batch-input" name="expiry_date[]" id="expiry_date[' + item.id + ']" value="" ></td>';
+            tr_html +='<td><input type="text" readonly="readonly" class="form-control text-center iNewQuantity" name="quantity[]" value="' + item.qty + '" ></td>';
             tr_html +='<th><input type="text" readonly="readonly"  class="form-control text-center iNewQuantity2" name="new_quantity[]" id="new_quantity[' + item.id + ']" value="" ></th>'; 
             tr_html +='<td><input type="checkbox" name="item[]" class="cb_items" value="' + item.id + '"/> تعديل</td>';
             tr_html +='<td class="text-center"><button type="button" class="btn btn-primary btn-update-inventory"><span name="msg[' + item.id + ']" id="msg[' + item.id + ']"></span>حفظ</button></td>';
@@ -314,15 +333,21 @@
         var row = $(this).closest('tr'); 
         const item_id = row[0].cells[1].firstChild.value;
         const unit = row[0].cells[2].firstChild.value; 
-        const quantity =  row[0].cells[3].firstChild.value;
-        const new_quantity =  row[0].cells[4].firstChild.value;
+        const quantity =  row[0].cells[6].firstChild.value;
+        const batch_no = row[0].cells[3].firstChild.value;
+        const production_date = row[0].cells[4].firstChild.value;
+        const expiry_date = row[0].cells[5].firstChild.value;
+        const new_quantity =  row[0].cells[7].firstChild.value;
         const inventory_id = document.getElementById('inventory_id').value;
-        if( new_quantity > 0 ){
+        if( new_quantity !== '' ){
             $.post("{{route('admin.inventory.update')}}", {
                     id: item_id, 
                     unit: unit, 
                     quantity: quantity,
                     new_quantity: new_quantity,
+                    batch_no: batch_no,
+                    production_date: production_date,
+                    expiry_date: expiry_date,
                     inventory_id: inventory_id,
                     "_token": "{{ csrf_token() }}"
                 }, function (data) {
@@ -352,6 +377,4 @@
 </script> 
 @endsection 
  
-
-
 

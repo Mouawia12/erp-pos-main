@@ -8,6 +8,7 @@ use App\Models\Traits\BelongsToSubscriber;
 use App\Models\Traits\GuardsFiscalYear;
 use App\Models\SaleDetails;
 use App\Models\ZatcaDocument;
+use App\Models\CostCenter;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
@@ -19,9 +20,9 @@ class Sales extends Model
         'date','invoice_no','customer_id','representative_id', 'customer_name', 'customer_phone','biller_id',
         'warehouse_id','note','total','discount','tax','tax_excise','net','paid',
         'sale_status','payment_status','pos','lista','profit','sale_id','created_by',
-        'additional_service', 'branch_id','user_id', 'status', 'invoice_type','service_mode','session_location','session_type','reservation_time','reservation_guests','cost_center','tax_mode',
+        'additional_service', 'branch_id','user_id', 'status', 'invoice_type','service_mode','session_location','session_type','reservation_time','reservation_guests','cost_center','cost_center_id','tax_mode',
         'vehicle_plate','vehicle_name','vehicle_color','vehicle_odometer',
-        'locked_at','subscriber_id'
+        'locked_at','subscriber_id','payment_method'
     ];
 
     protected static function booted()
@@ -61,6 +62,11 @@ class Sales extends Model
 
     public function representative(){
         return $this->belongsTo(Representative::class,'representative_id');
+    }
+
+    public function costCenter()
+    {
+        return $this->belongsTo(CostCenter::class, 'cost_center_id');
     }
 
     public function details(): HasMany

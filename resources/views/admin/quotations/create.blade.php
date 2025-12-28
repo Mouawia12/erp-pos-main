@@ -119,6 +119,12 @@
                     </div>
                     <div class="col-md-3">
                         <label>{{ __('main.cost_center') }}</label>
+                        <select class="form-control mb-1" name="cost_center_id" id="cost_center_id">
+                            <option value="">{{ __('main.choose') }}</option>
+                            @foreach($costCenters as $center)
+                                <option value="{{$center->id}}">{{$center->name}}</option>
+                            @endforeach
+                        </select>
                         <input type="text" class="form-control" name="cost_center" id="cost_center" value="{{ old('cost_center') }}" placeholder="{{ __('main.cost_center') }}">
                     </div>
                     <div class="col-md-3">
@@ -422,6 +428,17 @@
     if(customerSelect){
         customerSelect.addEventListener('change', toggleCustomerFields);
         toggleCustomerFields();
+    }
+
+    const costCenterSelect = document.getElementById('cost_center_id');
+    const costCenterInput = document.getElementById('cost_center');
+    if(costCenterSelect){
+        costCenterSelect.addEventListener('change', function(){
+            const selected = costCenterSelect.options[costCenterSelect.selectedIndex];
+            if(selected && selected.value && costCenterInput && !costCenterInput.value){
+                costCenterInput.value = selected.text;
+            }
+        });
     }
 </script>
 @endsection

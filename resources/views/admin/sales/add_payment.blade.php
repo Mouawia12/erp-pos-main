@@ -26,13 +26,26 @@
                         <div class="form-group">
                             <label>{{ __('main.cash') }} ({{ __('main.cash_box') ?? 'الصندوق' }}) <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
                             <input required type="number" id="cash" name="cash" min="0" step="any" class="form-control payment-input" value="0"/>
-                            <small class="text-muted d-block mt-1">{{ __('main.cash_box_hint') ?? 'اكتب 0 لتحويل المبلغ بالكامل إلى البنك.' }}</small>
                         </div>
                     </div>
                     <div class="col-6">
                         <div class="form-group">
-                            <label>{{ __('main.bank_amount') ?? 'المبلغ للبنك' }}</label>
-                            <input type="number" id="bank_amount" name="bank_amount" class="form-control" value="0" readonly>
+                            <div class="d-flex align-items-center justify-content-between">
+                                <label class="mb-0">{{ __('main.visa') }}</label>
+                                <button type="button" class="btn btn-sm btn-secondary" id="addCardRow">
+                                    + {{ __('main.add_payment') }}
+                                </button>
+                            </div>
+                            <div id="cardRows">
+                                <div class="form-row card-row mb-1">
+                                    <div class="col-7">
+                                        <input type="text" class="form-control" name="card_bank[]" placeholder="{{ __('main.method.payment') }}">
+                                    </div>
+                                    <div class="col-5">
+                                        <input type="number" class="form-control card_amount payment-input" name="card_amount[]" min="0" step="any" value="0">
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

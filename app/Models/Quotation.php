@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Traits\BelongsToSubscriber;
+use App\Models\CostCenter;
 
 class Quotation extends Model
 {
@@ -23,6 +24,7 @@ class Quotation extends Model
         'invoice_type',
         'payment_method',
         'cost_center',
+        'cost_center_id',
         'note',
         'total',
         'discount',
@@ -46,5 +48,10 @@ class Quotation extends Model
     public function customer()
     {
         return $this->belongsTo(Company::class, 'customer_id');
+    }
+
+    public function costCenter()
+    {
+        return $this->belongsTo(CostCenter::class, 'cost_center_id');
     }
 }

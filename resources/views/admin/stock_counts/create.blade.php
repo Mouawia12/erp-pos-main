@@ -61,6 +61,9 @@
                             <th>{{ __('main.item') }}</th>
                             <th>{{ __('main.quantity') }} (Expected)</th>
                             <th>{{ __('main.quantity') }} (Counted)</th>
+                            <th>{{ __('main.batch_no') ?? 'رقم التشغيلة' }}</th>
+                            <th>{{ __('main.production_date') ?? 'تاريخ الإنتاج' }}</th>
+                            <th>{{ __('main.expiry_date') ?? 'تاريخ الانتهاء' }}</th>
                             <th>{{ __('main.actions') }}</th>
                         </tr>
                         </thead>
@@ -90,7 +93,7 @@
 
         let options = '<option value="">--</option>';
         products.forEach(p=>{
-            options += `<option value="${p.id}" data-variants='${JSON.stringify(p.variants ?? [])}' ${data.product_id==p.id?'selected':''}>${p.name}</option>`;
+            options += `<option value="${p.id}" data-variants='${JSON.stringify(p.variants ?? [])}' data-track-batch="${p.track_batch ? 1 : 0}" ${data.product_id==p.id?'selected':''}>${p.name}</option>`;
         });
 
         row.innerHTML = `
@@ -103,6 +106,9 @@
             </td>
             <td><input type="number" step="0.01" name="items[${index}][expected_qty]" class="form-control expected" readonly value="${data.expected_qty ?? getExpectedDefault()}"></td>
             <td><input type="number" step="0.01" name="items[${index}][counted_qty]" class="form-control counted" value="${data.counted_qty ?? 0}"></td>
+            <td><input type="text" name="items[${index}][batch_no]" class="form-control batch_no" value="${data.batch_no ?? ''}"></td>
+            <td><input type="date" name="items[${index}][production_date]" class="form-control production_date" value="${data.production_date ?? ''}"></td>
+            <td><input type="date" name="items[${index}][expiry_date]" class="form-control expiry_date" value="${data.expiry_date ?? ''}"></td>
             <td><button type="button" class="btn btn-danger btn-sm removeRow">X</button></td>
         `;
         tbody.appendChild(row);
@@ -138,6 +144,7 @@
     document.addEventListener('change', function(e){
         if(e.target.classList.contains('productSelect')){
             const variants = JSON.parse(e.target.selectedOptions[0].dataset.variants || '[]');
+            const trackBatch = Number(e.target.selectedOptions[0].dataset.trackBatch || 0) === 1;
             let label = '';
             let variantId = '';
             if(variants.length === 1){
@@ -147,6 +154,14 @@
                 variantInput.value = variantId;
             }
             e.target.closest('td').querySelector('.variant-label').innerText = label;
+            const row = e.target.closest('tr');
+            const batchInputs = row.querySelectorAll('.batch_no, .production_date, .expiry_date');
+            batchInputs.forEach(function(input){
+                input.disabled = !trackBatch;
+                if(!trackBatch){
+                    input.value = '';
+                }
+            });
         }
     });
 

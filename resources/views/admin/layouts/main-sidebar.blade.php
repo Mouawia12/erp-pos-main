@@ -316,6 +316,26 @@
                             </a>
                         </li> 
                         <li>
+                            <a class="slide-item" href="{{route('reports.income_statement')}}">
+                            {{__('main.income_statement')}}
+                            </a>
+                        </li>
+                        <li>
+                            <a class="slide-item" href="{{route('reports.income_statement_totals')}}">
+                            {{__('main.income_statement_totals')}}
+                            </a>
+                        </li>
+                        <li>
+                            <a class="slide-item" href="{{route('reports.trading_account')}}">
+                            {{__('main.trading_account')}}
+                            </a>
+                        </li>
+                        <li>
+                            <a class="slide-item" href="{{route('reports.profit_loss')}}">
+                            {{__('main.profit_loss')}}
+                            </a>
+                        </li>
+                        <li>
                             <a class="slide-item" href="{{route('account_movement_report')}}">
                             {{__('main.account_movement_report')}}
                             </a>
@@ -343,6 +363,14 @@
                         <li><a class="slide-item" href="{{route('purchase_report')}}">{{__('main.purchases_report')}}</a></li>
                         <li><a class="slide-item" href="{{route('purchases_return_report')}}">{{__('main.purchases_return_report')}}</a></li>
                         <li><a class="slide-item" href="{{route('sales.return.report')}}">{{__('main.sales_return_report')}}</a></li>
+                        <li><a class="slide-item" href="{{route('reports.quotations')}}">{{__('main.quotations_report')}}</a></li>
+                        <li><a class="slide-item" href="{{route('reports.clients_balance')}}">{{__('main.clients_balance_report')}}</a></li>
+                        <li><a class="slide-item" href="{{route('reports.vendors_balance')}}">{{__('main.vendors_balance_report')}}</a></li>
+                        <li><a class="slide-item" href="{{route('reports.clients_movement')}}">{{__('main.clients_movement_report')}}</a></li>
+                        <li><a class="slide-item" href="{{route('reports.vendors_movement')}}">{{__('main.vendors_movement_report')}}</a></li>
+                        <li><a class="slide-item" href="{{route('reports.clients_aging')}}">{{__('main.clients_aging_report')}}</a></li>
+                        <li><a class="slide-item" href="{{route('reports.vendor_aging')}}">{{__('main.vendors_aging_report')}}</a></li>
+                        <li><a class="slide-item" href="{{route('reports.representatives')}}">{{__('main.representatives_report')}}</a></li>
                         <li><a class="slide-item" href="{{route('reports.clients.status')}}">{{__('main.client_status_report')}}</a></li>
                         <li><a class="slide-item" href="{{route('reports.vendors.status')}}">{{__('main.vendor_status_report')}}</a></li>
                         <li><a class="slide-item" href="{{route('items_report')}}">{{__('main.items_report')}}</a></li>
@@ -350,6 +378,9 @@
                         <li><a class="slide-item" href="{{route('items_no_balance_report')}}">{{__('main.no_balance_items_report')}}</a></li>
                         <li><a class="slide-item" href="{{route('items_stock_report')}}">{{__('main.users_transactions_report')}}</a></li>
                         <li><a class="slide-item" href="{{route('items_purchased_report')}}">{{__('main.imported_items_reports')}}</a></li>                     
+                        <li><a class="slide-item" href="{{route('reports.inventory_value')}}">{{__('main.inventory_value_report')}}</a></li>
+                        <li><a class="slide-item" href="{{route('reports.inventory_aging')}}">{{__('main.inventory_aging_report')}}</a></li>
+                        <li><a class="slide-item" href="{{route('reports.inventory_variance')}}">{{__('main.inventory_variance_report')}}</a></li>
                         <li><a class="slide-item" href="{{route('reports.salon.services')}}">{{__('main.salon_services_report')}}</a></li>
                     </ul>
                 </li>     
@@ -429,6 +460,7 @@
                         <li><a class="slide-item" href="{{route('companyInfo')}}">{{__('main.companyInfo')}}</a></li>
                         <li><a class="slide-item" href="{{route('system_settings')}}">{{__('main.system_settings')}}</a></li>
                         <li><a class="slide-item" href="{{route('pos_settings')}}">{{__('main.pos_settings')}}</a></li>
+                        <li><a class="slide-item" href="{{route('cost_centers')}}">{{__('main.cost_centers')}}</a></li>
                     </ul>
                 </li>  
             @endcan   

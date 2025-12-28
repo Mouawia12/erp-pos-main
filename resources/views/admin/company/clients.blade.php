@@ -194,6 +194,17 @@
                                 </select>
                             </div>
                         </div>
+                        <div class="col-4">
+                            <div class="form-group">
+                                <label>{{ __('main.cost_center') }}</label>
+                                <select class="form-control" id="cost_center_id" name="cost_center_id">
+                                    <option value="">{{ __('main.choose') }}</option>
+                                    @foreach($costCenters as $center)
+                                        <option value="{{$center->id}}">{{$center->name}}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
                  
                         @if($type == 3)
                             <div class="col-4" >
@@ -455,6 +466,7 @@
                             $(".modal-body #account_id").val( "" ).trigger("change");
                             $(".modal-body #tax_number").val( "" );
                             $(".modal-body #opening_balance").val( "0" );
+                            $(".modal-body #cost_center_id").val( "" ).trigger("change");
                             try {
                                 $(".modal-body #customer_group_id").val( response.client_group_id ).trigger("change");
                                 $(".modal-body #credit_amount").val( "0" );
@@ -572,6 +584,7 @@
                             $(".modal-body #price_level_id").val( response.price_level_id ).trigger('change');
                             $(".modal-body #default_discount").val( response.default_discount );
                             $(".modal-body #representative_id_").val( response.representative_id_ ).trigger('change');
+                            $(".modal-body #cost_center_id").val( response.cost_center_id || "" ).trigger('change');
                             $(".modal-body #opening_balance").val(  response.opening_balance );
                             try {
                                 $(".modal-body #customer_group_id").val( response.customer_group_id).trigger("change");

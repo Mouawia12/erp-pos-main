@@ -63,6 +63,9 @@
                                     <th class="text-center text-uppercase text-secondary text-md-center font-weight-bolder opacity-7">{{__('main.code')}}</th>
                                     <th class="text-uppercase text-secondary text-md-center font-weight-bolder opacity-7 ps-2">{{__('main.name')}}</th>
                                     <th class="text-center text-uppercase text-secondary text-md-center font-weight-bolder opacity-7">{{__('main.user_name')}}</th>
+                                    <th class="text-center text-uppercase text-secondary text-md-center font-weight-bolder opacity-7">{{__('main.rep_warehouse')}}</th>
+                                    <th class="text-center text-uppercase text-secondary text-md-center font-weight-bolder opacity-7">{{__('main.rep_price_level')}}</th>
+                                    <th class="text-center text-uppercase text-secondary text-md-center font-weight-bolder opacity-7">{{__('main.rep_discount_percent')}}</th>
                                     <th class="text-end text-uppercase text-secondary text-md-center font-weight-bolder opacity-7">{{__('main.actions')}}</th>
                                 </tr>
                                 </thead>
@@ -74,6 +77,9 @@
                                     <td class="text-center">{{$user -> code}}</td>
                                     <td class="text-center">{{$user -> name}} </td>
                                     <td class="text-center">{{$user -> user_name}}</td>
+                                    <td class="text-center">{{ $user->warehouse?->name ?? '-' }}</td>
+                                    <td class="text-center">{{ $user->price_level_id ? __('main.price_level').' '.$user->price_level_id : '-' }}</td>
+                                    <td class="text-center">{{ $user->discount_percent ?? '-' }}</td>
 
 
                                     <td class="text-center">
@@ -85,6 +91,8 @@
                                         <br>
                                         <button type="button" class="btn btn-labeled btn-warning resetButton "  value="{{$user -> id}}">
                                             <span class="btn-label" style="margin-right: 10px;"></span>{{__('main.connect_with_client')}}</button>
+                                        <button type="button" class="btn btn-labeled btn-info" data-bs-toggle="modal" data-bs-target="#docModal-{{$user->id}}">
+                                            <span class="btn-label" style="margin-right: 10px;"><i class="fa fa-folder-open"></i></span>{{__('main.rep_documents')}}</button>
 
                                     </td>
                                 </tr>
@@ -185,6 +193,56 @@
                                 <input type="date" id="document_expiry_date" name="document_expiry_date"
                                        class="form-control"
                                        placeholder="{{ __('main.rep_document_expiry') }}"  />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="form-group">
+                                <label>{{ __('main.rep_warehouse') }}</label>
+                                <select class="form-select" id="warehouse_id" name="warehouse_id">
+                                    <option value="">{{ __('main.choose') }}</option>
+                                    @foreach($warehouses as $warehouse)
+                                        <option value="{{$warehouse->id}}">{{$warehouse->name}}</option>
+                                    @endforeach
+                                </select>
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input" type="checkbox" value="1" id="create_warehouse" name="create_warehouse">
+                                    <label class="form-check-label" for="create_warehouse">
+                                        {{ __('main.rep_create_warehouse') }}
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="form-group">
+                                <label>{{ __('main.rep_price_level') }}</label>
+                                <select class="form-select" id="price_level_id" name="price_level_id">
+                                    <option value="">{{ __('main.choose') }}</option>
+                                    @for($i = 1; $i <= 6; $i++)
+                                        <option value="{{$i}}">{{ __('main.price_level') }} {{$i}}</option>
+                                    @endfor
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="form-group">
+                                <label>{{ __('main.rep_profit_margin') }}</label>
+                                <input type="number" step="0.01" id="profit_margin" name="profit_margin"
+                                       class="form-control"
+                                       placeholder="{{ __('main.rep_profit_margin') }}"  />
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="form-group">
+                                <label>{{ __('main.rep_discount_percent') }}</label>
+                                <input type="number" step="0.01" id="discount_percent" name="discount_percent"
+                                       class="form-control"
+                                       placeholder="{{ __('main.rep_discount_percent') }}"  />
                             </div>
                         </div>
                     </div>
@@ -332,6 +390,96 @@
     </div>
 </div>
 
+@foreach($representatives as $user)
+<div class="modal fade" id="docModal-{{$user->id}}" tabindex="-1" role="dialog" aria-labelledby="docModalLabel-{{$user->id}}" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <label class="modelTitle">{{ __('main.rep_documents') }} - {{$user->name}}</label>
+                <button type="button" class="close modal-close-btn" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" action="{{ route('representatives.documents.store', $user) }}" enctype="multipart/form-data">
+                    @csrf
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>{{ __('main.rep_document_title') }}</label>
+                                <input type="text" name="title" class="form-control" placeholder="{{ __('main.rep_document_title') }}">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>{{ __('main.rep_document_type') }}</label>
+                                <input type="text" name="document_type" class="form-control" placeholder="{{ __('main.rep_document_type') }}">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>{{ __('main.rep_document_expiry') }}</label>
+                                <input type="date" name="expiry_date" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row mt-2">
+                        <div class="col-md-8">
+                            <div class="form-group">
+                                <label>{{ __('main.rep_document_file') }}</label>
+                                <input type="file" name="document" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">{{ __('main.add_new') }}</button>
+                        </div>
+                    </div>
+                </form>
+
+                <hr>
+                <div class="table-responsive">
+                    <table class="table table-bordered mb-0">
+                        <thead>
+                        <tr>
+                            <th class="text-center">{{ __('main.rep_document_title') }}</th>
+                            <th class="text-center">{{ __('main.rep_document_type') }}</th>
+                            <th class="text-center">{{ __('main.rep_document_expiry') }}</th>
+                            <th class="text-center">{{ __('main.actions') }}</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @forelse($user->documents as $doc)
+                            <tr>
+                                <td class="text-center">{{ $doc->title }}</td>
+                                <td class="text-center">{{ $doc->document_type ?? '-' }}</td>
+                                <td class="text-center">{{ $doc->expiry_date ?? '-' }}</td>
+                                <td class="text-center">
+                                    @if($doc->file_path)
+                                        <a href="{{ asset('storage/'.$doc->file_path) }}" target="_blank" class="btn btn-sm btn-secondary">
+                                            {{ __('main.open') }}
+                                        </a>
+                                    @endif
+                                    <form method="POST" action="{{ route('representatives.documents.delete', $doc) }}" class="d-inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-sm btn-danger">{{ __('main.delete') }}</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="4" class="text-center">{{ __('main.no_data') }}</td>
+                            </tr>
+                        @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endforeach
+
 <script type="text/javascript">
     let id = 0 ;
     $(document).ready(function()
@@ -361,6 +509,11 @@
                     $(".modal-body #document_name").val( "" );
                     $(".modal-body #document_number").val( "" );
                     $(".modal-body #document_expiry_date").val( "" );
+                    $(".modal-body #warehouse_id").val( "" );
+                    $(".modal-body #price_level_id").val( "" );
+                    $(".modal-body #profit_margin").val( "" );
+                    $(".modal-body #discount_percent").val( "" );
+                    $(".modal-body #create_warehouse").prop('checked', false);
                     $(".modal-body #status").val( "" );
                     $(".modal-body #group").val( "" );
                     $(".modal-body #conf_password").val( "" );
@@ -525,6 +678,11 @@
                             $(".modal-body #document_name").val( response.document_name  );
                             $(".modal-body #document_number").val( response.document_number  );
                             $(".modal-body #document_expiry_date").val( response.document_expiry_date  );
+                            $(".modal-body #warehouse_id").val( response.warehouse_id  );
+                            $(".modal-body #price_level_id").val( response.price_level_id  );
+                            $(".modal-body #profit_margin").val( response.profit_margin  );
+                            $(".modal-body #discount_percent").val( response.discount_percent  );
+                            $(".modal-body #create_warehouse").prop('checked', false);
                             $(".modal-body #id").val( response.id  );
                         },
                         complete: function() {

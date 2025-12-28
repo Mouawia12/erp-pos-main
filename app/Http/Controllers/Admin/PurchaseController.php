@@ -16,6 +16,7 @@ use App\Models\Unit;
 use App\Models\Warehouse; 
 use App\Models\Branch;
 use App\Models\Representative;
+use App\Models\CostCenter;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -120,11 +121,24 @@ class PurchaseController extends Controller
         $warehouses = $siteContrller->getAllWarehouses();
         $customers = $siteContrller->getAllVendors();
         $representatives = Representative::all();
+        $subscriberId = Auth::user()->subscriber_id ?? null;
+        $defaultSupplier = Company::ensureDefaultSupplier($subscriberId);
+        $costCenters = CostCenter::query()
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->where('is_active', 1)
+            ->orderBy('name')
+            ->get();
         $setting = SystemSettings::all() -> first();
         $branches = Branch::where('status',1)->get();
         $defaultInvoiceType = $this->resolveDefaultInvoiceType();
 
-        return view('admin.purchases.create',compact('warehouses','customers','representatives','setting','branches','defaultInvoiceType'));
+        if ($defaultSupplier) {
+            $customers = $customers->sortByDesc(function ($customer) use ($defaultSupplier) {
+                return $customer->id === $defaultSupplier->id ? 1 : 0;
+            })->values();
+        }
+
+        return view('admin.purchases.create',compact('warehouses','customers','representatives','costCenters','setting','branches','defaultInvoiceType','defaultSupplier'));
     }
 
     /**
@@ -142,7 +156,8 @@ class PurchaseController extends Controller
             'customer_id' => 'required|exists:companies,id',
             'warehouse_id' => 'required|exists:warehouses,id',
             'invoice_type' => ['nullable', Rule::in(['tax_invoice','non_tax_invoice'])],
-            'payment_method' => ['nullable', Rule::in(['cash','credit'])],
+            'payment_method' => ['nullable', Rule::in(['cash','credit','network','cash_network'])],
+            'cost_center_id' => ['nullable', 'exists:cost_centers,id'],
         ]);
 
         $siteController = new SystemController();
@@ -220,6 +235,17 @@ class PurchaseController extends Controller
         if(($request->tax_mode ?? 'inclusive') === 'exclusive'){
             $netCalc += $taxForInvoice;
         }
+
+        $subscriberId = Auth::user()->subscriber_id ?? null;
+        $customer = Company::find($request->customer_id);
+        $costCenterId = $request->cost_center_id ?: ($customer->cost_center_id ?? null);
+        $costCenterName = $request->cost_center;
+        if ($costCenterId && empty($costCenterName)) {
+            $costCenterName = CostCenter::query()
+                ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+                ->where('is_active', 1)
+                ->find($costCenterId)?->name;
+        }
  
         $purchase = Purchase::create([
             'date' => $request->bill_date,
@@ -228,7 +254,8 @@ class PurchaseController extends Controller
             'representative_id' => $request->representative_id,
             'supplier_name' => $request->supplier_name,
             'supplier_phone' => $request->supplier_phone,
-            'cost_center' => $request->cost_center,
+            'cost_center' => $costCenterName,
+            'cost_center_id' => $costCenterId,
             'tax_mode' => $request->tax_mode ?? 'inclusive',
             'invoice_type' => $request->invoice_type ?? 'tax_invoice',
             'payment_method' => $request->payment_method ?? 'credit',

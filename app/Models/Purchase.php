@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Traits\BelongsToSubscriber;
 use App\Models\Traits\GuardsFiscalYear;
+use App\Models\CostCenter;
 
 class Purchase extends Model
 {
@@ -31,6 +32,7 @@ class Purchase extends Model
         'supplier_invoice_no',
         'supplier_invoice_copy',
         'cost_center',
+        'cost_center_id',
         'representative_id',
         'supplier_name',
         'supplier_phone',
@@ -55,5 +57,10 @@ class Purchase extends Model
 
     public function representative(){
         return $this->belongsTo(Representative::class,'representative_id');
+    }
+
+    public function costCenter()
+    {
+        return $this->belongsTo(CostCenter::class, 'cost_center_id');
     }
 }

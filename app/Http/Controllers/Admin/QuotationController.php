@@ -14,6 +14,7 @@ use App\Models\SystemSettings;
 use App\Models\Warehouse;
 use App\Models\Branch;
 use App\Models\Representative;
+use App\Models\CostCenter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -38,6 +39,12 @@ class QuotationController extends Controller
         $walkInCustomer = Company::ensureWalkInCustomer(Auth::user()->subscriber_id ?? null);
         $nextQuotationNo = $this->generateQuotationNumber(optional(Auth::user())->branch_id);
         $representatives = Representative::all();
+        $subscriberId = Auth::user()->subscriber_id ?? null;
+        $costCenters = CostCenter::query()
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->where('is_active', 1)
+            ->orderBy('name')
+            ->get();
 
         return view('admin.quotations.create', compact(
             'customers',
@@ -48,7 +55,8 @@ class QuotationController extends Controller
             'defaultInvoiceType',
             'walkInCustomer',
             'nextQuotationNo',
-            'representatives'
+            'representatives',
+            'costCenters'
         ));
     }
 
@@ -60,6 +68,7 @@ class QuotationController extends Controller
             'branch_id' => 'nullable|integer|exists:branches,id',
             'invoice_type' => ['nullable', Rule::in(['tax_invoice','simplified_tax_invoice','non_tax_invoice'])],
             'payment_method' => ['nullable', Rule::in(['cash','credit'])],
+            'cost_center_id' => ['nullable', 'exists:cost_centers,id'],
             'product_id' => 'required|array|min:1',
             'product_id.*' => 'integer|exists:products,id',
             'qnt' => 'required|array|min:1',
@@ -91,6 +100,16 @@ class QuotationController extends Controller
             ];
         }
 
+        $subscriberId = Auth::user()->subscriber_id ?? null;
+        $costCenterId = $request->cost_center_id ?: null;
+        $costCenterName = $request->cost_center;
+        if ($costCenterId && empty($costCenterName)) {
+            $costCenterName = CostCenter::query()
+                ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+                ->where('is_active', 1)
+                ->find($costCenterId)?->name;
+        }
+
         $quotation = Quotation::create([
             'date' => now(),
             'quotation_no' => $quotationNo,
@@ -102,7 +121,8 @@ class QuotationController extends Controller
             'customer_tax_number' => $request->customer_tax_number,
             'warehouse_id' => $request->warehouse_id,
             'representative_id' => $request->representative_id,
-            'cost_center' => $request->cost_center,
+            'cost_center' => $costCenterName,
+            'cost_center_id' => $costCenterId,
             'payment_method' => $request->payment_method ?? 'cash',
             'note' => $request->note,
             'total' => $total,
@@ -138,8 +158,14 @@ class QuotationController extends Controller
         $defaultInvoiceType = $this->resolveDefaultInvoiceType();
         $walkInCustomer = Company::ensureWalkInCustomer(Auth::user()->subscriber_id ?? null);
         $representatives = Representative::all();
+        $subscriberId = Auth::user()->subscriber_id ?? null;
+        $costCenters = CostCenter::query()
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->where('is_active', 1)
+            ->orderBy('name')
+            ->get();
 
-        return view('admin.quotations.edit', compact('quotation','customers','warehouses','products','branches','defaultInvoiceType','walkInCustomer','representatives'));
+        return view('admin.quotations.edit', compact('quotation','customers','warehouses','products','branches','defaultInvoiceType','walkInCustomer','representatives','costCenters'));
     }
 
     public function update(Request $request, Quotation $quotation)
@@ -150,6 +176,7 @@ class QuotationController extends Controller
             'branch_id' => 'nullable|integer|exists:branches,id',
             'invoice_type' => ['nullable', Rule::in(['tax_invoice','simplified_tax_invoice','non_tax_invoice'])],
             'payment_method' => ['nullable', Rule::in(['cash','credit'])],
+            'cost_center_id' => ['nullable', 'exists:cost_centers,id'],
             'product_id' => 'required|array|min:1',
             'product_id.*' => 'integer|exists:products,id',
             'qnt' => 'required|array|min:1',
@@ -179,6 +206,16 @@ class QuotationController extends Controller
             ];
         }
 
+        $subscriberId = Auth::user()->subscriber_id ?? null;
+        $costCenterId = $request->cost_center_id ?: null;
+        $costCenterName = $request->cost_center;
+        if ($costCenterId && empty($costCenterName)) {
+            $costCenterName = CostCenter::query()
+                ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+                ->where('is_active', 1)
+                ->find($costCenterId)?->name;
+        }
+
         $quotation->update([
             'customer_id' => $request->customer_id,
             'customer_name' => $request->customer_name,
@@ -187,7 +224,8 @@ class QuotationController extends Controller
             'customer_tax_number' => $request->customer_tax_number,
             'warehouse_id' => $request->warehouse_id,
             'representative_id' => $request->representative_id,
-            'cost_center' => $request->cost_center,
+            'cost_center' => $costCenterName,
+            'cost_center_id' => $costCenterId,
             'invoice_type' => $request->invoice_type ?? $quotation->invoice_type,
             'payment_method' => $request->payment_method ?? $quotation->payment_method,
             'note' => $request->note,

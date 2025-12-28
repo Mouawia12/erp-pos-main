@@ -382,7 +382,7 @@
    </li>
     @endif
 
-    @if(  in_array('tax_settings' , $routes )  || in_array('companyInfo' , $routes ) )
+    @if(  in_array('tax_settings' , $routes )  || in_array('companyInfo' , $routes ) || in_array('cost_centers' , $routes ) )
    <hr class="sidebar-divider d-none d-md-block">
 
 
@@ -400,6 +400,8 @@
                   href="{{route('tax_settings')}}">{{__('main.additional_tax')}}</a>
                <a class="collapse-item @if($subSlag == 182) active @endif"
                   href="{{route('companyInfo')}}">{{__('main.companyInfo')}}</a>
+               <a class="collapse-item @if($subSlag == 183) active @endif"
+                  href="{{route('cost_centers')}}">{{__('main.cost_centers')}}</a>
 
            </div>
 
@@ -411,7 +413,9 @@
 
     @if(  in_array('daily_all_movements' , $routes)  || in_array('gold_stock_report' , $routes) ||   in_array('vendor_account' , $routes) ||
       in_array( 'purchase_report' , $routes)  || in_array( 'sales_report' , $routes)  || in_array('sold_items_report' , $routes) ||
-        in_array('item_list_report' , $routes) || in_array('balance_sheet' , $routes ) || in_array('incoming_list' , $routes ))
+        in_array('item_list_report' , $routes) || in_array('balance_sheet' , $routes ) || in_array('incoming_list' , $routes ) ||
+        in_array('reports.income_statement' , $routes ) || in_array('reports.income_statement_totals' , $routes ) ||
+        in_array('reports.trading_account' , $routes ) || in_array('reports.profit_loss' , $routes ))
    <hr class="sidebar-divider d-none d-md-block">
    <li class="nav-item @if($slag == 14) active @endif"
        @if(Config::get('app.locale') == 'ar') style="direction: rtl" @endif>
@@ -501,6 +505,26 @@
                    @if( in_array('balance_sheet' , $routes )  )
                        <a class="collapse-item @if($subSlag == 149) active @endif"
                           href="{{route('balance_sheet')}}">{{__('main.balance_sheet')}}</a>
+
+                   @endif
+                   @if( in_array('reports.income_statement' , $routes )  )
+                       <a class="collapse-item @if($subSlag == 1491) active @endif"
+                          href="{{route('reports.income_statement')}}">{{__('main.income_statement')}}</a>
+
+                   @endif
+                   @if( in_array('reports.income_statement_totals' , $routes )  )
+                       <a class="collapse-item @if($subSlag == 1492) active @endif"
+                          href="{{route('reports.income_statement_totals')}}">{{__('main.income_statement_totals')}}</a>
+
+                   @endif
+                   @if( in_array('reports.trading_account' , $routes )  )
+                       <a class="collapse-item @if($subSlag == 1493) active @endif"
+                          href="{{route('reports.trading_account')}}">{{__('main.trading_account')}}</a>
+
+                   @endif
+                   @if( in_array('reports.profit_loss' , $routes )  )
+                       <a class="collapse-item @if($subSlag == 1494) active @endif"
+                          href="{{route('reports.profit_loss')}}">{{__('main.profit_loss')}}</a>
 
                    @endif
 

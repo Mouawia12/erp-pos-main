@@ -129,6 +129,7 @@ span strong {font-size:12px;}
                                         <option value="{{$customer -> id}}"
                                                 data-default-discount="{{$customer->default_discount ?? 0}}"
                                                 data-representative="{{$customer->representative_id_ ?? ''}}"
+                                                data-cost-center-id="{{$customer->cost_center_id ?? ''}}"
                                                 @if($selectedCustomer == $customer->id) selected @endif>
                                             {{ $customer -> name}}
                                             @if(!empty($walkInCustomer) && $walkInCustomer->id === $customer->id)
@@ -168,7 +169,10 @@ span strong {font-size:12px;}
                                     name="representative_id" id="representative_id">
                                     <option value="">{{ __('main.choose') }}</option>
                                     @foreach($representatives as $rep)
-                                        <option value="{{$rep->id}}">{{$rep->user_name}}</option>
+                                        <option value="{{$rep->id}}"
+                                            data-discount="{{$rep->discount_percent ?? ''}}"
+                                            data-price-level="{{$rep->price_level_id ?? ''}}"
+                                            data-warehouse="{{$rep->warehouse_id ?? ''}}">{{$rep->user_name}}</option>
                                     @endforeach
                                 </select>
                                 <div class="mt-1">
@@ -181,6 +185,12 @@ span strong {font-size:12px;}
                         <div class="col-md-3">
                             <div class="form-group">
                                 <label>{{ __('main.cost_center') }}</label>
+                                <select class="form-control mb-1" name="cost_center_id" id="cost_center_id">
+                                    <option value="">{{ __('main.choose') }}</option>
+                                    @foreach($costCenters as $center)
+                                        <option value="{{$center->id}}">{{$center->name}}</option>
+                                    @endforeach
+                                </select>
                                 <input type="text" class="form-control" name="cost_center" id="cost_center" placeholder="{{__('main.cost_center')}}">
                             </div>
                         </div>
@@ -190,6 +200,8 @@ span strong {font-size:12px;}
                                 <select class="form-control" name="payment_method" id="payment_method">
                                     <option value="cash">{{ __('main.cash') }}</option>
                                     <option value="credit">{{ __('main.credit') }}</option>
+                                    <option value="network">{{ __('main.network') ?? __('main.visa') }}</option>
+                                    <option value="cash_network">{{ __('main.cash') }} + {{ __('main.network') ?? __('main.visa') }}</option>
                                 </select>
                             </div>
                         </div>
@@ -660,7 +672,7 @@ span strong {font-size:12px;}
 
         const moneyInput = document.getElementById('money');
         const cashInput = document.getElementById('cash');
-        const bankInput = document.getElementById('bank_amount');
+        const addCardBtn = document.getElementById('addCardRow');
 
         function clearErrorState(){
             const errorBox = document.getElementById('paymentError');
@@ -684,18 +696,36 @@ span strong {font-size:12px;}
             }
         }
 
-        function syncBankAmount(formatCashField){
-            syncCashBoxInputs(formatCashField);
+        function sumCards(){
+            let total = 0;
+            document.querySelectorAll('#cardRows .card_amount').forEach(function(el){
+                const v = parseFloat(el.value);
+                if(!isNaN(v)){
+                    total += v;
+                }
+            });
+            return total;
+        }
+
+        function syncCardTotals(){
+            if(!cashInput){
+                return;
+            }
+            let cashVal = parseFloat(cashInput.value);
+            if(isNaN(cashVal)){
+                cashVal = 0;
+            }
+            cashInput.value = Math.max(cashVal, 0).toFixed(2);
         }
 
         $(document).off('input','.payment-input').on('input','.payment-input',function (){
             clearErrorState();
-            syncBankAmount(false);
+            syncCardTotals();
         });
 
         if(cashInput){
             $(cashInput).off('blur.paymentFormat').on('blur.paymentFormat', function(){
-                syncBankAmount(true);
+                syncCardTotals();
             });
         }
 
@@ -703,8 +733,8 @@ span strong {font-size:12px;}
             const paymentBtn = this;
             const invoiceTotal = parseFloat(moneyInput?.value) || 0;
             const cashVal = parseFloat(cashInput?.value) || 0;
-            const bankVal = parseFloat(bankInput?.value) || 0;
-            const paid = Number((cashVal + bankVal).toFixed(2));
+            const cardVal = sumCards();
+            const paid = Number((cashVal + cardVal).toFixed(2));
             const invoice = Number(invoiceTotal.toFixed(2));
 
             if(paid === invoice){
@@ -728,36 +758,41 @@ span strong {font-size:12px;}
                 paymentBtn.disabled = false;
                 paymentBtn.innerText = "{{ __('main.save_btn') }}";
             }
-            if(moneyInput && cashInput){
-                cashInput.value = (moneyInput.value || 0);
+            const totalValue = parseFloat(moneyInput?.value) || 0;
+            const method = (paymentMethodSelect?.val() || 'cash').toLowerCase();
+            if(cashInput){
+                if(method === 'network'){
+                    cashInput.value = 0;
+                } else {
+                    cashInput.value = totalValue.toFixed(2);
+                }
             }
+            document.querySelectorAll('#cardRows .card_amount').forEach(function(el, idx){
+                if(method === 'network' && idx === 0){
+                    el.value = totalValue.toFixed(2);
+                } else {
+                    el.value = 0;
+                }
+            });
             clearErrorState();
-            syncBankAmount(true);
+            syncCardTotals();
         });
+
+        if(addCardBtn){
+            $(addCardBtn).off('click').on('click', function(){
+                const wrapper = document.getElementById('cardRows');
+                if(!wrapper){
+                    return;
+                }
+                const row = document.createElement('div');
+                row.className = 'form-row card-row mb-1';
+                row.innerHTML = '<div class="col-7"><input type="text" class="form-control" name="card_bank[]" placeholder="{{ __('main.method.payment') }}"></div><div class="col-5"><input type="number" class="form-control card_amount payment-input" name="card_amount[]" min="0" step="any" value="0"></div>';
+                wrapper.appendChild(row);
+            });
+        }
     }
 
-    function syncCashBoxInputs(formatCashField){
-        const moneyInput = document.getElementById('money');
-        const cashInput = document.getElementById('cash');
-        const bankInput = document.getElementById('bank_amount');
-
-        if(!moneyInput || !cashInput || !bankInput){
-            return;
-        }
-
-        const total = parseFloat(moneyInput.value) || 0;
-        let cashVal = parseFloat(cashInput.value);
-        if(isNaN(cashVal)){
-            cashVal = 0;
-        }
-        cashVal = Math.min(Math.max(cashVal, 0), total);
-
-        if(formatCashField){
-            cashInput.value = cashVal.toFixed(2);
-        }
-
-        bankInput.value = (total - cashVal).toFixed(2);
-    }
+    function syncCashBoxInputs(){}
 
     let paymentMethodSelect;
 
@@ -795,6 +830,7 @@ span strong {font-size:12px;}
         const $walkInFields = $('#walk_in_fields');
         const representativeSelect = $('#representative_id');
         const costCenterInput = $('#cost_center');
+        const costCenterSelect = $('#cost_center_id');
         const customerVehiclesCache = {};
 
         function setPaymentMethod(value){
@@ -912,6 +948,31 @@ span strong {font-size:12px;}
 
         if(representativeSelect.length){
             representativeSelect.on('change', function(){
+                const selectedOption = $(this).find('option:selected');
+                const selectedText = selectedOption.text().trim();
+                if(selectedText && costCenterInput && !costCenterInput.val()){
+                    costCenterInput.val(selectedText);
+                }
+                const repDiscount = Number(selectedOption.data('discount') || 0);
+                const repWarehouse = selectedOption.data('warehouse');
+                const discountInput = $('#discount_input');
+                if(repDiscount > 0 && discountInput.length){
+                    const currentDiscount = Number(discountInput.val() || 0);
+                    if(currentDiscount === 0){
+                        discountInput.val(repDiscount);
+                        NetAfterDiscount();
+                    }
+                }
+                if(repWarehouse && warehouseSelect && warehouseSelect.length){
+                    if(!warehouseSelect.val()){
+                        warehouseSelect.val(repWarehouse).trigger('change');
+                    }
+                }
+            });
+        }
+
+        if(costCenterSelect.length){
+            costCenterSelect.on('change', function(){
                 const selectedText = $(this).find('option:selected').text().trim();
                 if(selectedText && costCenterInput && !costCenterInput.val()){
                     costCenterInput.val(selectedText);
@@ -941,8 +1002,10 @@ span strong {font-size:12px;}
         });
 
         $('#customer_id').on('change', function(){
-            var defaultDiscount = $(this).find(':selected').data('default-discount') || 0;
-            var repId = $(this).find(':selected').data('representative') || '';
+            var selectedOption = $(this).find(':selected');
+            var defaultDiscount = selectedOption.data('default-discount') || 0;
+            var repId = selectedOption.data('representative') || '';
+            var customerCostCenterId = selectedOption.data('cost-center-id') || '';
             if(defaultDiscount > 0){
                 $('#discount_input').val(defaultDiscount);
                 NetAfterDiscount();
@@ -952,6 +1015,15 @@ span strong {font-size:12px;}
                     representativeSelect.val(repId).trigger('change');
                 } else {
                     representativeSelect.val('').trigger('change');
+                }
+            }
+            if(costCenterSelect.length && customerCostCenterId){
+                costCenterSelect.val(customerCostCenterId).trigger('change');
+                if(costCenterInput && !costCenterInput.val()){
+                    var selectedText = costCenterSelect.find('option:selected').text().trim();
+                    if(selectedText){
+                        costCenterInput.val(selectedText);
+                    }
                 }
             }
             toggleWalkInFields($(this).val());

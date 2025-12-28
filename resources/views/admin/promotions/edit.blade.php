@@ -23,15 +23,15 @@
             <form method="POST" action="{{ route('promotions.update',$promotion) }}">
                 @csrf @method('PUT')
                 <div class="row mb-3">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label>{{ __('main.name') }}</label>
                         <input type="text" name="name" class="form-control" value="{{ $promotion->name }}" required>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label>{{ __('main.start_date') ?? 'تاريخ البداية' }}</label>
                         <input type="date" name="start_date" class="form-control" value="{{ optional($promotion->start_date)->format('Y-m-d') }}">
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label>{{ __('main.end_date') ?? 'تاريخ النهاية' }}</label>
                         <input type="date" name="end_date" class="form-control" value="{{ optional($promotion->end_date)->format('Y-m-d') }}">
                     </div>
@@ -40,6 +40,17 @@
                         <select name="status" class="form-control">
                             <option value="active" @if($promotion->status==='active') selected @endif>{{ __('main.status1') ?? 'مفعل' }}</option>
                             <option value="inactive" @if($promotion->status==='inactive') selected @endif>{{ __('main.status2') ?? 'موقوف' }}</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label>{{ __('main.representatives') }}</label>
+                        <select name="representative_id" class="form-control">
+                            <option value="">{{ __('main.all') }}</option>
+                            @foreach($representatives as $rep)
+                                <option value="{{ $rep->id }}" @if($promotion->representative_id==$rep->id) selected @endif>
+                                    {{ $rep->user_name }}
+                                </option>
+                            @endforeach
                         </select>
                     </div>
                 </div>

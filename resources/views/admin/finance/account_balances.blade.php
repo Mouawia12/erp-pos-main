@@ -2,8 +2,29 @@
 @section('content')
 <div class="container-fluid py-4">
     <div class="row mb-3">
-        <div class="col-12">
+        <div class="col-12 d-flex justify-content-between align-items-center">
             <h4>{{ __('main.account_balance_report') ?? 'تقرير أرصدة الحسابات' }}</h4>
+            <form class="form-inline" method="GET" action="{{ route('reports.account_balances') }}">
+                <div class="form-group mr-2">
+                    <label class="mr-1">{{ __('main.branche') }}</label>
+                    <select name="branch_id" class="form-control">
+                        <option value="0">{{ __('main.all') ?? 'الكل' }}</option>
+                        @foreach($branches as $branch)
+                            <option value="{{$branch->id}}" @if(($branchId ?? 0) == $branch->id) selected @endif>{{$branch->branch_name}}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="form-group mr-2">
+                    <label class="mr-1">{{ __('main.cost_center') }}</label>
+                    <select name="cost_center_id" class="form-control">
+                        <option value="0">{{ __('main.all') ?? 'الكل' }}</option>
+                        @foreach($costCenters as $center)
+                            <option value="{{$center->id}}" @if(($costCenterId ?? 0) == $center->id) selected @endif>{{$center->name}}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <button class="btn btn-primary">{{ __('main.search') ?? 'عرض' }}</button>
+            </form>
         </div>
     </div>
     <div class="card">

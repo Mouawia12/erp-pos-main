@@ -78,8 +78,12 @@ class CatchReciptController extends Controller
         $validated = $request->validate([
             'docNumber' =>  'required|unique:catch_recipts',
             'date' => 'required', 
-            'amount' => 'required',
-            'account_id' => 'required',
+            'amount' => 'nullable|numeric|min:0',
+            'account_id' => 'nullable|integer',
+            'detail_account_id' => 'nullable|array',
+            'detail_account_id.*' => 'required|integer',
+            'detail_amount' => 'nullable|array',
+            'detail_amount.*' => 'required|numeric|min:0.01',
             'parent_code' => 'required',
             'payment_type' => 'required',
             'branch_id' => 'required'
@@ -96,18 +100,54 @@ class CatchReciptController extends Controller
                 ->with('error', __('main.account_settings') . ': ' . __('validation.required', ['attribute' => __('main.accounting')]));
         }
 
+        $detailAccounts = $request->detail_account_id ?? [];
+        $detailAmounts = $request->detail_amount ?? [];
+        $detailNotes = $request->detail_notes ?? [];
+        $details = [];
+        if (!empty($detailAccounts)) {
+            foreach ($detailAccounts as $idx => $accountId) {
+                $amount = (float) ($detailAmounts[$idx] ?? 0);
+                if ($amount <= 0) {
+                    continue;
+                }
+                $details[] = [
+                    'account_id' => (int) $accountId,
+                    'amount' => $amount,
+                    'notes' => $detailNotes[$idx] ?? null,
+                ];
+            }
+        } elseif ($request->account_id && $request->amount) {
+            $details[] = [
+                'account_id' => (int) $request->account_id,
+                'amount' => (float) $request->amount,
+                'notes' => $request->notes ?? null,
+            ];
+        }
+
+        if (empty($details)) {
+            return redirect()->route('catches')->with('error', __('main.invoice_details_required'));
+        }
+
+        $totalAmount = collect($details)->sum('amount');
+        $firstAccount = $details[0]['account_id'] ?? $request->account_id;
+
         $id =  CatchRecipt::create([
             'branch_id' => $request -> branch_id,
             'docNumber' => $request -> docNumber,
             'date' => Carbon::parse($request -> date) ,
             'from_account' => $from_account,
-            'to_account' => $request -> account_id,
+            'to_account' => $firstAccount,
             'client' => $request -> client ?? '',
-            'amount' => $request -> amount,
+            'amount' => $totalAmount,
             'notes' => $request -> notes ?? '', 
             'payment_type' => $request -> payment_type,
             'user_id' => Auth::user() -> id
         ]) -> id   ;
+
+        foreach ($details as $detail) {
+            $detail['catch_recipt_id'] = $id;
+            \App\Models\CatchReciptDetail::create($detail);
+        }
 
         $auto_accounting =  env("AUTO_ACCOUNTING", 1);
         if($auto_accounting == 1){
