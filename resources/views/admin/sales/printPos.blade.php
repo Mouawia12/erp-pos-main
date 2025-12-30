@@ -17,6 +17,12 @@
         $serviceLabel = $serviceLabels[$data->service_mode ?? 'dine_in'] ?? __('main.service_mode_dine_in');
         $receiptWidth = (int) (optional($posSettings)->receipt_width ?? 80);
         $receiptWidthCss = ($receiptWidth > 0 ? $receiptWidth : 80) . 'mm';
+        $titleAr = $isReturn ? 'إشعار خصم' : $typeLabel;
+        $titleEn = $isReturn ? 'Credit Note' : (
+            $data->invoice_type == 'tax_invoice' ? 'Tax Invoice' :
+            ($data->invoice_type == 'non_tax_invoice' ? 'Non-tax Invoice' : 'Simplified Tax Invoice')
+        );
+        $logoPath = !empty($company?->logo) ? asset('uploads/profiles/' . $company->logo) : asset('assets/img/logo.png');
     @endphp
     {{$typeLabel}}{{$returnTag}} {{$data->id}}
     </title>
@@ -55,14 +61,36 @@
             z-index: 9999;
         }
 
-        table thead tr, table tbody tr {
-            border-bottom: 1px solid #aaa;
-        }
-
         table {
             text-align: center;
             width: 100% !important;
-            margin-top: 10px !important;
+            margin-top: 8px !important;
+            border-collapse: collapse;
+        }
+        table thead tr, table tbody tr {
+            border-bottom: 1px dashed #888;
+        }
+        .receipt-title {
+            font-size: 16px;
+            font-weight: 800;
+        }
+        .receipt-subtitle {
+            font-size: 11px;
+            color: #444 !important;
+        }
+        .receipt-section {
+            border-top: 1px dashed #888;
+            border-bottom: 1px dashed #888;
+            padding: 6px 0;
+            margin: 6px 0;
+        }
+        .meta-line {
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .qr-wrap img {
+            width: 140px;
+            height: 140px;
         }
         .trial-watermark {
             border: 1px dashed #f39c12;
@@ -95,7 +123,7 @@
         }
 
         table thead tr, table tbody tr {
-            border-bottom: 1px solid #aaa;
+            border-bottom: 1px dashed #888;
         }
 
         * {
@@ -138,100 +166,67 @@
                     نسخة تجريبية - لن يتم طباعة بيانات ضريبية حقيقية
                 </div>
             @endif
-            <h2 class="text-center mt-1" style="font-weight: bold;">
-                {{$typeLabel}}@if($isReturn) - {{ __('main.return_tag') ?? 'مردود' }} @endif
-                <br>
-                <small style="font-size:12px;">
-                    @if($data->invoice_type == 'tax_invoice')
-                        {{__('main.invoice_type_tax')}}
-                    @elseif($data->invoice_type == 'non_tax_invoice')
-                        {{__('main.invoice_type_nontax')}}
-                    @else
-                        {{__('main.invoice_type_simplified')}}
-                    @endif
-                </small>
-            </h2>
+            <img class="text-center" src="{{ $logoPath }}" style="width:70px!important;height:70px!important;" alt="Logo"/>
             <h6 class="text-center mt-1" style="font-weight: bold;">
-                رقم الفاتورة :
-                <span dir="ltr">
-                {{$data->invoice_no}}
-                </span>
-            </h6> 
-            <h3 class="text-center" style="font-weight: bold;">
                 {{$company->name_ar}}
             </h3> 
+            @if(!empty($company->faild_ar))
+                <div class="receipt-subtitle">{{ $company->faild_ar }}</div>
+            @endif
+            <div class="receipt-title">{{ $titleAr }}</div>
+            <div class="receipt-subtitle">{{ $titleEn }}</div>
             <h6 class="text-center mt-1" style="font-weight: bold;">
                 {{$data->branch_name}}
             </h6>
             <h6 class="text-center mt-1" style="font-weight: bold;">
                 {{$data->branch_address}}
             </h6> 
-            <h6 class="text-center mt-1" style="font-weight: bold;">
-                {{ __('main.service_mode') }} : {{$serviceLabel}}
-            </h6>
-            <h6 class="text-center mt-1" style="font-weight: bold;">
-                {{ __('main.session_location') }} : {{$data->session_location ?? '-'}}
-            </h6>
+            <div class="meta-line">{{ __('main.service_mode') }} : {{$serviceLabel}}</div>
+            <div class="meta-line">{{ __('main.session_location') }} : {{$data->session_location ?? '-'}}</div>
             @if(!empty($data->pos_section_name))
-                <h6 class="text-center mt-1" style="font-weight: bold;">
-                    {{ __('main.section') ?? 'القسم' }} : {{$data->pos_section_name}}
-                </h6>
+                <div class="meta-line">{{ __('main.section') ?? 'القسم' }} : {{$data->pos_section_name}}</div>
             @endif
             @if(!empty($data->shift_opened_at))
-                <h6 class="text-center mt-1" style="font-weight: bold;">
-                    {{ __('main.shift') ?? 'الشفت' }} : {{$data->shift_opened_at}}
-                </h6>
+                <div class="meta-line">{{ __('main.shift') ?? 'الشفت' }} : {{$data->shift_opened_at}}</div>
             @endif
             @if(!empty($data->session_type))
-                <h6 class="text-center mt-1" style="font-weight: bold;">
-                    {{ __('main.session_type') }} : {{$data->session_type}}
-                </h6>
+                <div class="meta-line">{{ __('main.session_type') }} : {{$data->session_type}}</div>
             @endif
             @if(!empty($data->vehicle_plate) || !empty($data->vehicle_odometer))
-                <h6 class="text-center mt-1" style="font-weight: bold;">
-                    {{ __('main.vehicle_plate') }} : {{$data->vehicle_plate ?? '-'}}
-                </h6>
-                <h6 class="text-center mt-1" style="font-weight: bold;">
-                    {{ __('main.vehicle_odometer') }} : {{$data->vehicle_odometer ?? '-'}}
-                </h6>
+                <div class="meta-line">{{ __('main.vehicle_plate') }} : {{$data->vehicle_plate ?? '-'}}</div>
+                <div class="meta-line">{{ __('main.vehicle_odometer') }} : {{$data->vehicle_odometer ?? '-'}}</div>
             @endif
             @if(!empty($data->branch_phone))
-            <h6 class="text-center mt-1" style="font-weight: bold;">
-                هاتف الفرع / Branch Phone : {{$data->branch_phone}}
-            </h6> 
+                <div class="meta-line">هاتف الفرع / Branch Phone : {{$data->branch_phone}}</div>
             @endif
             @if(!empty($data->cr_number))
-            <h6 class="text-center mt-1" style="font-weight: bold;">
-                السجل التجاري / CR : {{$data->cr_number}}
-            </h6>
+                <div class="meta-line">السجل التجاري / CR : {{$data->cr_number}}</div>
             @endif
-            <h6 class="text-center mt-1" style="font-weight: bold;">
+            <div class="meta-line">
                 الرقم الضريبي / VAT :
                 @if(!empty($resolvedTaxNumber))
                     {{$resolvedTaxNumber}}
                 @else
                     <span class="tax-empty"></span>
                 @endif
-            </h6>
+            </div>
             <div class="clearfix"></div> 
-            <h6 class="text-center mt-1" style="font-weight: bold;">
+            <div class="meta-line">
+                رقم الفاتورة / Invoice No :
+                <span dir="ltr">{{$data->invoice_no}}</span>
+            </div>
+            <div class="meta-line">
                 التاريخ / Date :
-                <span dir="ltr"> 
-                    {{\Carbon\Carbon::parse($data->created_at)->format('Y-m-d H:i') }} 
-                </span>
-            </h6> 
+                <span dir="ltr">{{\Carbon\Carbon::parse($data->created_at)->format('Y-m-d H:i') }}</span>
+            </div>
             @if(empty($resolvedTaxNumber) && !empty($company->taxNumber))
-                <h6 class="text-center mt-1" style="font-weight: bold;">
-                    الرقم الضريبى / VAT : {{$company->taxNumber}}
-                </h6>
+                <div class="meta-line">الرقم الضريبى / VAT : {{$company->taxNumber}}</div>
             @endif 
             @if(!empty($company->registrationNumber))
-            <h6 class="text-center mt-1" style="font-weight: bold;">
-                السجل التجاري / CR : {{$company->registrationNumber}}
-            </h6>
+                <div class="meta-line">السجل التجاري / CR : {{$company->registrationNumber}}</div>
             @endif
         </div>
-        <div class="mt-2" style="text-align:right; direction:rtl; border:1px dashed #aaa; padding:6px;">
+        <div class="receipt-section" style="text-align:right; direction:rtl;">
             <strong>العميل / Customer:</strong> {{ optional($vendor)->name }}<br>
             @if(!empty(optional($vendor)->phone))
             <strong>جوال / Phone:</strong> {{ optional($vendor)->phone }}<br>
@@ -261,8 +256,8 @@
                     <tr> 
                         <th class="text-center">{{__('المنتج')}}<br>Product</th> 
                         <th class="text-center">{{__('main.quantity')}}<br>Qty</th>  
-                        <th class="text-center">{{__('main.Amount')}}<br>Amount</th>  
-                        <th class="text-center">{{__('main.discount')}}<br>Disc</th>  
+                        <th class="text-center">{{__('main.price.unit')}}<br>Price</th>
+                        <th class="text-center">{{__('main.total_with_tax')}}<br>Total</th>
     
                     </tr>
                 </thead>
@@ -271,6 +266,10 @@
                        $qty = 0;
                     @endphp
                     @foreach($details as $detail)
+                        @php
+                            $lineTax = (float) $detail->tax + (float) $detail->tax_excise;
+                            $lineTotal = (float) $detail->total + $lineTax - (float) ($detail->discount_unit ?? 0);
+                        @endphp
                         <tr> 
                             <td>
                                 {{ $detail->note ?: $detail->name }}
@@ -282,8 +281,8 @@
                                 @endif
                             </td> 
                             <td>{{$detail ->quantity }}</td>  
-                            <td>{{$detail ->total }}</td> 
-                            <td>{{ number_format($detail->discount_unit ?? 0,2) }}</td> 
+                            <td>{{ number_format($detail->price_unit,2) }}</td>
+                            <td>{{ number_format($lineTotal,2) }}</td> 
                         </tr>
                     @php
                        $qty = $qty + $detail ->quantity;
@@ -292,54 +291,54 @@
                 </tbody>
                 <tfoot> 
                     <tr>
-                        <th colspan="2" class="alert alert text-center">
+                        <th colspan="3" class="alert alert text-center">
                          {{__('main.total_without_tax')}} (Sub Total)
                         </th>
                         <th colspan="1" class="alert alert text-center">
-                          {{$data->total}}
+                          {{ number_format($data->total,2) }}
                         </th>
                     </tr>
                     <tr>
-                        <th colspan="2" class="alert alert text-center">
+                        <th colspan="3" class="alert alert text-center">
                          {{__('main.discount')}}  (Discount)
                         </th>
                         <th colspan="1" class="alert alert text-center">
-                           {{$data->discount}} -
+                           {{ number_format($data->discount,2) }}
                         </th>
                     </tr>
                     <tr>
-                        <th colspan="2" class="alert alert text-center">
+                        <th colspan="3" class="alert alert text-center">
                           {{__('main.promotions') ?? 'العروض الترويجية'}} (Promo)
                         </th>
                         <th colspan="1" class="alert alert text-center">
-                           {{ number_format($details->sum('discount_unit'),2) }} -
+                           {{ number_format($details->sum('discount_unit'),2) }}
                         </th>
                     </tr>
                     <tr>
-                        <th colspan="2" class="alert alert text-center">
+                        <th colspan="3" class="alert alert text-center">
                             {{__('main.vat_tax')}} (VAT)
                         </th>
                         <th colspan="1" class="alert alert text-center">
-                           {{$data->tax}} 
+                           {{ number_format($data->tax + $data->tax_excise,2) }}
                         </th>
                     </tr>
                     @if($data->tax_excise>0)
                     <tr>
-                        <th colspan="2" class="alert alert text-center">
+                        <th colspan="3" class="alert alert text-center">
                             {{__('main.tax_excise')}} (Tax Excise) 
                         </th>  
                         <th colspan="1" class="alert alert text-center">
-                            {{$data->tax_excise}}
+                            {{ number_format($data->tax_excise,2) }}
                         </th>
           
                     </tr>
                     @endif
                     <tr>
-                        <th colspan="2" class="alert alert text-center">
+                        <th colspan="3" class="alert alert text-center">
                             {{__('الاجمالي')}}  (ريال)
                         </th>
                         <th colspan="1" class="alert alert text-center">
-                            {{$data->net}}
+                            {{ number_format($data->net,2) }}
                         </th>
                     </tr>
 
@@ -358,11 +357,11 @@
                 </div>
             @endif
             @if(!empty($qrCodeImage))
-                <div class="visible-print text-center mt-1">
-                    <img src="{{$qrCodeImage}}" style="width: 150px; height: 150px;" alt="QR Code"/>
+                <div class="visible-print text-center mt-1 qr-wrap">
+                    <img src="{{$qrCodeImage}}" alt="QR Code"/>
                 </div>
             @endif
-            <hr style="border-top: 1px solid #000;">
+            <div class="receipt-section"></div>
             <div class="row" style="direction:rtl">
                 <div class="col-12 text-right">
                     <span> اسم البائع</span> <br>
