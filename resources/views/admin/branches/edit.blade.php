@@ -136,6 +136,64 @@
                             </select>
                         </div>
                     </div>
+                    <div class="row m-t-3 mb-3">
+                        <div class="col-12">
+                            <hr>
+                            <h6>{{ __('main.national_address') ?? 'العنوان الوطني' }}</h6>
+                        </div>
+                        <div class="col-md-4">
+                            <label>{{ __('main.national_address_short') ?? 'العنوان المختصر' }}</label>
+                            <input value="{{$branch->national_address_short}}" class="form-control mg-b-20" name="national_address_short" type="text">
+                        </div>
+                        <div class="col-md-4">
+                            <label>{{ __('main.national_address_building_no') ?? 'رقم المبنى' }}</label>
+                            <input value="{{$branch->national_address_building_no}}" class="form-control mg-b-20" name="national_address_building_no" type="text">
+                        </div>
+                        <div class="col-md-4">
+                            <label>{{ __('main.national_address_street') ?? 'الشارع' }}</label>
+                            <input value="{{$branch->national_address_street}}" class="form-control mg-b-20" name="national_address_street" type="text">
+                        </div>
+                        <div class="col-md-4">
+                            <label>{{ __('main.national_address_district') ?? 'الحي' }}</label>
+                            <input value="{{$branch->national_address_district}}" class="form-control mg-b-20" name="national_address_district" type="text">
+                        </div>
+                        <div class="col-md-4">
+                            <label>{{ __('main.national_address_city') ?? 'المدينة' }}</label>
+                            <input value="{{$branch->national_address_city}}" class="form-control mg-b-20" name="national_address_city" type="text">
+                        </div>
+                        <div class="col-md-4">
+                            <label>{{ __('main.national_address_region') ?? 'المنطقة' }}</label>
+                            <input value="{{$branch->national_address_region}}" class="form-control mg-b-20" name="national_address_region" type="text">
+                        </div>
+                        <div class="col-md-4">
+                            <label>{{ __('main.national_address_postal_code') ?? 'الرمز البريدي' }}</label>
+                            <input value="{{$branch->national_address_postal_code}}" class="form-control mg-b-20" name="national_address_postal_code" type="text">
+                        </div>
+                        <div class="col-md-4">
+                            <label>{{ __('main.national_address_additional_no') ?? 'الرقم الإضافي' }}</label>
+                            <input value="{{$branch->national_address_additional_no}}" class="form-control mg-b-20" name="national_address_additional_no" type="text">
+                        </div>
+                        <div class="col-md-4">
+                            <label>{{ __('main.national_address_unit_no') ?? 'رقم الوحدة' }}</label>
+                            <input value="{{$branch->national_address_unit_no}}" class="form-control mg-b-20" name="national_address_unit_no" type="text">
+                        </div>
+                        <div class="col-md-4">
+                            <label>{{ __('main.national_address_proof_no') ?? 'رقم إثبات العنوان' }}</label>
+                            <input value="{{$branch->national_address_proof_no}}" class="form-control mg-b-20" name="national_address_proof_no" type="text">
+                        </div>
+                        <div class="col-md-4">
+                            <label>{{ __('main.national_address_proof_issue_date') ?? 'تاريخ الإصدار' }}</label>
+                            <input value="{{ optional($branch->national_address_proof_issue_date)->format('Y-m-d') }}" class="form-control mg-b-20" name="national_address_proof_issue_date" type="date">
+                        </div>
+                        <div class="col-md-4">
+                            <label>{{ __('main.national_address_proof_expiry_date') ?? 'تاريخ الانتهاء' }}</label>
+                            <input value="{{ optional($branch->national_address_proof_expiry_date)->format('Y-m-d') }}" class="form-control mg-b-20" name="national_address_proof_expiry_date" type="date">
+                        </div>
+                        <div class="col-md-4">
+                            <label>{{ __('main.country') ?? 'الدولة' }}</label>
+                            <input value="{{$branch->national_address_country ?? 'SA'}}" class="form-control mg-b-20" name="national_address_country" type="text">
+                        </div>
+                    </div>
            
                     <div class="col-md-12">
                         <label> الحالة<span class="text-danger"> </span></label>

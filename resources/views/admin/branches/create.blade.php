@@ -80,6 +80,64 @@
                                 </select>
                             </div>
                         </div>  
+                        <div class="row m-t-3 mb-3">
+                            <div class="col-12">
+                                <hr>
+                                <h6>{{ __('main.national_address') ?? 'العنوان الوطني' }}</h6>
+                            </div>
+                            <div class="col-md-4">
+                                <label>{{ __('main.national_address_short') ?? 'العنوان المختصر' }}</label>
+                                <input class="form-control mg-b-20" name="national_address_short" type="text">
+                            </div>
+                            <div class="col-md-4">
+                                <label>{{ __('main.national_address_building_no') ?? 'رقم المبنى' }}</label>
+                                <input class="form-control mg-b-20" name="national_address_building_no" type="text">
+                            </div>
+                            <div class="col-md-4">
+                                <label>{{ __('main.national_address_street') ?? 'الشارع' }}</label>
+                                <input class="form-control mg-b-20" name="national_address_street" type="text">
+                            </div>
+                            <div class="col-md-4">
+                                <label>{{ __('main.national_address_district') ?? 'الحي' }}</label>
+                                <input class="form-control mg-b-20" name="national_address_district" type="text">
+                            </div>
+                            <div class="col-md-4">
+                                <label>{{ __('main.national_address_city') ?? 'المدينة' }}</label>
+                                <input class="form-control mg-b-20" name="national_address_city" type="text">
+                            </div>
+                            <div class="col-md-4">
+                                <label>{{ __('main.national_address_region') ?? 'المنطقة' }}</label>
+                                <input class="form-control mg-b-20" name="national_address_region" type="text">
+                            </div>
+                            <div class="col-md-4">
+                                <label>{{ __('main.national_address_postal_code') ?? 'الرمز البريدي' }}</label>
+                                <input class="form-control mg-b-20" name="national_address_postal_code" type="text">
+                            </div>
+                            <div class="col-md-4">
+                                <label>{{ __('main.national_address_additional_no') ?? 'الرقم الإضافي' }}</label>
+                                <input class="form-control mg-b-20" name="national_address_additional_no" type="text">
+                            </div>
+                            <div class="col-md-4">
+                                <label>{{ __('main.national_address_unit_no') ?? 'رقم الوحدة' }}</label>
+                                <input class="form-control mg-b-20" name="national_address_unit_no" type="text">
+                            </div>
+                            <div class="col-md-4">
+                                <label>{{ __('main.national_address_proof_no') ?? 'رقم إثبات العنوان' }}</label>
+                                <input class="form-control mg-b-20" name="national_address_proof_no" type="text">
+                            </div>
+                            <div class="col-md-4">
+                                <label>{{ __('main.national_address_proof_issue_date') ?? 'تاريخ الإصدار' }}</label>
+                                <input class="form-control mg-b-20" name="national_address_proof_issue_date" type="date">
+                            </div>
+                            <div class="col-md-4">
+                                <label>{{ __('main.national_address_proof_expiry_date') ?? 'تاريخ الانتهاء' }}</label>
+                                <input class="form-control mg-b-20" name="national_address_proof_expiry_date" type="date">
+                            </div>
+                            <div class="col-md-4">
+                                <label>{{ __('main.country') ?? 'الدولة' }}</label>
+                                <input class="form-control mg-b-20" name="national_address_country" type="text" value="SA">
+                            </div>
+                        </div>
                         <div class="row">
                             <div class="col-xs-12 col-sm-12 col-md-12 text-center">
                                 <button class="btn btn-info pd-x-20" type="submit">

@@ -199,15 +199,24 @@ class ZatcaInvoiceService
             ?? $settings?->company_name
             ?? ($sale->branch?->branch_name ?? config('app.name'));
 
+        $branch = $sale->branch;
+        $supplierStreet = $supplier['street'] ?? $branch?->national_address_street ?? $branch?->branch_address ?? 'N/A';
+        $supplierBuilding = $supplier['building_number'] ?? $branch?->national_address_building_no ?? '0000';
+        $supplierPlot = $supplier['plot'] ?? $branch?->national_address_additional_no ?? '0000';
+        $supplierSubdivision = $supplier['subdivision'] ?? $branch?->national_address_district ?? $branch?->branch_name ?? 'N/A';
+        $supplierCity = $supplier['city'] ?? $branch?->national_address_city ?? $branch?->branch_name ?? 'Riyadh';
+        $supplierPostal = $supplier['postal_code'] ?? $branch?->national_address_postal_code ?? '00000';
+        $supplierCountry = $supplier['country'] ?? $branch?->national_address_country ?? 'SA';
+
         return (new Supplier())
             ->setCrn($supplier['cr_number'] ?? $sale->branch?->cr_number ?? 'N/A')
-            ->setStreetName($supplier['street'] ?? $sale->branch?->branch_address ?? 'N/A')
-            ->setBuildingNumber($supplier['building_number'] ?? '0000')
-            ->setPlotIdentification($supplier['plot'] ?? '0000')
-            ->setSubDivisionName($supplier['subdivision'] ?? $sale->branch?->branch_name ?? 'N/A')
-            ->setCityName($supplier['city'] ?? $sale->branch?->branch_name ?? 'Riyadh')
-            ->setPostalNumber($supplier['postal_code'] ?? '00000')
-            ->setCountryName($supplier['country'] ?? 'SA')
+            ->setStreetName($supplierStreet)
+            ->setBuildingNumber($supplierBuilding)
+            ->setPlotIdentification($supplierPlot)
+            ->setSubDivisionName($supplierSubdivision)
+            ->setCityName($supplierCity)
+            ->setPostalNumber($supplierPostal)
+            ->setCountryName($supplierCountry)
             ->setVatNumber($supplier['vat_number'] ?? $settings?->tax_number ?? $config['vat_number'])
             ->setVatName($supplierName);
     }

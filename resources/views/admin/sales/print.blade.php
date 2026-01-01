@@ -29,6 +29,7 @@
     </title>
     <meta charset="utf-8"/>
     <link href="{{asset('/assets/css/bootstrap.min.css')}}" rel="stylesheet"/>
+    <link href="{{asset('/assets/css/invoice-print.css')}}" rel="stylesheet" media="print"/>
     <style type="text/css" media="screen">
         @font-face {
             font-family: 'Almarai';
@@ -157,52 +158,7 @@
             z-index: 9999;
         }
     </style>
-    <style type="text/css" media="print">
-        @page {
-            size: A4;
-            margin: 10mm;
-        }
-        body, html {
-            padding: 0;
-            margin: 0;
-            font-size: 12px !important;
-            font-weight: 600;
-            width: auto;
-            height: auto;
-            min-width: 0 !important;
-            line-height: 1.4;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-        }
-        .invoice-page {
-            width: 100%;
-            max-width: 190mm;
-            min-height: 0;
-            margin: 0 auto;
-            padding: 0;
-            box-sizing: border-box;
-            transform: none !important;
-        }
-        .header-table,
-        .info-table,
-        .items-table,
-        .summary-table {
-            width: 100% !important;
-            border-collapse: collapse !important;
-        }
-        .info-table td,
-        .info-table th,
-        .items-table th,
-        .items-table td,
-        .summary-table td {
-            border: 1px solid #000 !important;
-            background: #fff !important;
-            padding: 6px 8px !important;
-        }
-        .no-print {
-            display: none;
-        }
-    </style>
+    <style type="text/css" media="print"></style>
 </head>
 <body dir="rtl" style="background: #fff;">
 <div class="invoice-page">

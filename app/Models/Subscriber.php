@@ -11,7 +11,11 @@ class Subscriber extends Model
     use HasFactory;
 
     protected $fillable = [
-        'company_name','cr_number','tax_number','responsible_person','contact_email','contact_phone',
+        'company_name','cr_number','tax_number','national_id',
+        'national_address_short','national_address_building_no','national_address_street','national_address_district',
+        'national_address_city','national_address_region','national_address_postal_code','national_address_additional_no',
+        'national_address_unit_no','national_address_proof_no','national_address_proof_issue_date','national_address_proof_expiry_date',
+        'responsible_person','contact_email','contact_phone',
         'address','system_url','users_limit','subscription_start','subscription_end','status','notes','created_by',
         'login_email','login_password','login_password_plain','user_id','is_trial','trial_starts_at','trial_ends_at'
     ];
@@ -22,6 +26,8 @@ class Subscriber extends Model
         'trial_starts_at' => 'date',
         'trial_ends_at' => 'date',
         'is_trial' => 'boolean',
+        'national_address_proof_issue_date' => 'date',
+        'national_address_proof_expiry_date' => 'date',
     ];
 
     public function renewals()
