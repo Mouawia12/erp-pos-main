@@ -24,6 +24,10 @@
         $vatTotal = (float) $data->tax + (float) $data->tax_excise;
         $amountDue = (float) $data->net - (float) $data->paid;
         $logoPath = !empty($company?->logo) ? asset('uploads/profiles/' . $company->logo) : asset('assets/img/logo.png');
+        $customerDisplayName = $vendor?->company ?: ($vendor?->name ?? '-');
+        if (!empty($vendor?->company) && !empty($vendor?->name)) {
+            $customerDisplayName = $vendor->company . ' - ' . $vendor->name;
+        }
     @endphp
     {{$titleAr}} {{$data->id}}
     </title>
@@ -220,9 +224,9 @@
             <table class="info-table">
                 <tr>
                     <th>العميل</th>
-                    <td>{{ $vendor->name ?? '-' }}</td>
+                    <td>{{ $customerDisplayName }}</td>
                     <th class="text-ltr">Customer</th>
-                    <td class="text-ltr">{{ $vendor->name ?? '-' }}</td>
+                    <td class="text-ltr">{{ $customerDisplayName }}</td>
                 </tr>
                 <tr>
                     <th>الرقم الضريبي</th>

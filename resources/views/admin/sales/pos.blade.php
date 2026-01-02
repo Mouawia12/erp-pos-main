@@ -282,14 +282,20 @@ label.total {
                                     <div class="form-group">  
                                         <select id="customer_id" name="customer_id" class="js-example-basic-single w-100 pos-input" required>
                                             @foreach($vendors as $vendor)
+                                                @php
+                                                    $vendorLabel = $vendor->company ?: $vendor->name;
+                                                    if ($vendor->company && $vendor->name) {
+                                                        $vendorLabel = $vendor->company . ' - ' . $vendor->name;
+                                                    }
+                                                @endphp
                                                 <option value="{{$vendor -> id}}"
                                                     data-default-discount="{{$vendor->default_discount ?? 0}}"
                                                     data-phone="{{$vendor->phone ?? ''}}"
                                                     data-address="{{$vendor->address ?? ''}}"
                                                     data-tax="{{$vendor->tax_number ?? ''}}"
-                                                    data-name="{{$vendor->name}}"
+                                                    data-name="{{$vendorLabel}}"
                                                     data-representative="{{$vendor->representative_id_ ?? ''}}">
-                                                    {{$vendor -> name}} @if($vendor->phone) - {{$vendor->phone}} @endif @if($vendor->address) - {{$vendor->address}} @endif @if($vendor->tax_number) - {{$vendor->tax_number}} @endif
+                                                    {{$vendorLabel}} @if($vendor->phone) - {{$vendor->phone}} @endif @if($vendor->address) - {{$vendor->address}} @endif @if($vendor->tax_number) - {{$vendor->tax_number}} @endif
                                                 </option>
                                             @endforeach
                                         </select> 

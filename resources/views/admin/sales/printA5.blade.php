@@ -73,7 +73,13 @@
 
         <table class="no-border">
             <tr>
-                <td>{{ __('main.clients') }}: {{ $vendor->name ?? '' }}</td>
+                @php
+                    $customerDisplayName = $vendor?->company ?: ($vendor?->name ?? '');
+                    if (!empty($vendor?->company) && !empty($vendor?->name)) {
+                        $customerDisplayName = $vendor->company . ' - ' . $vendor->name;
+                    }
+                @endphp
+                <td>{{ __('main.clients') }}: {{ $customerDisplayName }}</td>
                 <td>{{ __('main.branche') }}: {{ $data->branch_name }}</td>
             </tr>
             <tr>

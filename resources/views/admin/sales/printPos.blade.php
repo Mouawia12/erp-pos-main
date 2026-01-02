@@ -227,7 +227,13 @@
             @endif
         </div>
         <div class="receipt-section" style="text-align:right; direction:rtl;">
-            <strong>العميل / Customer:</strong> {{ optional($vendor)->name }}<br>
+            @php
+                $customerDisplayName = optional($vendor)->company ?: (optional($vendor)->name ?? '');
+                if (!empty(optional($vendor)->company) && !empty(optional($vendor)->name)) {
+                    $customerDisplayName = optional($vendor)->company . ' - ' . optional($vendor)->name;
+                }
+            @endphp
+            <strong>العميل / Customer:</strong> {{ $customerDisplayName }}<br>
             @if(!empty(optional($vendor)->phone))
             <strong>جوال / Phone:</strong> {{ optional($vendor)->phone }}<br>
             @endif

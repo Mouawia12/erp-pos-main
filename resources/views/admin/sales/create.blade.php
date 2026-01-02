@@ -126,12 +126,18 @@ span strong {font-size:12px;}
                                 <select class="js-example-basic-single w-100"
                                     name="customer_id" id="customer_id" required data-walk-in="{{ optional($walkInCustomer)->id }}">
                                     @foreach ($customers as $customer)
+                                        @php
+                                            $customerLabel = $customer->company ?: $customer->name;
+                                            if ($customer->company && $customer->name) {
+                                                $customerLabel = $customer->company . ' - ' . $customer->name;
+                                            }
+                                        @endphp
                                         <option value="{{$customer -> id}}"
                                                 data-default-discount="{{$customer->default_discount ?? 0}}"
                                                 data-representative="{{$customer->representative_id_ ?? ''}}"
                                                 data-cost-center-id="{{$customer->cost_center_id ?? ''}}"
                                                 @if($selectedCustomer == $customer->id) selected @endif>
-                                            {{ $customer -> name}}
+                                            {{ $customerLabel }}
                                             @if(!empty($walkInCustomer) && $walkInCustomer->id === $customer->id)
                                                 ({{ __('main.walk_in_customer') }})
                                             @endif
