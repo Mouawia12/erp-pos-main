@@ -61,6 +61,7 @@ use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\SubscriberController;
 use App\Http\Controllers\Admin\InvoiceTermTemplateController;
 use App\Http\Controllers\Admin\ZatcaController;
+use App\Http\Controllers\Admin\InvoiceController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -398,6 +399,8 @@ Route::group(
     Route::get('/get-sales-return-number/{type}/{id}', [SalesController::class, 'get_return_sales_pos_no'])->name('get.sale.return.no');
     Route::get('/preview_sales/{id}', [SalesController::class, 'show'])->name('preview_sales');
     Route::get('/print-sales/{id}', [SalesController::class, 'print'])->name('print.sales');
+    Route::get('/invoices/{invoice}/print', [InvoiceController::class, 'print'])->name('invoice.print');
+    Route::get('/invoices/{invoice}/pdf', [InvoiceController::class, 'pdf'])->name('invoice.pdf');
     Route::get('/get-sales/{id}', [SalesController::class, 'get_sales'])->name('get.sales');
     Route::get('/pos', [SalesController::class, 'pos'])->name('pos');
     Route::get('/print_last_pos', [SalesController::class, 'print_last_pos'])->name('print_last_pos');

@@ -1218,14 +1218,22 @@ class SalesController extends Controller
         }
 
         if ($format === 'a4') {
-            return view('admin.sales.print', $payload)->render();
+            $payload['logoDataUri'] = $this->resolveLogoDataUri($payload['company'] ?? null);
+            $payload['fontDataUri'] = $this->resolveFontDataUri();
+            $payload['isPdf'] = false;
+
+            return view('invoices.print', $payload)->render();
         }
 
         if ($payload['data']->pos == 1) {
             return view('admin.sales.printPos', $payload)->render();
         }
 
-        return view('admin.sales.print', $payload)->render();
+        $payload['logoDataUri'] = $this->resolveLogoDataUri($payload['company'] ?? null);
+        $payload['fontDataUri'] = $this->resolveFontDataUri();
+        $payload['isPdf'] = false;
+
+        return view('invoices.print', $payload)->render();
     }
 
     public function get_sales($code)
@@ -1329,6 +1337,38 @@ class SalesController extends Controller
         $qrCodeImage = $this->buildInvoiceQr($data, $company, $resolvedTaxNumber, $trialMode);
 
         return compact('data','details','vendor','cashier','payments','company','settings','posSettings','subscriber','trialMode','resolvedTaxNumber','qrCodeImage');
+    }
+
+    private function resolveLogoDataUri(?\App\Models\CompanyInfo $company): ?string
+    {
+        $logoPath = null;
+        if ($company && !empty($company->logo)) {
+            $logoPath = public_path('uploads/profiles/' . $company->logo);
+        }
+        if (! $logoPath || ! file_exists($logoPath)) {
+            $logoPath = public_path('assets/img/logo.png');
+        }
+        if (! file_exists($logoPath)) {
+            return null;
+        }
+
+        $ext = pathinfo($logoPath, PATHINFO_EXTENSION) ?: 'png';
+        $mime = $ext === 'jpg' ? 'image/jpeg' : 'image/' . $ext;
+        $data = base64_encode(file_get_contents($logoPath));
+
+        return 'data:' . $mime . ';base64,' . $data;
+    }
+
+    private function resolveFontDataUri(): ?string
+    {
+        $fontPath = public_path('fonts/Almarai.ttf');
+        if (! file_exists($fontPath)) {
+            return null;
+        }
+
+        $data = base64_encode(file_get_contents($fontPath));
+
+        return 'data:font/ttf;base64,' . $data;
     }
 
     private function resolveTaxNumber($sale, ?Subscriber $subscriber, ?CompanyInfo $company, ?SystemSettings $settings): ?string

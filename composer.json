@@ -6,6 +6,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.1",
+        "barryvdh/laravel-dompdf": "*",
         "guzzlehttp/guzzle": "^7.2",
         "laravel/framework": "^10.10",
         "laravel/sanctum": "^3.3",
@@ -14,6 +15,7 @@
         "mcamara/laravel-localization": "^2.0",
         "phpseclib/phpseclib": "^3.0",
         "salla/zatca": "^2.0",
+        "spatie/browsershot": "^5.2",
         "spatie/laravel-permission": "^6.4",
         "yajra/laravel-datatables": "10.0",
         "yajra/laravel-datatables-buttons": "10.0"

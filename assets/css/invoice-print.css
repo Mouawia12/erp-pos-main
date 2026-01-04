@@ -4,25 +4,43 @@
 }
 
 @media print {
+    /* Debug: uncomment if print CSS not applied */
+    /* body { outline: 5px solid red !important; } */
+
+    .container,
+    .container-fluid {
+        min-width: 0 !important;
+        width: auto !important;
+    }
+
     html, body {
         margin: 0;
         padding: 0;
         width: auto;
         height: auto;
         font-family: "Almarai", "Tahoma", "Arial", sans-serif;
-        font-size: 12px;
+        font-size: 12pt !important;
         font-weight: 600;
-        line-height: 1.4;
+        line-height: 1.35 !important;
+        min-width: 0 !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
     }
 
     .invoice-page {
-        width: 100%;
-        max-width: 190mm;
+        width: 190mm !important;
+        max-width: 190mm !important;
         margin: 0 auto;
         padding: 0;
         box-sizing: border-box;
+    }
+
+    table, th, td {
+        font-size: 11pt !important;
+    }
+
+    .table-responsive {
+        overflow: visible !important;
     }
 
     .header-table,
@@ -31,6 +49,7 @@
     .summary-table {
         width: 100%;
         border-collapse: collapse;
+        table-layout: fixed;
         page-break-inside: avoid;
     }
 
@@ -50,6 +69,7 @@
         border: 1px solid #000;
         background: #fff;
         padding: 6px 8px;
+        word-break: break-word;
     }
 
     .items-table thead {
@@ -70,14 +90,18 @@
     }
 
     .info-qr {
-        width: 140px;
+        width: 35mm !important;
         text-align: center;
         vertical-align: top;
     }
 
-    .info-qr img {
-        width: 120px;
-        height: 120px;
+    .info-qr img,
+    .info-qr canvas,
+    .info-qr svg {
+        width: 35mm !important;
+        height: 35mm !important;
+        max-width: 35mm !important;
+        max-height: 35mm !important;
         display: inline-block;
     }
 }
