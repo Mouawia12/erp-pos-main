@@ -3,6 +3,16 @@
     margin: 10mm;
 }
 
+body {
+    font-family: "DejaVu Sans", "Cairo", "Almarai", sans-serif;
+    font-size: 12px;
+}
+
+.invoice {
+    width: 190mm;
+    margin: auto;
+}
+
 @media print {
     /* Debug: uncomment if print CSS not applied */
     /* body { outline: 5px solid red !important; } */

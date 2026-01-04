@@ -49,7 +49,6 @@ class InvoiceController extends Controller
         $payload['logoDataUri'] = $this->resolveLogoDataUri($payload['company'] ?? null);
         $payload['fontDataUri'] = $this->resolveFontDataUri();
 
-        $html = view('invoices.print', $payload)->render();
         $storageDir = storage_path('app/invoices');
         if (! is_dir($storageDir)) {
             mkdir($storageDir, 0755, true);
@@ -58,30 +57,39 @@ class InvoiceController extends Controller
         $safeRef = preg_replace('/[^A-Za-z0-9._-]/', '-', (string) $invoiceRef);
         $path = $storageDir . '/invoice-' . $safeRef . '.pdf';
 
-        $shot = Browsershot::html($html)
-            ->format('A4')
-            ->margins(10, 10, 10, 10)
-            ->showBackground()
-            ->waitUntilNetworkIdle()
-            ->setOption('args', [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-gpu',
-                '--no-zygote',
-                '--single-process',
-                '--disable-dev-shm-usage',
-            ])
-            ->setOption('timeout', 120000)
-            ->setOption('protocolTimeout', 120000);
+        try {
+            $url = route('invoice.print', $invoice->id);
+            $shot = Browsershot::url($url)
+                ->setChromePath(env('BROWSERSHOT_CHROME_PATH'))
+                ->noSandbox()
+                ->addChromiumArguments([
+                    '--disable-gpu',
+                    '--disable-dev-shm-usage',
+                    '--no-zygote',
+                    '--single-process',
+                ])
+                ->format('A4')
+                ->margins(10, 10, 10, 10)
+                ->printBackground()
+                ->waitUntilNetworkIdle()
+                ->setOption('timeout', 120000)
+                ->setOption('protocolTimeout', 120000);
 
-        $chromePath = env('BROWSERSHOT_CHROME_PATH');
-        if ($chromePath) {
-            $shot->setChromePath($chromePath);
+            $cookieHeader = request()->header('Cookie');
+            if ($cookieHeader) {
+                $shot->setOption('extraHTTPHeaders', ['Cookie' => $cookieHeader]);
+            }
+
+            $shot->save($path);
+
+            return response()->download($path);
+        } catch (\Throwable $e) {
+            \Log::error('Browsershot PDF failed', ['invoice_id' => $invoice->id, 'error' => $e->getMessage()]);
+
+            return redirect()
+                ->route('invoice.print', $invoice->id)
+                ->with('pdf_error', 'تعذر إنشاء ملف PDF حاليًا، يمكنك الطباعة مباشرة من المتصفح.');
         }
-
-        $shot->save($path);
-
-        return response()->download($path);
     }
 
     private function getPrintPayload(int $id): ?array

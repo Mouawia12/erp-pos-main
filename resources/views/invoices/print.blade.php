@@ -30,6 +30,7 @@
         $logoSrc = $logoDataUri ?? asset('assets/img/logo.png');
     @endphp
     <title>{{ $titleAr }} {{ $data->id }}</title>
+    <link href="{{ asset('/assets/css/invoice-print.css') }}" rel="stylesheet"/>
     <style>
         @page {
             size: A4;
@@ -161,10 +162,22 @@
                 display: none !important;
             }
         }
+        .alert {
+            padding: 8px 12px;
+            margin: 8px 0;
+            border: 1px solid #e1b12c;
+            background: #fff7d6;
+            color: #6b4e00;
+            font-size: 11pt;
+            text-align: center;
+        }
     </style>
 </head>
 <body dir="rtl">
 <div class="invoice">
+    @if(session('pdf_error'))
+        <div class="alert">{{ session('pdf_error') }}</div>
+    @endif
     @if($trialMode ?? false)
         <div class="trial-watermark">
             نسخة تجريبية - لا يمكن استخدام هذه الفاتورة لأغراض ضريبية رسمية
