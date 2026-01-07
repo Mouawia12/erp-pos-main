@@ -122,6 +122,9 @@ class CompanyController extends Controller
     public function store(Request $request)
     {
         $subscriberId = Auth::user()->subscriber_id;
+        if ((int) $request->account_id === 0) {
+            $request->merge(['account_id' => null]);
+        }
 
         if ($request -> id == 0){
             $validated = $request->validate([
@@ -274,6 +277,9 @@ class CompanyController extends Controller
     public function update(Request  $request)
     {
         $subscriberId = Auth::user()->subscriber_id;
+        if ((int) $request->account_id === 0) {
+            $request->merge(['account_id' => null]);
+        }
         $company = Company::query()
             ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
             ->findOrFail($request -> id);

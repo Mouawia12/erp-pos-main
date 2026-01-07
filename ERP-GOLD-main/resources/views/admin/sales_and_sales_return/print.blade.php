@@ -47,6 +47,12 @@
             text-align: center;
             width: 100% !important;
             margin-top: 10px !important;
+            table-layout: fixed;
+            font-size: 12px;
+        }
+        table th, table td {
+            padding: 2px 4px;
+            line-height: 1.2;
         }
         div#sales-header { 
             border: 2px solid #eee;
@@ -63,6 +69,12 @@
             text-align: center;
             width: 100% !important;
             margin-top: 10px !important;
+            table-layout: fixed;
+            font-size: 10px;
+        }
+        table th, table td {
+            padding: 2px 4px;
+            line-height: 1.2;
         }
 
         table thead tr, table tbody tr {
@@ -208,8 +220,6 @@
                     <br>(Gram Price) </th>
                 <th class="text-center " >الإجمالي
                     <br>(Total)</th>
-                <th class="text-center " >الضريبة
-                    <br> (Vat) </th>
                 <th class="text-center " >الإجمالي شامل الضريبة
                     <br>(Total With Vat)</th>
             </tr>
@@ -231,7 +241,6 @@
                     <td class="text-center"> {{ $detail->no_metal_type == 'fixed' ? $detail->no_metal : $weight * ($detail->no_metal / 100) }} </td>
                     <td class="text-center" > {{round($detail->unit_price, 2) }} </td>
                     <td class="text-center"> {{ round((float)$detail->line_total, 2) }} </td>
-                    <td class="text-center"> {{round($detail->line_tax, 2) }} </td>
                     <td class="text-center"> {{round($detail->round_net_total, 2)}} </td>
                 </tr>
             @endforeach 

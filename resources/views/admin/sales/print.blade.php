@@ -116,6 +116,12 @@
             background: #f2f2f2;
             font-weight: 700;
         }
+        .items-table th,
+        .items-table td {
+            padding: 4px 6px;
+            font-size: 11px;
+            line-height: 1.2;
+        }
         .info-row {
             display: table;
             width: 100%;
@@ -296,12 +302,10 @@
     <table class="items-table" style="direction: rtl;">
         <thead>
             <tr>
-                <th>#</th>
                 <th>المنتجات<br><span class="text-ltr">Products</span></th>
                 <th>الكمية<br><span class="text-ltr">Quantity</span></th>
                 <th>سعر الوحدة<br><span class="text-ltr">Unit price</span></th>
                 <th>المبلغ الخاضع للضريبة<br><span class="text-ltr">Taxable Amount</span></th>
-                <th>نسبة الضريبة<br><span class="text-ltr">Tax Rate</span></th>
                 <th>مبلغ الضريبة<br><span class="text-ltr">VAT Amount</span></th>
                 <th>الإجمالي شامل الضريبة<br><span class="text-ltr">Subtotal (Inc. VAT)</span></th>
             </tr>
@@ -310,11 +314,9 @@
             @foreach($details as $detail)
                 @php
                     $lineTax = (float) $detail->tax + (float) $detail->tax_excise;
-                    $lineRate = (float) $detail->taxRate + (float) $detail->taxExciseRate;
                     $lineSubtotal = (float) $detail->total + $lineTax - (float) ($detail->discount_unit ?? 0);
                 @endphp
                 <tr>
-                    <td>{{ $loop->index + 1 }}</td>
                     <td>
                         {{ $detail->note ?: $detail->name }} @if(!empty($detail->code)) - {{ $detail->code }} @endif
                         @if(!empty($detail->variant_color) || !empty($detail->variant_size))
@@ -327,7 +329,6 @@
                     <td class="text-ltr">{{ $detail->quantity }}</td>
                     <td class="text-ltr">{{ number_format($detail->price_unit,2) }}</td>
                     <td class="text-ltr">{{ number_format($detail->total,2) }}</td>
-                    <td class="text-ltr">%{{ number_format($lineRate,2) }}</td>
                     <td class="text-ltr">{{ number_format($lineTax,2) }}</td>
                     <td class="text-ltr">{{ number_format($lineSubtotal,2) }}</td>
                 </tr>

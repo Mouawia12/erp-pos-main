@@ -47,6 +47,12 @@
             text-align: center;
             width: 100% !important;
             margin-top: 10px !important;
+            table-layout: fixed;
+            font-size: 12px;
+        }
+        table th, table td {
+            padding: 2px 4px;
+            line-height: 1.2;
         }
         div#sales-header { 
             border: 2px solid #eee;
@@ -63,6 +69,12 @@
             text-align: center;
             width: 100% !important;
             margin-top: 10px !important;
+            table-layout: fixed;
+            font-size: 10px;
+        }
+        table th, table td {
+            padding: 2px 4px;
+            line-height: 1.2;
         }
 
         table thead tr, table tbody tr {
@@ -182,8 +194,6 @@
 				<th class="text-center " >العدد  
                     <br>(Count Item)</th>
                 <th class="text-center " >اجمالي الاجور</th>
-                <th class="text-center " >الضريبة
-                    <br> (Vat) </th>
                 <th class="text-center " >الإجمالي شامل الضريبة
                     <br>(Total With Vat)</th>
             </tr>
@@ -202,32 +212,31 @@
                     <td class="text-center"> {{$weight}} </td>
 					<td class="text-center"> 1 </td>
                     <td class="text-center"> {{ round($detail->line_total, 2)}} </td>
-                    <td class="text-center"> {{round($detail->line_tax, 2) }} </td>
                     <td class="text-center"> {{round($detail->net_total, 2)}} </td>
                 </tr>
             @endforeach 
             <tr>
                 <td class="text-center" colspan="2">{{round($invoice -> lines_total, 2)}}</td>
-                <td class="text-center" colspan="4"> الاجمالي قبل الضريبة   (Total Without Vat)</td>
-                <td class="text-center" colspan="3" rowspan="2" >ملاحظات الفاتورة</td>
+                <td class="text-center" colspan="2"> الاجمالي قبل الضريبة   (Total Without Vat)</td>
+                <td class="text-center" colspan="2" rowspan="2" >ملاحظات الفاتورة</td>
             </tr>
             <tr>
                 <td class="text-center" colspan="2">{{$invoice -> discount_total}}  </td>
-                <td class="text-center" colspan="4"> الخصم (Discount Value)</td> 
+                <td class="text-center" colspan="2"> الخصم (Discount Value)</td> 
             </tr>
             <tr>
                 <td class="text-center" colspan="2">{{round($invoice -> taxes_total, 2)}}</td>
-                <td class="text-center" colspan="4"> ضريبة القيمة المضافة  (Add Value Vat)</td>
-                <td class="text-center" colspan="3" rowspan="3" >  </td>
+                <td class="text-center" colspan="2"> ضريبة القيمة المضافة  (Add Value Vat)</td>
+                <td class="text-center" colspan="2" rowspan="3" >  </td>
             </tr> 
             <tr>
                 <td class="text-center"  colspan="2">{{round($invoice -> net_total, 2)}}</td>
-                <td class="text-center"  colspan="4"> قيمة الفاتورة
+                <td class="text-center"  colspan="2"> قيمة الفاتورة
                     <br>(Total)
                 </td>   
             </tr>
             <tr>
-                <td class="text-center"  colspan="9">{{' '}}</td>
+                <td class="text-center"  colspan="6">{{' '}}</td>
             </tr> 
             </tbody>
         </table> 
