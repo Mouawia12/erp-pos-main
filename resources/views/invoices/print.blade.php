@@ -7,12 +7,6 @@
         if ($data->invoice_type == 'simplified_tax_invoice') $typeLabel = __('main.invoice_type_simplified');
         if ($data->invoice_type == 'non_tax_invoice') $typeLabel = __('main.invoice_type_nontax');
         $isReturn = ($data->sale_id ?? 0) > 0;
-        $serviceLabels = [
-            'dine_in' => __('main.service_mode_dine_in'),
-            'takeaway' => __('main.service_mode_takeaway'),
-            'delivery' => __('main.service_mode_delivery'),
-        ];
-        $serviceLabel = $serviceLabels[$data->service_mode ?? 'dine_in'] ?? __('main.service_mode_dine_in');
         $titleAr = $isReturn ? 'إشعار خصم' : $typeLabel;
         $titleEn = $isReturn ? 'Credit Note' : (
             $data->invoice_type == 'simplified_tax_invoice' ? 'Simplified Tax Invoice' :
@@ -21,7 +15,14 @@
         $promoDiscount = (float) $details->sum('discount_unit');
         $taxableAmount = (float) $data->total - (float) $data->discount - $promoDiscount;
         $vatTotal = (float) $data->tax + (float) $data->tax_excise;
-        $amountDue = (float) $data->net - (float) $data->paid;
+        $paymentMethodMap = [
+            'cash' => ['نقدي', __('main.cash') ?? 'Cash'],
+            'network' => ['شبكة', __('main.network') ?? __('main.visa') ?? 'Network'],
+            'cash_network' => ['نقدي - شبكة', (__('main.cash') ?? 'Cash') . ' + ' . (__('main.network') ?? __('main.visa') ?? 'Network')],
+            'credit' => ['أجل', __('main.credit') ?? 'Credit'],
+        ];
+        $paymentMethodKey = $data->payment_method ?? null;
+        $paymentMethodLabels = $paymentMethodMap[$paymentMethodKey] ?? null;
         $customerDisplayName = $vendor?->company ?: ($vendor?->name ?? '-');
         if (!empty($vendor?->company) && !empty($vendor?->name)) {
             $customerDisplayName = $vendor->company . ' - ' . $vendor->name;
@@ -71,10 +72,10 @@
         }
         th, td {
             border: 1px solid var(--border);
-            padding: 6px 8px;
+            padding: 4px 6px;
             text-align: center;
             vertical-align: middle;
-            font-size: 11pt;
+            font-size: 10.5pt;
         }
         tr {
             page-break-inside: avoid;
@@ -86,6 +87,10 @@
         .header-block {
             font-size: 11pt;
             line-height: 1.5;
+        }
+        .header-name {
+            font-size: 15pt;
+            font-weight: 700;
         }
         .header-center {
             text-align: center;
@@ -193,38 +198,45 @@
     <table class="header-table section-no-break">
         <tr>
             <td class="header-block" dir="ltr">
-                <div><strong>{{ $company?->name_en ?? '' }}</strong></div>
-                @if(!empty($company?->registrationNumber))
-                    <div>CR No. <span class="text-ltr">{{ $company->registrationNumber }}</span></div>
-                @endif
-                <div>VAT No. <span class="text-ltr">{{ $resolvedTaxNumber ?? '' }}</span></div>
-                @if(!empty($data->branch_phone))
-                    <div>Phone <span class="text-ltr">{{ $data->branch_phone }}</span></div>
+                @if(!empty($company?->name_en))
+                    <div class="header-name">{{ $company->name_en }}</div>
                 @endif
                 @if(!empty($data->branch_address))
                     <div>{{ $data->branch_address }}</div>
+                @endif
+                @if(!empty($resolvedTaxNumber))
+                    <div class="text-ltr">{{ $resolvedTaxNumber }}</div>
+                @endif
+                @php
+                    $crNumber = $company?->registrationNumber ?? $data->cr_number ?? null;
+                @endphp
+                @if(!empty($crNumber))
+                    <div class="text-ltr">{{ $crNumber }}</div>
+                @endif
+                @if(!empty($data->branch_phone))
+                    <div class="text-ltr">{{ $data->branch_phone }}</div>
                 @endif
             </td>
             <td class="header-center">
                 @if(!empty($logoSrc))
                     <img src="{{ $logoSrc }}" alt="Logo" class="company-logo"/>
                 @endif
-                <div><strong>{{ $company?->name_ar ?? $data->branch_name }}</strong></div>
-                @if(!empty($company?->faild_ar))
-                    <div style="color: var(--muted);">{{ $company->faild_ar }}</div>
-                @endif
             </td>
             <td class="header-block" dir="rtl">
-                <div><strong>{{ $company?->name_ar ?? '' }}</strong></div>
-                @if(!empty($data->cr_number))
-                    <div>السجل التجاري: <span class="text-ltr">{{ $data->cr_number }}</span></div>
-                @endif
-                <div>الرقم الضريبي: <span class="text-ltr">{{ $resolvedTaxNumber ?? '' }}</span></div>
-                @if(!empty($data->branch_phone))
-                    <div>هاتف الفرع: <span class="text-ltr">{{ $data->branch_phone }}</span></div>
+                @if(!empty($company?->name_ar ?? $data->branch_name))
+                    <div class="header-name">{{ $company?->name_ar ?? $data->branch_name }}</div>
                 @endif
                 @if(!empty($data->branch_address))
                     <div>{{ $data->branch_address }}</div>
+                @endif
+                @if(!empty($resolvedTaxNumber))
+                    <div class="text-ltr">{{ $resolvedTaxNumber }}</div>
+                @endif
+                @if(!empty($data->cr_number))
+                    <div class="text-ltr">{{ $data->cr_number }}</div>
+                @endif
+                @if(!empty($data->branch_phone))
+                    <div class="text-ltr">{{ $data->branch_phone }}</div>
                 @endif
             </td>
         </tr>
@@ -262,12 +274,6 @@
                         <td class="text-ltr">{{ $vendor->address ?? '-' }}</td>
                     </tr>
                     <tr>
-                        <th>المدينة</th>
-                        <td>{{ $vendor->city ?? '-' }}</td>
-                        <th class="text-ltr">City</th>
-                        <td class="text-ltr">{{ $vendor->city ?? '-' }}</td>
-                    </tr>
-                    <tr>
                         <th>رقم الفاتورة</th>
                         <td class="text-ltr">{{ $data->invoice_no }}</td>
                         <th class="text-ltr">Invoice No</th>
@@ -279,18 +285,14 @@
                         <th class="text-ltr">Invoice Date</th>
                         <td class="text-ltr">{{ \Carbon\Carbon::parse($data->date)->format('Y-m-d') }}</td>
                     </tr>
-                    <tr>
-                        <th>نوع الخدمة</th>
-                        <td>{{ $serviceLabel }}</td>
-                        <th class="text-ltr">Service</th>
-                        <td class="text-ltr">{{ $serviceLabel }}</td>
-                    </tr>
-                    <tr>
-                        <th>طريقة الضريبة</th>
-                        <td>{{ $data->tax_mode === 'exclusive' ? __('main.tax_mode_exclusive') : __('main.tax_mode_inclusive') }}</td>
-                        <th class="text-ltr">Tax Mode</th>
-                        <td class="text-ltr">{{ $data->tax_mode === 'exclusive' ? __('main.tax_mode_exclusive') : __('main.tax_mode_inclusive') }}</td>
-                    </tr>
+                    @if(!empty($paymentMethodLabels))
+                        <tr>
+                            <th>طريقة الدفع</th>
+                            <td>{{ $paymentMethodLabels[0] }}</td>
+                            <th class="text-ltr">Payment Method</th>
+                            <td class="text-ltr">{{ $paymentMethodLabels[1] }}</td>
+                        </tr>
+                    @endif
                 </table>
             </td>
         </tr>
@@ -360,11 +362,6 @@
             <td class="text-ltr">Discounts</td>
         </tr>
         <tr>
-            <td>{{ __('main.promotions') ?? 'العروض الترويجية' }}</td>
-            <td class="text-ltr">{{ number_format($promoDiscount,2) }}</td>
-            <td class="text-ltr">Promo Discounts</td>
-        </tr>
-        <tr>
             <td>الإجمالي الخاضع للضريبة</td>
             <td class="text-ltr">{{ number_format($taxableAmount,2) }}</td>
             <td class="text-ltr">Total Taxable Amount Excluding VAT</td>
@@ -378,16 +375,6 @@
             <td>إجمالي الفاتورة</td>
             <td class="text-ltr">{{ number_format($data->net,2) }}</td>
             <td class="text-ltr">Total Amount</td>
-        </tr>
-        <tr>
-            <td>إجمالي المدفوع</td>
-            <td class="text-ltr">{{ number_format($data->paid,2) }}</td>
-            <td class="text-ltr">Total Paid Amount</td>
-        </tr>
-        <tr>
-            <td>المبلغ المستحق</td>
-            <td class="text-ltr">{{ number_format($amountDue,2) }}</td>
-            <td class="text-ltr">Amount Due</td>
         </tr>
     </table>
 
