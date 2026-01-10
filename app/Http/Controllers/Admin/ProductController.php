@@ -1227,6 +1227,9 @@ class ProductController extends Controller
         if ($results->isEmpty()) {
             $results = $this->searchProductsWithoutWarehouse($code, true);
         }
+        if ($results->isEmpty()) {
+            $results = $this->searchProductsWithoutWarehouse($code, false, 5);
+        }
 
         echo json_encode($results->values());
         exit;

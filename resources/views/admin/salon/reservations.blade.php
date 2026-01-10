@@ -7,7 +7,8 @@
         position: relative;
     }
     .reservation-barcode-wrap .list-group,
-    .reservation-quick-add .list-group {
+    .reservation-quick-add .list-group,
+    .reservation-quick-add .suggestions {
         position: absolute;
         top: 100%;
         left: 0;
@@ -15,6 +16,28 @@
         z-index: 1050;
         max-height: 220px;
         overflow-y: auto;
+    }
+    .reservation-quick-add .suggestions {
+        list-style: none;
+        margin: 4px 0 0;
+        padding: 0;
+        background: #fff;
+        border: 1px solid #e4e7f4;
+        border-radius: 6px;
+        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+    }
+    .reservation-quick-add .suggestions li {
+        padding: 6px 10px;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f2f8;
+        font-size: 12px;
+        text-align: right;
+    }
+    .reservation-quick-add .suggestions li:last-child {
+        border-bottom: 0;
+    }
+    .reservation-quick-add .suggestions li:hover {
+        background: #f5f7ff;
     }
 </style>
 <div class="container-fluid py-4">
@@ -61,7 +84,7 @@
                         </div>
                         <div class="form-group">
                             <label>{{ __('main.warehouse') ?? 'المستودع' }}</label>
-                            <select name="warehouse_id" class="form-control" required>
+                            <select name="warehouse_id" id="reservation_warehouse_id" class="form-control" required>
                                 @foreach($warehouses as $warehouse)
                                     <option value="{{ $warehouse->id }}">{{ $warehouse->name }}</option>
                                 @endforeach
@@ -94,8 +117,16 @@
                         <div class="form-group">
                             <label>{{ __('main.items') ?? 'الأصناف' }}</label>
                             <div class="mb-2">
-                                <div class="reservation-quick-add position-relative">
-                                    <input type="text" class="form-control" id="reservation_add_item" placeholder="{{ __('main.add_item_hint') ?? 'أضف صنف (باركود أو اسم)' }}" autocomplete="off">
+                                <div class="reservation-quick-add">
+                                    <div class="input-group wide-tip">
+                                        <div class="input-group-addon">
+                                            <i class="fa fa-3x fa-barcode addIcon"></i>
+                                        </div>
+                                        <input type="text" class="form-control input-lg ui-autocomplete-input"
+                                            id="reservation_add_item"
+                                            placeholder="{{ __('main.barcode.note') }}"
+                                            autocomplete="off">
+                                    </div>
                                     <ul id="reservation_products_suggestions" class="suggestions" style="display: none;"></ul>
                                 </div>
                             </div>
@@ -110,7 +141,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr>
+                                        <tr class="reservation-item-template d-none">
                                             <td>
                                                 <div class="reservation-barcode-wrap">
                                                     <input type="text" name="item_barcode[]" class="form-control reservation-barcode" placeholder="{{ __('main.barcode') ?? 'الباركود' }}">
@@ -234,7 +265,7 @@
                                                         </div>
                                                         <div class="form-group">
                                                             <label>{{ __('main.warehouse') ?? 'المستودع' }}</label>
-                            <select name="warehouse_id" id="reservation_warehouse_id" class="form-control" required>
+                                                            <select name="warehouse_id" id="reservation_warehouse_id_{{ $reservation->id }}" class="form-control" required>
                                                                 @foreach($warehouses as $warehouse)
                                                                     <option value="{{ $warehouse->id }}" @if($reservation->warehouse_id == $warehouse->id) selected @endif>{{ $warehouse->name }}</option>
                                                                 @endforeach
@@ -281,10 +312,18 @@
                     </div>
                 </div>
             </div>
-        </div>
     </div>
 </div>
+</div>
 @endcan
+
+<audio id="mysoundclip1" preload="auto">
+    <source src="{{URL::asset('assets/sound/beep/beep-timber.mp3')}}"></source>
+</audio>
+<audio id="mysoundclip2" preload="auto">
+    <source src="{{URL::asset('assets/sound/beep/beep-07.mp3')}}"></source>
+</audio>
+
 @section('js')
 <script>
     (function(){
@@ -297,6 +336,30 @@
         if (!table || !addBtn) {
             return;
         }
+        function playSoundById(audioId){
+            var audioElement = document.getElementById(audioId);
+            if(!audioElement){
+                return;
+            }
+            try{
+                audioElement.currentTime = 0;
+                var promise = audioElement.play();
+                if(promise && typeof promise.catch === 'function'){
+                    promise.catch(function(){
+                        try{
+                            var clone = audioElement.cloneNode(true);
+                            clone.currentTime = 0;
+                            clone.play();
+                        }catch(e){}
+                    });
+                }
+            }catch (e){}
+        }
+
+        function playSuccessSound(){
+            playSoundById('mysoundclip1');
+        }
+
         function applyProductToRow(product, row){
             const productIdInput = row.querySelector('.reservation-product-id');
             const nameLabel = row.querySelector('.reservation-product-name');
@@ -310,12 +373,18 @@
             if (barcodeInput) {
                 barcodeInput.value = product.code || product.barcode || '';
             }
+            playSuccessSound();
         }
 
         function createRowWithProduct(product){
             const tbody = table.querySelector('tbody');
-            const firstRow = tbody.querySelector('tr');
-            const newRow = firstRow.cloneNode(true);
+            const templateRow = tbody.querySelector('.reservation-item-template');
+            if (!templateRow) {
+                return;
+            }
+            const newRow = templateRow.cloneNode(true);
+            newRow.classList.remove('reservation-item-template', 'd-none');
+            newRow.classList.add('reservation-item-row');
             const inputs = newRow.querySelectorAll('input');
             inputs.forEach(function(input){
                 input.value = '';
@@ -373,7 +442,11 @@
                 // البحث بالأحرف مثل الفواتير: استخدم قيمة خالية لمطابقة الكل كفallback عند البحث بالاسم
                 const searchValue = encodeURIComponent(raw);
                 const url = productLookupRoute.replace(':code', searchValue);
-                $.get(url, function(response){
+                $.ajax({
+                    type: 'get',
+                    url: url,
+                    dataType: 'json',
+                    success: function(response){
                     if (!Array.isArray(response) || response.length === 0) {
                         if (suggestions) {
                             suggestions.classList.add('d-none');
@@ -405,6 +478,7 @@
                             suggestions.appendChild(item);
                         });
                         suggestions.classList.remove('d-none');
+                    }
                     }
                 });
             });
@@ -446,7 +520,11 @@
             let url = "{{ route('get.product.warehouse', [':warehouse', ':id']) }}";
             url = url.replace(':warehouse', warehouseId);
             url = url.replace(':id', encodeURIComponent(code));
-            $.get(url, function(response){
+            $.ajax({
+                type: 'get',
+                url: url,
+                dataType: 'json',
+                success: function(response){
                 if (!Array.isArray(response) || response.length === 0) {
                     if (quickSuggestions) {
                         quickSuggestions.style.display = 'none';
@@ -470,6 +548,7 @@
                 }
                 lastQuickAdded = '';
                 showReservationSuggestions(response);
+                }
             });
         }
 
@@ -489,8 +568,13 @@
 
         addBtn.addEventListener('click', function(){
             const tbody = table.querySelector('tbody');
-            const firstRow = tbody.querySelector('tr');
-            const newRow = firstRow.cloneNode(true);
+            const templateRow = tbody.querySelector('.reservation-item-template');
+            if (!templateRow) {
+                return;
+            }
+            const newRow = templateRow.cloneNode(true);
+            newRow.classList.remove('reservation-item-template', 'd-none');
+            newRow.classList.add('reservation-item-row');
             const inputs = newRow.querySelectorAll('input');
             inputs.forEach(function(input){
                 input.value = '';
@@ -512,11 +596,11 @@
             if (!target) {
                 return;
             }
-            const rows = table.querySelectorAll('tbody tr');
-            if (rows.length <= 1) {
+            const row = target.closest('tr');
+            if (!row || row.classList.contains('reservation-item-template')) {
                 return;
             }
-            target.closest('tr').remove();
+            row.remove();
         });
 
         document.addEventListener('click', function(event){
