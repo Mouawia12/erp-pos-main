@@ -340,10 +340,12 @@ Route::group(
     Route::post('/salon/reservations', [SalonReservationController::class, 'store'])->name('salon.reservations.store');
     Route::post('/salon/reservations/{id}', [SalonReservationController::class, 'update'])->name('salon.reservations.update');
     Route::delete('/salon/reservations/{id}', [SalonReservationController::class, 'destroy'])->name('salon.reservations.delete');
+    Route::get('/salon/reservations/customer/{customer}', [SalonReservationController::class, 'customerReservations'])->name('salon.reservations.customer');
 
     // Quotations
     Route::resource('quotations', QuotationController::class);
     Route::post('quotations/{quotation}/convert', [QuotationController::class, 'convertToInvoice'])->name('quotations.convert');
+    Route::get('quotations/customer/{customer}', [QuotationController::class, 'customerQuotations'])->name('quotations.customer');
 
     // Promotions
     Route::resource('promotions', PromotionController::class);

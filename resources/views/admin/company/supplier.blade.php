@@ -418,6 +418,9 @@
     let id = 0 ;
     $(document).ready(function()
     {
+        if (new URLSearchParams(window.location.search).get('create') === '1') {
+            $('#createButton').trigger('click');
+        }
         id = 0 ;
         $(document).on('click', '#createButton', function(event) {
             id = 0 ;

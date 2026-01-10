@@ -157,10 +157,7 @@
                         <tbody> 
                             <tr>
                                 @php
-                                    $customerDisplayName = $vendor?->company ?: ($vendor?->name ?? '-');
-                                    if (!empty($vendor?->company) && !empty($vendor?->name)) {
-                                        $customerDisplayName = $vendor->company . ' - ' . $vendor->name;
-                                    }
+                                    $customerDisplayName = !empty($vendor?->company) ? $vendor->company : ($vendor?->name ?? '-');
                                 @endphp
                                 <td>{{__('main.client')}} : <strong>{{$customerDisplayName}}</strong></td> 
                                 <td>{{__('سجل ضريبي')}} : <strong>{{$vendor->vat_no}}</strong></td> 

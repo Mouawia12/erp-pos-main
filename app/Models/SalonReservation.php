@@ -11,13 +11,16 @@ class SalonReservation extends Model
     use HasFactory, BelongsToSubscriber;
 
     protected $fillable = [
+        'reservation_no',
         'customer_id',
         'salon_department_id',
         'assigned_user_id',
+        'warehouse_id',
         'reservation_time',
         'location_text',
         'location_url',
         'status',
+        'sale_id',
         'notes',
         'subscriber_id',
         'branch_id',
@@ -37,5 +40,10 @@ class SalonReservation extends Model
     public function assignedUser()
     {
         return $this->belongsTo(User::class, 'assigned_user_id');
+    }
+
+    public function items()
+    {
+        return $this->hasMany(SalonReservationItem::class, 'salon_reservation_id');
     }
 }

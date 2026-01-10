@@ -136,6 +136,8 @@ span strong {font-size:12px;}
                                                 data-default-discount="{{$customer->default_discount ?? 0}}"
                                                 data-representative="{{$customer->representative_id_ ?? ''}}"
                                                 data-cost-center-id="{{$customer->cost_center_id ?? ''}}"
+                                                data-company="{{ $customer->company ?? '' }}"
+                                                data-tax-number="{{ $customer->tax_number ?? '' }}"
                                                 @if($selectedCustomer == $customer->id) selected @endif>
                                             {{ $customerLabel }}
                                             @if(!empty($walkInCustomer) && $walkInCustomer->id === $customer->id)
@@ -838,10 +840,18 @@ span strong {font-size:12px;}
         const costCenterInput = $('#cost_center');
         const costCenterSelect = $('#cost_center_id');
         const customerVehiclesCache = {};
+        const invoiceTypeSelect = $('#invoice_type');
+        const defaultInvoiceType = @json($defaultType ?? 'simplified_tax_invoice');
 
         function setPaymentMethod(value){
             if(paymentMethodSelect && paymentMethodSelect.length){
                 paymentMethodSelect.val(value).trigger('change');
+            }
+        }
+
+        function setInvoiceType(value){
+            if(invoiceTypeSelect && invoiceTypeSelect.length){
+                invoiceTypeSelect.val(value).trigger('change');
             }
         }
 
@@ -940,16 +950,42 @@ span strong {font-size:12px;}
         }
 
 
-        function toggleWalkInFields(selectedId){
+        function updatePaymentMethodByCustomer(selectedOption){
+            if(!selectedOption || !selectedOption.length){
+                return;
+            }
+            const company = String(selectedOption.data('company') || '').trim();
+            const taxNumber = String(selectedOption.data('tax-number') || '').trim();
+            if(company){
+                setPaymentMethod('credit');
+                return;
+            }
+            if(!taxNumber){
+                setPaymentMethod('cash_network');
+                return;
+            }
+            setPaymentMethod('credit');
+        }
+
+        function updateInvoiceTypeByCustomer(selectedOption){
+            if(!selectedOption || !selectedOption.length){
+                return;
+            }
+            const taxNumber = String(selectedOption.data('tax-number') || '').trim();
+            if(taxNumber){
+                setInvoiceType('tax_invoice');
+                return;
+            }
+            setInvoiceType(defaultInvoiceType || 'simplified_tax_invoice');
+        }
+
+        function toggleWalkInFields(selectedId, selectedOption){
             const isWalkIn = walkInCustomerId && Number(selectedId) === Number(walkInCustomerId);
             if($walkInFields.length){
                 $walkInFields.toggleClass('d-none', !isWalkIn);
             }
-            if(isWalkIn){
-                setPaymentMethod('cash');
-            } else {
-                setPaymentMethod('credit');
-            }
+            updatePaymentMethodByCustomer(selectedOption);
+            updateInvoiceTypeByCustomer(selectedOption);
         }
 
         if(representativeSelect.length){
@@ -1032,12 +1068,12 @@ span strong {font-size:12px;}
                     }
                 }
             }
-            toggleWalkInFields($(this).val());
+            toggleWalkInFields($(this).val(), selectedOption);
             @if($enableVehicleFeatures)
             fetchCustomerVehicles($(this).val());
             @endif
         });
-        toggleWalkInFields($('#customer_id').val());
+        toggleWalkInFields($('#customer_id').val(), $('#customer_id').find(':selected'));
         @if($enableVehicleFeatures)
         fetchCustomerVehicles($('#customer_id').val());
         @endif

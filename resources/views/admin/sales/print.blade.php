@@ -24,10 +24,7 @@
         $vatTotal = (float) $data->tax + (float) $data->tax_excise;
         $amountDue = (float) $data->net - (float) $data->paid;
         $logoPath = !empty($company?->logo) ? asset('uploads/profiles/' . $company->logo) : asset('assets/img/logo.png');
-        $customerDisplayName = $vendor?->company ?: ($vendor?->name ?? '-');
-        if (!empty($vendor?->company) && !empty($vendor?->name)) {
-            $customerDisplayName = $vendor->company . ' - ' . $vendor->name;
-        }
+        $customerDisplayName = !empty($vendor?->company) ? $vendor->company : ($vendor?->name ?? '-');
     @endphp
     {{$titleAr}} {{$data->id}}
     </title>

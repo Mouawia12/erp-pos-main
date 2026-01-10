@@ -110,6 +110,32 @@
     });
 </script>
 <script>
+    (function () {
+        const params = new URLSearchParams(window.location.search);
+        if (!params.has('create')) {
+            return;
+        }
+        const createButton = document.getElementById('createButton');
+        if (!createButton) {
+            return;
+        }
+        const tag = createButton.tagName.toLowerCase();
+        if (createButton.closest('form')) {
+            return;
+        }
+        if (tag === 'button') {
+            const typeAttr = (createButton.getAttribute('type') || '').toLowerCase();
+            if (typeAttr && typeAttr !== 'button') {
+                return;
+            }
+        }
+        if (createButton.hasAttribute('form')) {
+            return;
+        }
+        createButton.click();
+    })();
+</script>
+<script>
  
  
 $(document).ready( function () {

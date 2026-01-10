@@ -78,13 +78,13 @@
                         <span class="side-menu__label">{{__('main.products')}}</span><i class="angle fe fe-chevron-down"></i>
                     </a> 
                     <ul class="slide-menu">  
+                        <li><a class="slide-item" href="{{route('createProduct')}}">{{__('main.add_product')}}</a></li>
                         <li>
                             <a class="slide-item" href="{{route('products')}}">
                             {{__('main.products_list')}}
                             </a>
                         </li>  
                         <!--
-                        <li><a class="slide-item" href="{{route('createProduct')}}">{{__('main.add_product')}}</a></li> 
                         @can('تعديل كمية','اضافة كمية') 
                         <li><a class="slide-item" href="{{route('update_qnt')}}">{{__('main.update_qnt')}}</a></li>
                         @endcan
@@ -94,26 +94,46 @@
                         -->
                         <li><a class="slide-item" href="{{route('print_barcode')}}">{{__('main.print_barcode')}}</a></li>
                         <li><a class="slide-item" href="{{route('print_qr')}}">{{__('main.print_qr')}}</a></li>
+                        <li>
+                            <a class="slide-item" href="{{ route('admin.manufacturing.index') }}">
+                                {{ __('تصنيع وتجميع الأصناف') }}
+                            </a>
+                        </li>
                     </ul>
                 </li>  
             @endcan 
             <li class="slide {{ Request::is('admin/promotions*') ? 'active' : '' }}">
-                <a class="side-menu__item" href="{{ route('promotions.index') }}">
+                <a class="side-menu__item" data-toggle="slide" href="#">
                     <i class="fa fa-gift side-menu__icon"></i>
                     <span class="side-menu__label">{{ __('main.promotions') }}</span>
+                    <i class="angle fe fe-chevron-down"></i>
                 </a>
+                <ul class="slide-menu">
+                    <li><a class="slide-item" href="{{ route('promotions.create') }}">{{ __('main.add_new') }}</a></li>
+                    <li><a class="slide-item" href="{{ route('promotions.index') }}">{{ __('main.promotions') }}</a></li>
+                </ul>
             </li>
             <li class="slide {{ Request::is('admin/transfers*') ? 'active' : '' }}">
-                <a class="side-menu__item" href="{{ route('transfers.index') }}">
+                <a class="side-menu__item" data-toggle="slide" href="#">
                     <i class="fa fa-exchange-alt side-menu__icon"></i>
                     <span class="side-menu__label">{{ __('main.transfer_requests') }}</span>
+                    <i class="angle fe fe-chevron-down"></i>
                 </a>
+                <ul class="slide-menu">
+                    <li><a class="slide-item" href="{{ route('transfers.create') }}">{{ __('main.add_new') }}</a></li>
+                    <li><a class="slide-item" href="{{ route('transfers.index') }}">{{ __('main.transfer_requests') }}</a></li>
+                </ul>
             </li>
             <li class="slide {{ Request::is('admin/stock_counts*') ? 'active' : '' }}">
-                <a class="side-menu__item" href="{{ route('stock_counts.index') }}">
+                <a class="side-menu__item" data-toggle="slide" href="#">
                     <i class="fa fa-clipboard-list side-menu__icon"></i>
                     <span class="side-menu__label">{{ __('main.inventory') }}</span>
+                    <i class="angle fe fe-chevron-down"></i>
                 </a>
+                <ul class="slide-menu">
+                    <li><a class="slide-item" href="{{ route('stock_counts.create') }}">{{ __('main.add_new') }}</a></li>
+                    <li><a class="slide-item" href="{{ route('stock_counts.index') }}">{{ __('main.inventory') }}</a></li>
+                </ul>
             </li>
             @can('عرض مبيعات')                  
                 <li class="slide">
@@ -165,6 +185,11 @@
                     </a> 
                     <ul class="slide-menu">  
                         <li>
+                            <a class="slide-item" href="{{route('clients' , 4)}}?create=1">
+                            {{__('main.add_new')}}
+                            </a>
+                        </li>
+                        <li>
                             <a class="slide-item" href="{{route('clients' , 4)}}">
                             {{__('main.supplier')}}
                             </a>
@@ -181,6 +206,11 @@
                     </span><i class="angle fe fe-chevron-down"></i>
                     </a> 
                     <ul class="slide-menu">  
+                        <li>
+                            <a class="slide-item" href="{{route('clients' , 3)}}?create=1">
+                            {{__('main.add_new')}}
+                            </a>
+                        </li>
                         <li>
                             <a class="slide-item" href="{{route('clients' , 3)}}">
                             {{__('main.clients')}}
@@ -200,6 +230,11 @@
                     </a> 
                     <ul class="slide-menu">  
                         <li>
+                            <a class="slide-item" href="{{route('expenses')}}?create=1">
+                            {{__('main.add_new')}}
+                            </a>
+                        </li>
+                        <li>
                             <a class="slide-item" href="{{route('expenses')}}">
                             {{__('main.expenses_list')}}
                             </a>
@@ -216,6 +251,11 @@
                     </span><i class="angle fe fe-chevron-down"></i>
                     </a> 
                     <ul class="slide-menu">  
+                        <li>
+                            <a class="slide-item" href="{{route('catches')}}?create=1">
+                            {{__('main.add_new')}}
+                            </a>
+                        </li>
                         <li>
                             <a class="slide-item" href="{{route('catches')}}">
                             {{__('main.catches_list')}}
@@ -264,12 +304,6 @@
                                {{ __('main.inventory_list') }}
                             </a>
                         </li>  
-                        <li>
-                            <a class="slide-item" href="{{ route('admin.manufacturing.index') }}">
-                                {{ __('تصنيع وتجميع الأصناف') }}
-                            </a>
-                        </li>
-                                                              
                     </ul>
                 </li> 
             @endcan
@@ -355,9 +389,7 @@
                 <li class="slide">
                     <a class="side-menu__item" data-toggle="slide" href="#">
                         <i class="fa fa-copy side-menu__icon"></i>
-                        <span class="side-menu__label">
-                        {{__('main.reports')}}
-                        </span>
+                        <span class="side-menu__label">تقارير المخزون</span>
                         <i class="angle fe fe-chevron-down"></i>
                     </a> 
                     <ul class="slide-menu">   
@@ -397,7 +429,7 @@
                 </a>
                 <ul class="slide-menu">
                     <li><a class="slide-item" href="{{route('salon.departments')}}">{{__('main.salon_departments')}}</a></li>
-                    <li><a class="slide-item" href="{{route('salon.reservations')}}">{{__('main.salon_reservations')}}</a></li>
+                    <li><a class="slide-item" href="{{route('salon.reservations')}}">{{ __('main.salon_reservations') ?? 'قسم الحجز' }}</a></li>
                 </ul>
             </li>
             @can('عرض ترميز')
@@ -418,33 +450,63 @@
                     </a> 
                     <ul class="slide-menu">  
                         <li class="{{ Request::is('*admin/units*') ? 'active' : '' }}">
+                            <a class="slide-item" href="{{route('units')}}?create=1">
+                                {{__('main.add_new')}} {{__('main.units')}}
+                            </a>
+                        </li>
+                        <li class="{{ Request::is('*admin/units*') ? 'active' : '' }}">
                             <a class="slide-item" href="{{route('units')}}">
-                            {{__('main.units')}}
+                                {{__('main.units')}}
                             </a>
                         </li> 
                         <li class="{{ Request::is('*admin/categories*') ? 'active' : '' }}">
+                            <a class="slide-item" href="{{route('categories')}}?create=1">
+                                {{__('main.add_new')}} {{__('main.categories')}}
+                            </a>
+                        </li>
+                        <li class="{{ Request::is('*admin/categories*') ? 'active' : '' }}">
                             <a class="slide-item" href="{{route('categories')}}">
-                            {{__('main.categories')}}
+                                {{__('main.categories')}}
                             </a>
                         </li> 
                         <li class="{{ Request::is('*admin/brands*') ? 'active' : '' }}">
+                            <a class="slide-item" href="{{route('brands')}}?create=1">
+                                {{__('main.add_new')}} {{__('main.brands')}}
+                            </a>
+                        </li>
+                        <li class="{{ Request::is('*admin/brands*') ? 'active' : '' }}">
                             <a class="slide-item" href="{{route('brands')}}">
-                            {{__('main.brands')}}
+                                {{__('main.brands')}}
                             </a>
                         </li> 
                         <li class="{{ Request::is('*admin/currency*') ? 'active' : '' }}">
+                            <a class="slide-item" href="{{route('currency')}}?create=1">
+                                {{__('main.add_new')}} {{__('main.currencies')}}
+                            </a>
+                        </li>
+                        <li class="{{ Request::is('*admin/currency*') ? 'active' : '' }}">
                             <a class="slide-item" href="{{route('currency')}}">
-                            {{__('main.currencies')}}
+                                {{__('main.currencies')}}
                             </a>
                         </li>  
                         <li class="{{ Request::is('*admin/taxRates*') ? 'active' : '' }}">
+                            <a class="slide-item" href="{{route('taxRates')}}?create=1">
+                                {{__('main.add_new')}} {{__('main.tax')}}
+                            </a>
+                        </li>
+                        <li class="{{ Request::is('*admin/taxRates*') ? 'active' : '' }}">
                             <a class="slide-item" href="{{route('taxRates')}}">
-                            {{__('main.tax')}}
+                                {{__('main.tax')}}
                             </a>
                         </li> 
                         <li class="{{ Request::is('*admin/clientGroups*') ? 'active' : '' }}">
+                            <a class="slide-item" href="{{route('clientGroups')}}?create=1">
+                                {{__('main.add_new')}} {{__('main.c_groups')}}
+                            </a>
+                        </li>
+                        <li class="{{ Request::is('*admin/clientGroups*') ? 'active' : '' }}">
                             <a class="slide-item" href="{{route('clientGroups')}}">
-                            {{__('main.c_groups')}}
+                                {{__('main.c_groups')}}
                             </a>
                         </li>   
                     </ul>
@@ -464,6 +526,7 @@
                         <li><a class="slide-item" href="{{route('companyInfo')}}">{{__('main.companyInfo')}}</a></li>
                         <li><a class="slide-item" href="{{route('system_settings')}}">{{__('main.system_settings')}}</a></li>
                         <li><a class="slide-item" href="{{route('pos_settings')}}">{{__('main.pos_settings')}}</a></li>
+                        <li><a class="slide-item" href="{{route('cost_centers')}}?create=1">{{ __('main.add_new') }} {{__('main.cost_centers')}}</a></li>
                         <li><a class="slide-item" href="{{route('cost_centers')}}">{{__('main.cost_centers')}}</a></li>
                     </ul>
                 </li>  
@@ -490,8 +553,13 @@
                             </li>
                         @endcan
                         <li>
+                            <a class="slide-item" href="{{route('warehouses')}}?create=1">
+                                {{ __('main.add_new') }} {{ __('main.warehouses') }}
+                            </a>
+                        </li>
+                        <li>
                             <a class="slide-item" href="{{route('warehouses')}}">
-                            {{__('main.warehouses')}}
+                                {{__('main.warehouses')}}
                             </a>
                         </li> 
                     </ul>

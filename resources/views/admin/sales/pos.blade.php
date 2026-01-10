@@ -234,6 +234,8 @@ label.total {
             <input type="hidden" id="net_sales" value="0">
             <input hidden type="datetime-local" id="bill_date" name="bill_date" /> 
             <input type="hidden" id="invoice_no" name="invoice_no" /> 
+            <div id="salon_reservation_ids" style="display:none;"></div>
+            <div id="quotation_ids" style="display:none;"></div>
 
             <div class="card shadow mb-4 col-xl-12"> 
                 <div class="row mt-1 mb-1 text-center justify-content-center align-content-center">  
@@ -334,6 +336,32 @@ label.total {
                                             @endforeach
                                         </select>
                                     </div>
+                                </div>
+                                <div class="col-lg-4">
+                                    <div class="form-group">
+                                        <label>{{ __('main.salon_reservations') ?? 'قسم الحجز' }}</label>
+                                        <select class="form-control pos-input" id="salon_reservation_id">
+                                            <option value="">{{ __('main.choose') }}</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-lg-4 d-flex align-items-end">
+                                    <button type="button" class="btn btn-outline-primary w-100" id="addSalonReservationBtn">
+                                        {{ __('main.add') ?? 'إضافة الحجز' }}
+                                    </button>
+                                </div>
+                                <div class="col-lg-4">
+                                    <div class="form-group">
+                                        <label>{{ __('main.quotation_prefix') ?? 'عروض الأسعار' }}</label>
+                                        <select class="form-control pos-input" id="quotation_id">
+                                            <option value="">{{ __('main.choose') }}</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-lg-4 d-flex align-items-end">
+                                    <button type="button" class="btn btn-outline-primary w-100" id="addQuotationBtn">
+                                        {{ __('main.add') ?? 'إضافة عرض السعر' }}
+                                    </button>
                                 </div>
                                 <div class="col-lg-4">
                                     <div class="form-group">
@@ -604,6 +632,14 @@ label.total {
     const posCustomerNoResultsText = @json(__('main.pos_customer_no_results'));
     const posProductImageBase = "{{ env('APP_URL') }}/uploads/items/images/";
     const serviceFeeLabel = @json(__('main.product_service_fee') ?? 'رسوم الخدمات');
+    const salonReservationRoute = "{{ route('salon.reservations.customer', ':id') }}";
+    const quotationRoute = "{{ route('quotations.customer', ':id') }}";
+    const defaultInvoiceType = @json($defaultType ?? 'simplified_tax_invoice');
+    const invoiceTypeSelect = $('#invoice_type');
+    let salonReservationsIndex = {};
+    let loadedSalonReservationIds = {};
+    let quotationsIndex = {};
+    let loadedQuotationIds = {};
 
     function calculateServiceFee(item){
         let fee = 0;
@@ -648,6 +684,18 @@ label.total {
             $('#reservation_time').val('');
             $('#reservation_guests').val('');
         }
+    }
+
+    function updateInvoiceTypeByTaxNumber(taxNumber){
+        if(!invoiceTypeSelect.length){
+            return;
+        }
+        const normalized = String(taxNumber || '').trim();
+        if(normalized){
+            invoiceTypeSelect.val('tax_invoice').trigger('change');
+            return;
+        }
+        invoiceTypeSelect.val(defaultInvoiceType || 'simplified_tax_invoice').trigger('change');
     }
 
     function applyReservationSelection(option){
@@ -886,6 +934,7 @@ label.total {
 
         $('#customer_id').on('change', function(){
             const selected = $(this).find(':selected');
+            const customerId = selected.val();
             const defaultDiscount = parseFloat(selected.data('default-discount')) || 0;
             const phone = selected.data('phone') || '';
             const address = selected.data('address') || '';
@@ -895,6 +944,7 @@ label.total {
             $('#customer_phone').val(phone);
             $('#customer_address').val(address);
             $('#customer_tax_number').val(taxNumber);
+            updateInvoiceTypeByTaxNumber(taxNumber);
             if(!$('#customer_name').val()){
                 $('#customer_name').val(name);
             }
@@ -920,6 +970,40 @@ label.total {
                 $('#discount_input').val(0);
             }
             updatePosDiscountSummary();
+            loadedSalonReservationIds = {};
+            $('#salon_reservation_ids').empty();
+            loadSalonReservations(customerId);
+            loadedQuotationIds = {};
+            $('#quotation_ids').empty();
+            loadQuotations(customerId);
+        });
+
+        $('#addSalonReservationBtn').on('click', function(){
+            const reservationId = $('#salon_reservation_id').val();
+            if(reservationId){
+                addSalonReservationToInvoice(reservationId);
+            }
+        });
+
+        $('#salon_reservation_id').on('change', function(){
+            const reservationId = $(this).val();
+            if(reservationId){
+                addSalonReservationToInvoice(reservationId);
+            }
+        });
+
+        $('#addQuotationBtn').on('click', function(){
+            const quotationId = $('#quotation_id').val();
+            if(quotationId){
+                addQuotationToInvoice(quotationId);
+            }
+        });
+
+        $('#quotation_id').on('change', function(){
+            const quotationId = $(this).val();
+            if(quotationId){
+                addQuotationToInvoice(quotationId);
+            }
         });
 
         $('#representative_id').on('change', function(){
@@ -1015,6 +1099,9 @@ label.total {
     }
 
     function isQuantityValid(item, qty){
+        if(item && item.skip_stock_check){
+            return true;
+        }
         if(allowNegativeStock){
             return true;
         }
@@ -1022,6 +1109,123 @@ label.total {
         const factor = Number(item.unit_factor ?? 1);
         const required = Number(qty ?? item.qnt ?? 0) * factor;
         return available >= required;
+    }
+
+    function loadSalonReservations(customerId){
+        salonReservationsIndex = {};
+        $('#salon_reservation_id').empty().append('<option value="">{{ __('main.choose') }}</option>');
+        if(!customerId){
+            return;
+        }
+        const url = salonReservationRoute.replace(':id', customerId);
+        $.get(url, function(data){
+            if(!Array.isArray(data)){
+                return;
+            }
+            data.forEach(function(reservation){
+                if(!reservation || !reservation.id){
+                    return;
+                }
+                salonReservationsIndex[reservation.id] = reservation;
+                const labelParts = [];
+                if(reservation.reservation_no){
+                    labelParts.push('#' + reservation.reservation_no);
+                }
+                if(reservation.reservation_time){
+                    labelParts.push(reservation.reservation_time);
+                }
+                if(reservation.department){
+                    labelParts.push(reservation.department);
+                }
+                const label = labelParts.join(' - ') || ('#' + reservation.id);
+                $('#salon_reservation_id').append('<option value="'+reservation.id+'">'+label+'</option>');
+            });
+        });
+    }
+
+    function addSalonReservationToInvoice(reservationId){
+        const reservation = salonReservationsIndex[reservationId];
+        if(!reservation || !Array.isArray(reservation.items)){
+            return;
+        }
+        if(loadedSalonReservationIds[reservationId]){
+            return;
+        }
+        reservation.items.forEach(function(item){
+            const product = item.product || {};
+            if(!product.id){
+                return;
+            }
+            product.id = product.id;
+            product.reservation_item_id = item.reservation_item_id;
+            product.salon_reservation_id = item.salon_reservation_id;
+            product.reservation_qty = Number(item.quantity ?? 0);
+            product.unit = item.unit_id ?? product.unit;
+            product.unit_factor = Number(item.unit_factor ?? 1);
+            product.units_options = product.units_options || [];
+            product.skip_stock_check = true;
+            addItemToTable(product, item.quantity);
+        });
+        loadedSalonReservationIds[reservationId] = true;
+        $('#salon_reservation_ids').append('<input type="hidden" name="salon_reservation_id[]" value="'+reservationId+'">');
+        $('#salon_reservation_id option[value="'+reservationId+'"]').remove();
+        $('#salon_reservation_id').val('');
+    }
+
+    function loadQuotations(customerId){
+        quotationsIndex = {};
+        $('#quotation_id').empty().append('<option value="">{{ __('main.choose') }}</option>');
+        if(!customerId){
+            return;
+        }
+        const url = quotationRoute.replace(':id', customerId);
+        $.get(url, function(data){
+            if(!Array.isArray(data)){
+                return;
+            }
+            data.forEach(function(quotation){
+                if(!quotation || !quotation.id){
+                    return;
+                }
+                quotationsIndex[quotation.id] = quotation;
+                const labelParts = [];
+                if(quotation.quotation_no){
+                    labelParts.push('#' + quotation.quotation_no);
+                }
+                if(quotation.date){
+                    labelParts.push(quotation.date);
+                }
+                const label = labelParts.join(' - ') || ('#' + quotation.id);
+                $('#quotation_id').append('<option value="'+quotation.id+'">'+label+'</option>');
+            });
+        });
+    }
+
+    function addQuotationToInvoice(quotationId){
+        const quotation = quotationsIndex[quotationId];
+        if(!quotation || !Array.isArray(quotation.items)){
+            return;
+        }
+        if(loadedQuotationIds[quotationId]){
+            return;
+        }
+        quotation.items.forEach(function(item){
+            const product = item.product || {};
+            if(!product.id){
+                return;
+            }
+            product.id = product.id;
+            product.quotation_id = quotationId;
+            product.reservation_qty = Number(item.quantity ?? 0);
+            product.unit = product.unit;
+            product.unit_factor = 1;
+            product.units_options = product.units_options || [];
+            addItemToTable(product, item.quantity);
+        });
+        loadedQuotationIds[quotationId] = true;
+        $('#quotation_ids').append('<input type="hidden" name="quotation_id[]" value="'+quotationId+'">');
+        $('#quotation_id option[value="'+quotationId+'"]').remove();
+        $('#quotation_id').val('');
     }
 
     function addPayments(id) {  
@@ -1142,7 +1346,7 @@ label.total {
         })
     }
 
-    function addItemToTable(item){
+    function addItemToTable(item, presetQty){
         if(count == 1){
             sItems = {};
         }
@@ -1168,13 +1372,13 @@ label.total {
         var itemTax = 0;
         var priceWithoutTax = 0;
         var priceWithTax = 0;
-        var itemQnt = 1;
+        var itemQnt = presetQty ? Number(presetQty) : 1;
 
         var defaultUnit = item.unit ?? (item.units_options && item.units_options[0] ? item.units_options[0].unit_id : null);
-        var defaultFactor = 1;
+        var defaultFactor = Number(item.unit_factor ?? 1);
         if(item.units_options && item.units_options.length){
             var firstUnit = item.units_options.find(function(u){ return u.unit_id == defaultUnit; }) || item.units_options[0];
-            defaultFactor = firstUnit.conversion_factor ?? 1;
+            defaultFactor = Number(item.unit_factor ?? firstUnit.conversion_factor ?? 1);
             if(firstUnit.price){
                 price = firstUnit.price;
             }
@@ -1208,7 +1412,7 @@ label.total {
         sItems[key].tax_rate = taxRate;
         sItems[key].tax_excise = Excise;
         sItems[key].service_fee = serviceFee;
-        sItems[key].qnt = 1;
+        sItems[key].qnt = itemQnt;
         sItems[key].available_qty = item.qty ? Number(item.qty) : 0;
         sItems[key].cost = item.cost ? Number(item.cost) : 0;
         sItems[key].last_sale_price = item.last_sale_price ? Number(item.last_sale_price) : 0;
@@ -1220,8 +1424,11 @@ label.total {
         sItems[key].variant_size = item.selected_variant ? item.selected_variant.size : null;
         sItems[key].variant_barcode = item.selected_variant ? item.selected_variant.barcode : null;
         sItems[key].promo_discount_unit = item.promo_discount_unit ?? 0;
+        sItems[key].reservation_item_id = item.reservation_item_id ?? null;
+        sItems[key].salon_reservation_id = item.salon_reservation_id ?? null;
+        sItems[key].skip_stock_check = item.skip_stock_check ?? false;
 
-        if(!isQuantityValid(sItems[key])){
+        if(!isQuantityValid(sItems[key], itemQnt)){
             alert(formatInsufficientMessage(item));
             delete sItems[key];
             return;
@@ -1451,7 +1658,7 @@ label.total {
             if (Number(item.service_fee ?? 0) > 0) {
                 serviceTag = '<br><small class="text-warning">'+serviceFeeLabel+': '+Number(item.service_fee ?? 0).toFixed(2)+'</small>';
             }
-            var tr_html ='<td><input type="hidden" name="product_id[]" value="'+(item.product_id ?? item.id)+'"> <span><strong>'+item.name + '</strong><br>' + (item.code)+serviceTag+'</span> </td>';
+            var tr_html ='<td><input type="hidden" name="product_id[]" value="'+(item.product_id ?? item.id)+'"><input type="hidden" name="reservation_item_id[]" value="'+(item.reservation_item_id ?? '')+'"><input type="hidden" name="salon_reservation_id[]" value="'+(item.salon_reservation_id ?? '')+'"> <span><strong>'+item.name + '</strong><br>' + (item.code)+serviceTag+'</span> </td>';
                 tr_html +='<td><span class="badge badge-light">'+Number(item.available_qty ?? 0)+'</span></td>';
                 tr_html +='<td><input type="text" readonly class="form-control" value="'+Number(item.cost ?? 0).toFixed(2)+'"></td>';
                 tr_html +='<td><input type="text" readonly class="form-control" value="'+Number(item.last_sale_price ?? 0).toFixed(2)+'"></td>';
@@ -1467,15 +1674,17 @@ label.total {
                 tr_html +='<td hidden><input type="text" class="form-control iPrice" name="price_unit[]" value="'+item.price_withoute_tax.toFixed(2)+'"></td>';
                 tr_html +='<td><input type="text" class="form-control text-center iPriceWTax" name="price_with_tax[]" value="'+(item.price_withoute_tax + item.item_tax).toFixed(2)+'"></td>';
                 //tr_html +='<td><input type="text" class="form-control iQuantity" name="qnt[]" value="'+item.qnt.toFixed(2)+'"></td>';
+                var qtyReadonly = item.reservation_item_id ? 'readonly' : '';
+                var qtyDisabled = item.reservation_item_id ? 'disabled' : '';
                 tr_html +=`<td><div class="input-group">
 	                            <span class="input-group-btn">
-	                        	    <button type="button" class="btn btn-default minus">
+	                        	    <button type="button" class="btn btn-default minus" ${qtyDisabled}>
 	                        		    <span class="fa fa-minus"></span>
 	                        		</button>
 	                        	</span>
-	                        	<input type="text" name="qnt[]" class="form-control qty numkey input-number text-center" step="any" value="`+item.qnt+`" required="">
+	                        	<input type="text" name="qnt[]" class="form-control qty numkey input-number text-center" step="any" value="`+item.qnt+`" required="" ${qtyReadonly}>
 	                        	<span class="input-group-btn">
-	                        	    <button type="button" class="btn btn-default plus">
+	                        	    <button type="button" class="btn btn-default plus" ${qtyDisabled}>
 	                        		    <span class="fa fa-plus"></span>
 	                        		</button>
 	                        	</span>

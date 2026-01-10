@@ -286,9 +286,9 @@ class ReportController extends Controller
 
         $payments = Payment::query()
             ->whereIn('sale_id', $saleIds)
-            ->selectRaw(\"SUM(CASE WHEN paid_by = 'cash' THEN amount ELSE 0 END) as cash_total\")
-            ->selectRaw(\"SUM(CASE WHEN paid_by = 'bank' THEN amount ELSE 0 END) as bank_total\")
-            ->selectRaw(\"SUM(CASE WHEN paid_by LIKE 'card:%' THEN amount ELSE 0 END) as card_total\")
+            ->selectRaw("SUM(CASE WHEN paid_by = 'cash' THEN amount ELSE 0 END) as cash_total")
+            ->selectRaw("SUM(CASE WHEN paid_by = 'bank' THEN amount ELSE 0 END) as bank_total")
+            ->selectRaw("SUM(CASE WHEN paid_by LIKE 'card:%' THEN amount ELSE 0 END) as card_total")
             ->first();
 
         $summary = [
@@ -821,20 +821,35 @@ class ReportController extends Controller
             ->orderBy('name')
             ->get();
 
+        $hasRepresentative = Schema::hasColumn('quotations', 'representative_id');
+        $hasCostCenter = Schema::hasColumn('quotations', 'cost_center_id');
+
         $query = DB::table('quotations as q')
             ->leftJoin('companies as c', 'c.id', '=', 'q.customer_id')
             ->leftJoin('warehouses as w', 'w.id', '=', 'q.warehouse_id')
-            ->leftJoin('branches as b', 'b.id', '=', 'q.branch_id')
-            ->leftJoin('representatives as r', 'r.id', '=', 'q.representative_id')
-            ->leftJoin('cost_centers as cc', 'cc.id', '=', 'q.cost_center_id')
-            ->select(
-                'q.*',
-                'c.name as customer_name_display',
-                'w.name as warehouse_name',
-                'b.branch_name',
-                'r.user_name as representative_name',
-                'cc.name as cost_center_name'
-            );
+            ->leftJoin('branches as b', 'b.id', '=', 'q.branch_id');
+
+        if ($hasRepresentative) {
+            $query->leftJoin('representatives as r', 'r.id', '=', 'q.representative_id');
+        }
+        if ($hasCostCenter) {
+            $query->leftJoin('cost_centers as cc', 'cc.id', '=', 'q.cost_center_id');
+        }
+
+        $selectColumns = [
+            'q.*',
+            'c.name as customer_name_display',
+            'w.name as warehouse_name',
+            'b.branch_name',
+        ];
+        $selectColumns[] = $hasRepresentative
+            ? 'r.user_name as representative_name'
+            : DB::raw('NULL as representative_name');
+        $selectColumns[] = $hasCostCenter
+            ? 'cc.name as cost_center_name'
+            : DB::raw('NULL as cost_center_name');
+
+        $query->select($selectColumns);
 
         if (Auth::user()->subscriber_id ?? null) {
             if (Schema::hasColumn('quotations', 'subscriber_id')) {
@@ -852,10 +867,10 @@ class ReportController extends Controller
         $query
             ->when($request->quotation_no, fn($q, $v) => $q->where('q.quotation_no', 'like', '%' . $v . '%'))
             ->when($request->customer_id, fn($q, $v) => $q->where('q.customer_id', $v))
-            ->when($request->representative_id, fn($q, $v) => $q->where('q.representative_id', $v))
+            ->when($request->representative_id && $hasRepresentative, fn($q, $v) => $q->where('q.representative_id', $v))
             ->when($request->warehouse_id, fn($q, $v) => $q->where('q.warehouse_id', $v))
             ->when($request->status, fn($q, $v) => $q->where('q.status', $v))
-            ->when($request->cost_center_id, fn($q, $v) => $q->where('q.cost_center_id', $v))
+            ->when($request->cost_center_id && $hasCostCenter, fn($q, $v) => $q->where('q.cost_center_id', $v))
             ->when($dateFrom, fn($q) => $q->whereDate('q.date', '>=', $dateFrom))
             ->when($dateTo, fn($q) => $q->whereDate('q.date', '<=', $dateTo));
 

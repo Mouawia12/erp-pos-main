@@ -11,6 +11,8 @@ use App\Models\QuotationDetail;
 use App\Models\Sales;
 use App\Models\SaleDetails;
 use App\Models\SystemSettings;
+use App\Models\Unit;
+use App\Models\WarehouseProducts;
 use App\Models\Warehouse;
 use App\Models\Branch;
 use App\Models\Representative;
@@ -250,6 +252,71 @@ class QuotationController extends Controller
         $quotation->details()->delete();
         $quotation->delete();
         return back()->with('success', __('main.deleted'));
+    }
+
+    public function customerQuotations(Company $customer)
+    {
+        $subscriberId = Auth::user()->subscriber_id ?? null;
+        if ($subscriberId && (int) $customer->subscriber_id !== (int) $subscriberId) {
+            abort(403);
+        }
+
+        $quotations = Quotation::with(['details.product'])
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->where('customer_id', $customer->id)
+            ->where('status', '!=', 'converted')
+            ->orderByDesc('date')
+            ->limit(50)
+            ->get();
+
+        $payload = $quotations->map(function (Quotation $quotation) {
+            return [
+                'id' => $quotation->id,
+                'quotation_no' => $quotation->quotation_no,
+                'date' => optional($quotation->date)->format('Y-m-d H:i'),
+                'warehouse_id' => $quotation->warehouse_id,
+                'items' => $quotation->details->map(function (QuotationDetail $detail) use ($quotation) {
+                    $product = $detail->product;
+                    if (!$product) {
+                        return null;
+                    }
+                    $unitName = $product->unit ? optional(Unit::find($product->unit))->name : '';
+                    $availableQty = WarehouseProducts::query()
+                        ->where('warehouse_id', $quotation->warehouse_id)
+                        ->where('product_id', $product->id)
+                        ->value('quantity') ?? 0;
+                    return [
+                        'quantity' => (float) $detail->quantity,
+                        'product' => [
+                            'id' => $product->id,
+                            'name' => $product->name,
+                            'code' => $product->code,
+                            'price' => (float) $detail->price_unit,
+                            'tax_method' => $product->tax_method,
+                            'total_tax_rate' => $product->totalTaxRate(),
+                            'tax_excise' => $product->tax_excise,
+                            'price_includes_tax' => $product->price_includes_tax,
+                            'qty' => (float) $availableQty,
+                            'unit' => $product->unit,
+                            'units_options' => [[
+                                'unit_id' => $product->unit,
+                                'unit_name' => $unitName,
+                                'price' => (float) $detail->price_unit,
+                                'conversion_factor' => 1,
+                                'barcode' => null,
+                            ]],
+                            'variant_id' => $detail->variant_id,
+                            'variant_color' => $detail->variant_color,
+                            'variant_size' => $detail->variant_size,
+                            'variant_barcode' => $detail->variant_barcode,
+                            'promo_discount_unit' => 0,
+                        ],
+                    ];
+                })->filter()->values(),
+            ];
+        })->values();
+
+        return response()->json($payload);
     }
 
     public function convertToInvoice(Quotation $quotation)

@@ -300,6 +300,9 @@
         document.title = "{{__('main.expenses')}}";
 
         getBillNo();   
+        if (new URLSearchParams(window.location.search).get('create') === '1') {
+            $('#createButton').trigger('click');
+        }
 
         const $createModal = $('#createModal');
         function initExpenseSelects(context){
@@ -499,7 +502,6 @@
 </script> 
 @endsection 
  
-
 
 
 

@@ -25,6 +25,8 @@ use App\Models\Representative;
 use App\Models\CostCenter;
 use App\Models\Promotion;
 use App\Models\PromotionItem;
+use App\Models\Quotation;
+use App\Models\SalonReservation;
 use App\Models\Subscriber;
 use App\Models\WarehouseProducts as WarehouseProductModel;
 use App\Services\DocumentNumberService;
@@ -451,6 +453,7 @@ class SalesController extends Controller
 
         $products = array();
         $qntProducts = array();
+        $productsForStock = array();
 
         $shouldDispatchZatcaInvoice = false;
 
@@ -458,6 +461,7 @@ class SalesController extends Controller
         $zatcaWarning = null;
 
         try {
+        $reservationItemIds = $request->reservation_item_id ?? [];
         foreach ($request->product_id as $index=>$id){ 
             
             $productDetails = Product::with('productTaxes')->find($id);
@@ -466,6 +470,8 @@ class SalesController extends Controller
                     "product_id.$index" => __('main.product_not_found') ?? 'تم اختيار صنف غير موجود'
                 ]);
             }
+            $reservationItemId = $reservationItemIds[$index] ?? null;
+            $isReserved = !empty($reservationItemId);
             $unitId = $request->unit_id[$index] ?? $productDetails->unit;
             $unitFactor = $request->unit_factor[$index] ?? 1;
             $basePrice = (float) ($request->original_price[$index] ?? $request->price_unit[$index]);
@@ -483,7 +489,7 @@ class SalesController extends Controller
                 $manualDiscount = $basePrice;
             }
             $basePrice -= $manualDiscount;
-            if (! $allowNegativeStock) {
+            if (! $allowNegativeStock && !$isReserved) {
                 $warehouseStock = $this->resolveWarehouseProductStock(
                     $request->warehouse_id,
                     $id,
@@ -551,11 +557,14 @@ class SalesController extends Controller
                 'subscriber_id' => $subscriberId,
             ];
 
-            $item = new Product();
-            $item -> product_id = $id;
-            $item -> quantity = $request->qnt[$index] * $unitFactor;
-            $item -> warehouse_id = $request->warehouse_id ;
-            $qntProducts[] = $item ;
+            if (!$isReserved) {
+                $item = new Product();
+                $item -> product_id = $id;
+                $item -> quantity = $request->qnt[$index] * $unitFactor;
+                $item -> warehouse_id = $request->warehouse_id ;
+                $qntProducts[] = $item ;
+                $productsForStock[] = $product;
+            }
 
             $products[] = $product;
             $total += $lineTotal;
@@ -647,19 +656,52 @@ class SalesController extends Controller
             SaleDetails::create($product);
         }
 
-        $siteController->syncQnt($qntProducts,null);
-        $this->syncVariantStock($products, false);
+        if ($qntProducts) {
+            $siteController->syncQnt($qntProducts,null);
+        }
+        if ($productsForStock) {
+            $this->syncVariantStock($productsForStock, false);
+        }
         $clientController = new ClientMoneyController();
         $clientController->syncMoney($request->customer_id,0,$net*-1);
 
         $vendorMovementController = new VendorMovementController();
         $vendorMovementController->addSaleMovement($sale->id);
-        $vendorMovementController->syncWarehouseMovement($qntProducts,-1,$sale->id,$sale->invoice_no);
+        if ($qntProducts) {
+            $vendorMovementController->syncWarehouseMovement($qntProducts,-1,$sale->id,$sale->invoice_no);
+        }
 
         $siteController->saleJournals($sale->id);
 
         $salePaymentController = new PaymentController();
         $salePaymentController->MakeSalePayment($request,$sale->id);
+
+        $salonReservationIds = collect($request->salon_reservation_id ?? [])
+            ->filter()
+            ->unique()
+            ->values();
+        if ($salonReservationIds->isNotEmpty()) {
+            SalonReservation::query()
+                ->whereIn('id', $salonReservationIds)
+                ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+                ->update([
+                    'sale_id' => $sale->id,
+                    'status' => 'invoiced',
+                ]);
+        }
+
+        $quotationIds = collect($request->quotation_id ?? [])
+            ->filter()
+            ->unique()
+            ->values();
+        if ($quotationIds->isNotEmpty()) {
+            Quotation::query()
+                ->whereIn('id', $quotationIds)
+                ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+                ->update([
+                    'status' => 'converted',
+                ]);
+        }
 
         if (config('zatca.enabled')) {
             app(ZatcaDocumentService::class)->initDocumentForSale($sale);

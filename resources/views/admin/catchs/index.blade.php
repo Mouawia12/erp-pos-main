@@ -312,6 +312,9 @@
         @if($errors->any())
             $('#createModal').modal({backdrop:'static', keyboard:false});
         @endif
+        if (new URLSearchParams(window.location.search).get('create') === '1') {
+            $('#createModal').modal({backdrop:'static', keyboard:false});
+        }
         const $createModal = $('#createModal');
         const select2Options = { dropdownParent: $createModal, width: '100%' };
         function initCatchSelects(context) {

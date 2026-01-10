@@ -23,10 +23,7 @@
         ];
         $paymentMethodKey = $data->payment_method ?? null;
         $paymentMethodLabels = $paymentMethodMap[$paymentMethodKey] ?? null;
-        $customerDisplayName = $vendor?->company ?: ($vendor?->name ?? '-');
-        if (!empty($vendor?->company) && !empty($vendor?->name)) {
-            $customerDisplayName = $vendor->company . ' - ' . $vendor->name;
-        }
+        $customerDisplayName = !empty($vendor?->company) ? $vendor->company : ($vendor?->name ?? '-');
         $fontUrl = !empty($fontDataUri) ? $fontDataUri : asset('fonts/Almarai.ttf');
         $logoSrc = $logoDataUri ?? asset('assets/img/logo.png');
     @endphp

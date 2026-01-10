@@ -439,6 +439,9 @@
         @if($errors->any())
             $('#createModal').modal({backdrop:'static', keyboard:false});
         @endif
+        if (new URLSearchParams(window.location.search).get('create') === '1') {
+            $('#createButton').trigger('click');
+        }
         id = 0 ;
         $(document).on('click', '#createButton', function(event) {
             id = 0 ;
