@@ -89,6 +89,10 @@
             font-size: 15pt;
             font-weight: 700;
         }
+        .header-branch {
+            font-size: 11pt;
+            font-weight: 600;
+        }
         .header-center {
             text-align: center;
         }
@@ -220,8 +224,17 @@
                 @endif
             </td>
             <td class="header-block" dir="rtl">
-                @if(!empty($company?->name_ar ?? $data->branch_name))
-                    <div class="header-name">{{ $company?->name_ar ?? $data->branch_name }}</div>
+                @php
+                    $companyNameAr = $company?->name_ar ?? null;
+                    $branchName = $data->branch_name ?? null;
+                @endphp
+                @if(!empty($companyNameAr))
+                    <div class="header-name">{{ $companyNameAr }}</div>
+                @elseif(!empty($branchName))
+                    <div class="header-name">{{ $branchName }}</div>
+                @endif
+                @if(!empty($branchName) && $branchName !== $companyNameAr)
+                    <div class="header-branch">{{ $branchName }}</div>
                 @endif
                 @if(!empty($data->branch_address))
                     <div>{{ $data->branch_address }}</div>
