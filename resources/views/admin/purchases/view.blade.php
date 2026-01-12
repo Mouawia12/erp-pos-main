@@ -166,7 +166,7 @@
                                 <th class="col-md-1">{{__('main.quantity')}}<br>(Qty) </th>
                                 <th class="col-md-1">{{__('main.amount')}}<br>(Amount)</th>
                                 <th class="col-md-1">{{__('main.tax')}}<br> (Vat)</th>
-                                <th class="col-md-2">{{__('main.total_without_tax')}}<br>(Total With Vat)</th>
+                                <th class="col-md-2">{{__('main.total_with_tax')}}<br>(Total With Vat)</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -196,7 +196,11 @@
                 <table class="table-bordered text-center" style="width: 100% ; direction: rtl">
                     <tbody>
                         <tr>
-                            <td>{{__('main.amount')}}</td>
+                            <td>{{__('main.tax_mode')}}</td>
+                            <td>{{ $data->tax_mode === 'exclusive' ? __('main.tax_mode_exclusive') : __('main.tax_mode_inclusive') }}</td>
+                        </tr>
+                        <tr>
+                            <td>{{__('main.total_without_tax')}}</td>
                             <td>{{$data->total}}</td>
                         </tr>
 
@@ -206,7 +210,7 @@
                         </tr>
 
                         <tr>
-                            <td>{{__('main.net')}}</td>
+                            <td>{{__('main.total_with_tax')}}</td>
                             <td>{{$data->net}}</td>
                         </tr>
 

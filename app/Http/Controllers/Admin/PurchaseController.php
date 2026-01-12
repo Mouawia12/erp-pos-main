@@ -157,6 +157,7 @@ class PurchaseController extends Controller
             'warehouse_id' => 'required|exists:warehouses,id',
             'invoice_type' => ['nullable', Rule::in(['tax_invoice','non_tax_invoice'])],
             'payment_method' => ['nullable', Rule::in(['cash','credit','network','cash_network'])],
+            'tax_mode' => ['nullable', Rule::in(['inclusive','exclusive'])],
             'cost_center_id' => ['nullable', 'exists:cost_centers,id'],
         ]);
 

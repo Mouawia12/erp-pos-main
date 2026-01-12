@@ -23,6 +23,10 @@
                             @php
                                 $invoiceTypeDefault = $defaultInvoiceType ?? optional($setting)->default_invoice_type ?? 'tax_invoice';
                                 $invoiceTypeDefault = in_array($invoiceTypeDefault, ['tax_invoice','non_tax_invoice']) ? $invoiceTypeDefault : 'tax_invoice';
+                                $purchaseTaxModeDefault = old('tax_mode', 'inclusive');
+                                if (!in_array($purchaseTaxModeDefault, ['inclusive','exclusive'])) {
+                                    $purchaseTaxModeDefault = 'inclusive';
+                                }
                             @endphp
                             <div class="row g-3">
                                 <div class="col-md-2">
@@ -49,7 +53,16 @@
                                         </select>
                                     </div>
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label>{{ __('main.tax_mode') }}</label>
+                                        <select class="form-control" name="tax_mode" id="tax_mode">
+                                            <option value="inclusive" @if($purchaseTaxModeDefault==='inclusive') selected @endif>{{ __('main.tax_mode_inclusive') }}</option>
+                                            <option value="exclusive" @if($purchaseTaxModeDefault==='exclusive') selected @endif>{{ __('main.tax_mode_exclusive') }}</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
                                     <div class="form-group">
                                         <label class="d-block">{{ __('main.branche')}}<span class="text-danger">*</span> </label> 
                                         @if(empty(Auth::user()->branch_id))
@@ -67,7 +80,7 @@
                                         @endif
                                     </div>
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-2">
                                     <div class="form-group">
                                         <label>{{ __('main.warehouse') }} <span class="text-danger">*</span> </label>
                                         <select class="js-example-basic-single w-100"
@@ -738,6 +751,41 @@ function openDialog(){
       })
 }
 
+    function resolveTaxMethod(){
+        var mode = ($('#tax_mode').val() || 'inclusive').toLowerCase();
+        return mode === 'exclusive' ? 0 : 1;
+    }
+
+    function applyTaxModeToItems(){
+        var taxMethod = resolveTaxMethod();
+        Object.keys(sItems).forEach(function(key){
+            var item = sItems[key];
+            var basePrice = Number(item.base_cost ?? item.price_withoute_tax ?? 0);
+            var taxRate = parseFloat(item.tax_rate_display ?? 0) || 0;
+            var priceWithoutTax = basePrice;
+            var priceWithTax = basePrice;
+            var itemTax = 0;
+            if(taxMethod == 1){
+                priceWithTax = basePrice * (1 + (taxRate/100));
+                priceWithoutTax = basePrice;
+                itemTax = priceWithTax - priceWithoutTax;
+            } else {
+                itemTax = basePrice * (taxRate/100);
+                priceWithoutTax = basePrice;
+                priceWithTax = basePrice + itemTax;
+            }
+            item.tax_method = taxMethod;
+            item.price_withoute_tax = priceWithoutTax;
+            item.price_with_tax = priceWithTax;
+            item.item_tax = itemTax;
+        });
+        loadItems();
+    }
+
+    if($('#tax_mode').length){
+        $('#tax_mode').on('change', applyTaxModeToItems);
+    }
+
     function addItemToTable(item, forceDuplicate, skipBatchPrompt){
         forceDuplicate = forceDuplicate || false;
         skipBatchPrompt = skipBatchPrompt || false;
@@ -770,7 +818,7 @@ function openDialog(){
         }
 
     // always use purchase cost (fallback to item price only if cost is missing)
-    var taxType = item.tax_method; // 1 => inclusive, else exclusive
+    var taxType = resolveTaxMethod(); // 1 => inclusive, else exclusive
     var taxRate = parseFloat(item.total_tax_rate ?? item.tax_rate ?? 0) || 0;
     var price = parseFloat(item.cost ?? 0) || 0;
     if(price <= 0 && item.price){
@@ -904,6 +952,7 @@ function openDialog(){
             sItems[item_id].price_withoute_tax= priceWithoutTax;
             sItems[item_id].price_with_tax= priceWithTax;
             sItems[item_id].item_tax= item_tax;
+            sItems[item_id].base_cost = priceWithoutTax;
             loadItems();
 
         });
@@ -941,6 +990,7 @@ function openDialog(){
             sItems[item_id].price_withoute_tax= priceWithoutTax;
             sItems[item_id].price_with_tax= priceWithTax;
             sItems[item_id].item_tax= item_tax;
+            sItems[item_id].base_cost = priceWithoutTax;
             loadItems();
         });
 
@@ -965,6 +1015,7 @@ function openDialog(){
         sItems[item_id].price_withoute_tax= priceWithoutTax;
         sItems[item_id].price_with_tax= priceWithTax;
         sItems[item_id].item_tax= item_tax;
+        sItems[item_id].base_cost = priceWithoutTax;
         sItems[item_id].selected_unit_id = $(this).val();
         sItems[item_id].unit_factor = factor;
           row.find('.unitFactor').val(factor);
@@ -1054,7 +1105,12 @@ function openDialog(){
                     tr_html +='<td class="batch-col"><input type="hidden" name="production_date[]" value=""></td>';
                     tr_html +='<td class="batch-col"><input type="hidden" name="expiry_date[]" value=""></td>';
                 }
-                tr_html +='<td><input type="number" class="form-control iPrice" name="price_without_tax[]" value="'+Number(item.price_withoute_tax ?? 0).toFixed(2)+'"><input type="hidden" class="form-control iPriceWTax" name="price_with_tax[]" value="'+Number(item.price_with_tax ?? 0).toFixed(2)+'"></td>';
+                var displayPrice = (item.tax_method == 1 ? Number(item.price_with_tax ?? 0) : Number(item.price_withoute_tax ?? 0));
+                tr_html +='<td>'
+                    +'<input type="number" class="form-control iPrice" name="price_input[]" value="'+displayPrice.toFixed(2)+'">'
+                    +'<input type="hidden" class="form-control priceWithoutTax" name="price_without_tax[]" value="'+Number(item.price_withoute_tax ?? 0).toFixed(2)+'">'
+                    +'<input type="hidden" class="form-control iPriceWTax priceWithTax" name="price_with_tax[]" value="'+Number(item.price_with_tax ?? 0).toFixed(2)+'">'
+                    +'</td>';
                 var taxRateDisplay = Number(item.tax_rate_display ?? 0).toFixed(2) + '%';
                 tr_html +='<td><input type="text" readonly class="form-control-plaintext text-center" value="'+taxRateDisplay+'"></td>';
                 tr_html +='<td><input type="text" readonly class="form-control" name="tax[]" value="'+(Number(item.item_tax ?? 0)*Number(item.qnt ?? 0)).toFixed(2)+'"></td>';
