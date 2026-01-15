@@ -1,5 +1,5 @@
 <!-- main-header opened -->
-<div class="main-header sticky side-header nav nav-item" id="main-header">
+<div class="main-header sticky side-header nav nav-item tw-navbar" id="main-header">
     <div class="container-fluid">
         <div class="main-header-left ">
             <div class="responsive-logo">

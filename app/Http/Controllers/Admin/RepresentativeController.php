@@ -11,6 +11,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
@@ -32,7 +33,17 @@ class RepresentativeController extends Controller
             ->when(Auth::user()->branch_id ?? null, fn($q,$v) => $q->where('branch_id', $v))
             ->orderBy('name')
             ->get();
-        return view('representatives.index' , compact('representatives', 'warehouses'));
+        $routes = [];
+        if (Schema::hasTable('role_views') && Schema::hasTable('views')) {
+            $routes = DB::table('role_views')
+                ->join('views', 'role_views.view_id', '=', 'views.id')
+                ->join('roles', 'role_views.role_id', '=', 'roles.id')
+                ->where('role_views.role_id', Auth::user()->role_id)
+                ->where('role_views.all_auth', 1)
+                ->pluck('views.route')
+                ->toArray();
+        }
+        return view('admin.representatives.index', compact('representatives', 'warehouses', 'routes'));
     }
 
     /**

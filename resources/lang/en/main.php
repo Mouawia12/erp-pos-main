@@ -290,6 +290,8 @@ return [
     'sales_report' => 'Sales Report',
     'sales_return_report' => 'Sales Return Report',
     'quotations_report' => 'Quotations Report',
+    'quotations' => 'Quotations',
+    'quotation' => 'Quotation',
     'inventory_value_report' => 'Inventory Value Report',
     'inventory_aging_report' => 'Inventory Aging Report',
     'inventory_variance_report' => 'Inventory Variance Report',

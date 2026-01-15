@@ -9,7 +9,7 @@
 <div class="container-fluid py-4">
     <div class="row mb-3">
         <div class="col-6">
-            <h4>{{ __('main.quotation_prefix') ?? 'عرض سعر جديد' }}</h4>
+            <h4>{{ __('main.add') }} {{ __('main.quotation') }}</h4>
         </div>
         <div class="col-6 text-end">
             <a href="{{ route('quotations.index') }}" class="btn btn-secondary">{{ __('main.back') ?? 'عودة' }}</a>
@@ -140,11 +140,29 @@
                     </div>
                 </div>
 
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="well well-sm">
+                            <div class="form-group">
+                                <div class="input-group wide-tip">
+                                    <div class="input-group-addon">
+                                        <i class="fa fa-3x fa-barcode addIcon"></i>
+                                    </div>
+                                    <input type="text" id="quotation_add_item" class="form-control input-lg ui-autocomplete-input"
+                                        placeholder="{{ __('main.barcode.note') }}"
+                                        autocomplete="off">
+                                </div>
+                            </div>
+                            <ul class="suggestions" id="quotation_products_suggestions" style="display: none;"></ul>
+                        </div>
+                    </div>
+                </div>
                 <div class="table-responsive mt-4">
                     <table class="table table-bordered" id="itemsTable">
                         <thead>
                         <tr>
-                            <th>{{ __('main.item') }}</th>
+                            <th>{{ __('main.barcode') ?? 'الباركود' }}</th>
+                            <th>{{ __('main.product') ?? __('main.item') }}</th>
                             <th>{{ __('main.quantity') }}</th>
                             <th>{{ __('main.price') }}</th>
                             <th>{{ __('main.tax') }}</th>
@@ -189,98 +207,46 @@
 
 @section('js')
 <script>
-    const products = @json($products);
-    const productsMap = {};
-    products.forEach(p => productsMap[p.id] = p);
-    let pendingDuplicateSelect = null;
-    let pendingDuplicateProduct = null;
+    const productLookupRoute = "{{ route('get.product.warehouse', [':warehouse', ':id']) }}";
+    const itemsTableBody = document.querySelector('#itemsTable tbody');
+    const addRowBtn = document.getElementById('addRowBtn');
+    const quickInput = document.getElementById('quotation_add_item');
+    const quickSuggestions = document.getElementById('quotation_products_suggestions');
+    const warehouseSelect = document.getElementById('warehouse_id');
 
-    function addRow(data = {}) {
-        const tbody = document.querySelector('#itemsTable tbody');
-        const index = tbody.children.length;
-        const row = document.createElement('tr');
+    let pendingDuplicateAction = null;
 
-        let options = '<option value="">--</option>';
-        products.forEach(p=>{
-            options += `<option value="${p.id}" data-price="${p.price}" data-variants='${JSON.stringify(p.variants ?? [])}'>${p.name}</option>`;
-        });
-
-        row.innerHTML = `
-            <td>
-                <select name="product_id[]" class="form-control productSelect" data-index="${index}">
-                    ${options}
-                </select>
-                <input type="hidden" name="variant_id[]" class="variantId">
-                <div class="small text-muted variant-label"></div>
-            </td>
-            <td><input type="number" step="0.01" name="qnt[]" class="form-control qnt" value="${data.qnt ?? 1}"></td>
-            <td><input type="number" step="0.01" name="price[]" class="form-control price" value="${data.price ?? 0}"></td>
-            <td><input type="number" step="0.01" name="tax[]" class="form-control tax" value="${data.tax ?? 0}"></td>
-            <td><input type="number" step="0.01" class="form-control total" readonly></td>
-            <td><button type="button" class="btn btn-danger btn-sm removeRow">X</button></td>
-        `;
-        tbody.appendChild(row);
-        recalcRow(row);
+    function ensureWarehouseSelected(){
+        if(!warehouseSelect || !warehouseSelect.value){
+            alert('{{ __('main.customer_warehouse_required') }}');
+            return false;
+        }
+        return true;
     }
 
-    function recalcRow(row){
-        const qty = parseFloat(row.querySelector('.qnt').value) || 0;
-        const price = parseFloat(row.querySelector('.price').value) || 0;
-        const tax = parseFloat(row.querySelector('.tax').value) || 0;
-        const total = (qty * price) + tax;
-        row.querySelector('.total').value = total.toFixed(2);
+    function buildLookupUrl(query){
+        const warehouseId = warehouseSelect ? warehouseSelect.value : '';
+        return productLookupRoute
+            .replace(':warehouse', warehouseId || 0)
+            .replace(':id', encodeURIComponent(query));
     }
 
-    document.getElementById('addRowBtn').addEventListener('click', ()=>addRow());
-
-    document.addEventListener('input', function(e){
-        if(e.target.classList.contains('qnt') || e.target.classList.contains('price') || e.target.classList.contains('tax')){
-            recalcRow(e.target.closest('tr'));
+    function fetchProducts(query, onSuccess){
+        if(!ensureWarehouseSelected()){
+            return;
         }
-    });
-
-    document.addEventListener('click', function(e){
-        if(e.target.classList.contains('removeRow')){
-            e.target.closest('tr').remove();
-        }
-    });
-
-    document.addEventListener('change', function(e){
-        if(e.target.classList.contains('productSelect')){
-            const variants = JSON.parse(e.target.selectedOptions[0].dataset.variants || '[]');
-            let label = '';
-            let variantId = '';
-            if(variants.length === 1){
-                variantId = variants[0].id;
-                label = (variants[0].color ?? '')+' '+(variants[0].size ?? '');
-                const priceField = e.target.closest('tr').querySelector('.price');
-                if(variants[0].price){
-                    priceField.value = variants[0].price;
-                }
-                const variantInput = e.target.closest('tr').querySelector('.variantId');
-                variantInput.value = variantId;
+        const url = buildLookupUrl(query);
+        $.ajax({
+            type: 'get',
+            url: url,
+            dataType: 'json',
+            success: function(response){
+                onSuccess(Array.isArray(response) ? response : []);
+            },
+            error: function(){
+                onSuccess([]);
             }
-            e.target.closest('td').querySelector('.variant-label').innerText = label;
-            recalcRow(e.target.closest('tr'));
-        }
-    });
-
-        row.innerHTML = `
-            <td>
-                <select name="product_id[]" class="form-control productSelect" data-index="${index}">
-                    ${options}
-                </select>
-                <input type="hidden" name="variant_id[]" class="variantId">
-                <div class="small text-muted variant-label"></div>
-            </td>
-            <td><input type="number" step="0.01" name="qnt[]" class="form-control qnt" value="${data.qnt ?? 1}"></td>
-            <td><input type="number" step="0.01" name="price[]" class="form-control price" value="${data.price ?? 0}"></td>
-            <td><input type="number" step="0.01" name="tax[]" class="form-control tax" value="${data.tax ?? 0}"></td>
-            <td><input type="number" step="0.01" class="form-control total" readonly></td>
-            <td><button type="button" class="btn btn-danger btn-sm removeRow">X</button></td>
-        `;
-        tbody.appendChild(row);
-        recalcRow(row);
+        });
     }
 
     function recalcRow(row){
@@ -291,15 +257,64 @@
         row.querySelector('.total').value = total.toFixed(2);
     }
 
-    function isDuplicateProduct(productId, currentSelect){
+    function getRowState(row){
+        return {
+            productId: row.querySelector('.quotation-product-id').value,
+            productName: row.querySelector('.quotation-product-name').textContent,
+            barcode: row.querySelector('.quotation-barcode').value,
+            price: row.querySelector('.price').value,
+            tax: row.querySelector('.tax').value,
+            variantId: row.querySelector('.quotation-variant-id').value,
+            variantColor: row.querySelector('.quotation-variant-color').value,
+            variantSize: row.querySelector('.quotation-variant-size').value,
+            variantBarcode: row.querySelector('.quotation-variant-barcode').value,
+            variantLabel: row.querySelector('.quotation-variant-label').textContent
+        };
+    }
+
+    function restoreRowState(row, state){
+        if(!state){
+            clearRowProduct(row);
+            return;
+        }
+        row.querySelector('.quotation-product-id').value = state.productId || '';
+        row.querySelector('.quotation-product-name').textContent = state.productName || '--';
+        row.querySelector('.quotation-barcode').value = state.barcode || '';
+        row.querySelector('.price').value = state.price || 0;
+        row.querySelector('.tax').value = state.tax || 0;
+        row.querySelector('.quotation-variant-id').value = state.variantId || '';
+        row.querySelector('.quotation-variant-color').value = state.variantColor || '';
+        row.querySelector('.quotation-variant-size').value = state.variantSize || '';
+        row.querySelector('.quotation-variant-barcode').value = state.variantBarcode || '';
+        row.querySelector('.quotation-variant-label').textContent = state.variantLabel || '';
+        recalcRow(row);
+    }
+
+    function clearRowProduct(row, keepBarcode){
+        row.querySelector('.quotation-product-id').value = '';
+        row.querySelector('.quotation-product-name').textContent = '--';
+        if(!keepBarcode){
+            row.querySelector('.quotation-barcode').value = '';
+        }
+        row.querySelector('.quotation-variant-id').value = '';
+        row.querySelector('.quotation-variant-color').value = '';
+        row.querySelector('.quotation-variant-size').value = '';
+        row.querySelector('.quotation-variant-barcode').value = '';
+        row.querySelector('.quotation-variant-label').textContent = '';
+        row.querySelector('.price').value = 0;
+        row.querySelector('.tax').value = 0;
+        recalcRow(row);
+    }
+
+    function isDuplicateProduct(productId, currentRow){
         if(!productId){
             return false;
         }
-        const selects = document.querySelectorAll('.productSelect');
+        const rows = document.querySelectorAll('.quotation-product-id');
         let occurrences = 0;
-        selects.forEach(select => {
-            if(select.value === productId){
-                if(!currentSelect || select !== currentSelect){
+        rows.forEach(input => {
+            if(input.value === String(productId)){
+                if(!currentRow || input !== currentRow.querySelector('.quotation-product-id')){
                     occurrences++;
                 }
             }
@@ -307,32 +322,293 @@
         return occurrences > 0;
     }
 
-    function applyProductSelection(selectElement){
-        const productId = selectElement.value;
-        const product = productsMap[productId];
-        if(!product){
-            selectElement.closest('td').querySelector('.variant-label').innerText = '';
-            selectElement.closest('td').querySelector('.variantId').value = '';
+    function openDuplicateModal(product, onConfirm, onCancel){
+        pendingDuplicateAction = { onConfirm, onCancel };
+        document.getElementById('duplicateItemName').innerText = product && product.name ? product.name : '';
+        $('#duplicateItemModal').modal({backdrop:'static', keyboard:false});
+    }
+
+    function applyProductToRow(product, row, forceDuplicate){
+        if(!product || !row){
+            return;
+        }
+        const previousState = getRowState(row);
+        if(!forceDuplicate && isDuplicateProduct(product.id, row)){
+            openDuplicateModal(product, function(){
+                applyProductToRow(product, row, true);
+            }, function(){
+                restoreRowState(row, previousState);
+            });
             return;
         }
 
+        const barcodeInput = row.querySelector('.quotation-barcode');
+        const productName = row.querySelector('.quotation-product-name');
+        const productIdInput = row.querySelector('.quotation-product-id');
+        const priceInput = row.querySelector('.price');
+        const taxInput = row.querySelector('.tax');
+        const variantLabel = row.querySelector('.quotation-variant-label');
+
+        productIdInput.value = product.id || '';
+        if(barcodeInput){
+            barcodeInput.value = product.code || product.barcode || '';
+        }
+        if(productName){
+            productName.textContent = product.name || product.code || '--';
+        }
+
         const variants = product.variants || [];
-        let label = '';
         let variantId = '';
+        let variantLabelText = '';
+        let variantPrice = null;
+        let variantColor = '';
+        let variantSize = '';
+        let variantBarcode = '';
         if(variants.length === 1){
             variantId = variants[0].id;
-            label = (variants[0].color ?? '')+' '+(variants[0].size ?? '');
-            const priceField = selectElement.closest('tr').querySelector('.price');
+            variantColor = variants[0].color || '';
+            variantSize = variants[0].size || '';
+            variantBarcode = variants[0].barcode || '';
+            variantLabelText = (variantColor + ' ' + variantSize).trim();
             if(variants[0].price){
-                priceField.value = variants[0].price;
+                variantPrice = variants[0].price;
             }
         }
-        selectElement.closest('td').querySelector('.variant-label').innerText = label;
-        selectElement.closest('td').querySelector('.variantId').value = variantId;
-        recalcRow(selectElement.closest('tr'));
+        row.querySelector('.quotation-variant-id').value = variantId;
+        row.querySelector('.quotation-variant-color').value = variantColor;
+        row.querySelector('.quotation-variant-size').value = variantSize;
+        row.querySelector('.quotation-variant-barcode').value = variantBarcode;
+        if(variantLabel){
+            variantLabel.textContent = variantLabelText;
+        }
+
+        if(priceInput){
+            const basePrice = variantPrice !== null ? variantPrice : (product.price || 0);
+            priceInput.value = Number(basePrice || 0).toFixed(2);
+        }
+        if(taxInput && !taxInput.value){
+            taxInput.value = 0;
+        }
+        recalcRow(row);
     }
 
-    document.getElementById('addRowBtn').addEventListener('click', ()=>addRow());
+    function createRow(){
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>
+                <div class="quotation-barcode-wrap">
+                    <input type="text" name="item_barcode[]" class="form-control quotation-barcode"
+                        placeholder="{{ __('main.barcode') ?? 'الباركود' }}">
+                    <div class="quotation-suggestions list-group d-none"></div>
+                </div>
+                <input type="hidden" name="product_id[]" class="quotation-product-id">
+                <input type="hidden" name="variant_id[]" class="quotation-variant-id">
+                <input type="hidden" name="variant_color[]" class="quotation-variant-color">
+                <input type="hidden" name="variant_size[]" class="quotation-variant-size">
+                <input type="hidden" name="variant_barcode[]" class="quotation-variant-barcode">
+            </td>
+            <td>
+                <div class="quotation-product-name text-muted">--</div>
+                <div class="small text-muted quotation-variant-label"></div>
+            </td>
+            <td><input type="number" step="0.01" name="qnt[]" class="form-control qnt" value="1"></td>
+            <td><input type="number" step="0.01" name="price[]" class="form-control price" value="0"></td>
+            <td><input type="number" step="0.01" name="tax[]" class="form-control tax" value="0"></td>
+            <td><input type="number" step="0.01" class="form-control total" readonly></td>
+            <td><button type="button" class="btn btn-danger btn-sm removeRow">X</button></td>
+        `;
+        itemsTableBody.appendChild(row);
+        bindBarcodeInput(row.querySelector('.quotation-barcode'));
+        recalcRow(row);
+        return row;
+    }
+
+    function findEmptyRow(){
+        const rows = itemsTableBody.querySelectorAll('tr');
+        for (const row of rows) {
+            const productId = row.querySelector('.quotation-product-id');
+            if(productId && !productId.value){
+                return row;
+            }
+        }
+        return null;
+    }
+
+    function showRowSuggestions(row, products){
+        const suggestions = row.querySelector('.quotation-suggestions');
+        if(!suggestions){
+            return;
+        }
+        suggestions.innerHTML = '';
+        products.forEach(function(product){
+            const label = (product.name || product.code || '') + (product.code ? ' - ' + product.code : '');
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'list-group-item list-group-item-action';
+            item.textContent = label;
+            item.addEventListener('click', function(){
+                applyProductToRow(product, row, false);
+                suggestions.classList.add('d-none');
+                suggestions.innerHTML = '';
+            });
+            suggestions.appendChild(item);
+        });
+        suggestions.classList.remove('d-none');
+    }
+
+    function bindBarcodeInput(input){
+        if(!input){
+            return;
+        }
+        const row = input.closest('tr');
+        const suggestions = row.querySelector('.quotation-suggestions');
+
+        input.addEventListener('input', function(){
+            const raw = input.value.trim();
+            if(!raw){
+                if(suggestions){
+                    suggestions.classList.add('d-none');
+                    suggestions.innerHTML = '';
+                }
+                clearRowProduct(row, false);
+                return;
+            }
+            fetchProducts(raw, function(response){
+                if(response.length === 0){
+                    if(suggestions){
+                        suggestions.classList.add('d-none');
+                        suggestions.innerHTML = '';
+                    }
+                    clearRowProduct(row, true);
+                    row.querySelector('.quotation-product-name').textContent = 'غير موجود';
+                    recalcRow(row);
+                    return;
+                }
+                if(response.length === 1){
+                    applyProductToRow(response[0], row, false);
+                    if(suggestions){
+                        suggestions.classList.add('d-none');
+                        suggestions.innerHTML = '';
+                    }
+                    return;
+                }
+                showRowSuggestions(row, response);
+            });
+        });
+    }
+
+    function showQuickSuggestions(products){
+        if(!quickSuggestions){
+            return;
+        }
+        quickSuggestions.innerHTML = '';
+        products.forEach(function(product){
+            const label = (product.name || product.code || '') + (product.code ? ' - ' + product.code : '');
+            const item = document.createElement('li');
+            item.className = 'quotation-select-product';
+            item.textContent = label;
+            item.addEventListener('click', function(){
+                addProductRow(product, false);
+                quickSuggestions.style.display = 'none';
+                quickSuggestions.innerHTML = '';
+                if(quickInput){
+                    quickInput.value = '';
+                    quickInput.focus();
+                }
+            });
+            quickSuggestions.appendChild(item);
+        });
+        quickSuggestions.style.display = 'block';
+    }
+
+    function addProductRow(product, forceDuplicate){
+        if(!product){
+            return;
+        }
+        if(!forceDuplicate && isDuplicateProduct(product.id, null)){
+            openDuplicateModal(product, function(){
+                addProductRow(product, true);
+            }, function(){});
+            return;
+        }
+        const row = findEmptyRow() || createRow();
+        applyProductToRow(product, row, true);
+        const qtyInput = row.querySelector('.qnt');
+        if(qtyInput){
+            qtyInput.focus();
+            qtyInput.select();
+        }
+    }
+
+    if(addRowBtn){
+        addRowBtn.addEventListener('click', function(){
+            const row = createRow();
+            const input = row.querySelector('.quotation-barcode');
+            if(input){
+                input.focus();
+            }
+        });
+    }
+
+    if(quickInput){
+        quickInput.addEventListener('input', function(){
+            const code = quickInput.value.trim();
+            if(!code){
+                if(quickSuggestions){
+                    quickSuggestions.style.display = 'none';
+                    quickSuggestions.innerHTML = '';
+                }
+                return;
+            }
+            fetchProducts(code, function(response){
+                if(response.length === 0){
+                    if(quickSuggestions){
+                        quickSuggestions.style.display = 'none';
+                        quickSuggestions.innerHTML = '';
+                    }
+                    return;
+                }
+                if(response.length === 1){
+                    addProductRow(response[0], false);
+                    if(quickInput){
+                        quickInput.value = '';
+                    }
+                    if(quickSuggestions){
+                        quickSuggestions.style.display = 'none';
+                        quickSuggestions.innerHTML = '';
+                    }
+                    return;
+                }
+                showQuickSuggestions(response);
+            });
+        });
+    }
+
+    document.addEventListener('click', function(event){
+        if(!quickSuggestions || quickSuggestions.style.display === 'none'){
+            return;
+        }
+        if(quickSuggestions.contains(event.target) || event.target === quickInput){
+            return;
+        }
+        quickSuggestions.style.display = 'none';
+    });
+
+    document.addEventListener('click', function(event){
+        document.querySelectorAll('.quotation-suggestions').forEach(function(list){
+            if(list.classList.contains('d-none')){
+                return;
+            }
+            if(list.contains(event.target)){
+                return;
+            }
+            const row = list.closest('tr');
+            if(row && row.contains(event.target)){
+                return;
+            }
+            list.classList.add('d-none');
+        });
+    });
 
     document.addEventListener('input', function(e){
         if(e.target.classList.contains('qnt') || e.target.classList.contains('price') || e.target.classList.contains('tax')){
@@ -346,48 +622,30 @@
         }
     });
 
-    document.addEventListener('focus', function(e){
-        if(e.target.classList.contains('productSelect')){
-            e.target.dataset.previousValue = e.target.value || '';
-        }
-    }, true);
-
-    document.addEventListener('change', function(e){
-        if(e.target.classList.contains('productSelect')){
-            const selectedProductId = e.target.value;
-            if(selectedProductId && isDuplicateProduct(selectedProductId, e.target)){
-                pendingDuplicateSelect = e.target;
-                pendingDuplicateProduct = productsMap[selectedProductId];
-                document.getElementById('duplicateItemName').innerText = pendingDuplicateProduct ? pendingDuplicateProduct.name : '';
-                $('#duplicateItemModal').modal({backdrop:'static', keyboard:false});
-                return;
+    const cancelDuplicateBtn = document.getElementById('cancelDuplicateItem');
+    const confirmDuplicateBtn = document.getElementById('confirmDuplicateItem');
+    if(cancelDuplicateBtn){
+        cancelDuplicateBtn.addEventListener('click', function(){
+            if(pendingDuplicateAction && pendingDuplicateAction.onCancel){
+                pendingDuplicateAction.onCancel();
             }
-            applyProductSelection(e.target);
-            e.target.dataset.previousValue = e.target.value;
-        }
-    });
+            pendingDuplicateAction = null;
+            $('#duplicateItemModal').modal('hide');
+        });
+    }
+    if(confirmDuplicateBtn){
+        confirmDuplicateBtn.addEventListener('click', function(){
+            if(pendingDuplicateAction && pendingDuplicateAction.onConfirm){
+                pendingDuplicateAction.onConfirm();
+            }
+            pendingDuplicateAction = null;
+            $('#duplicateItemModal').modal('hide');
+        });
+    }
 
-    document.getElementById('cancelDuplicateItem').addEventListener('click', function(){
-        if(pendingDuplicateSelect){
-            pendingDuplicateSelect.value = pendingDuplicateSelect.dataset.previousValue || '';
-            applyProductSelection(pendingDuplicateSelect);
-        }
-        pendingDuplicateSelect = null;
-        pendingDuplicateProduct = null;
-        $('#duplicateItemModal').modal('hide');
-    });
-
-    document.getElementById('confirmDuplicateItem').addEventListener('click', function(){
-        if(pendingDuplicateSelect){
-            applyProductSelection(pendingDuplicateSelect);
-            pendingDuplicateSelect.dataset.previousValue = pendingDuplicateSelect.value;
-        }
-        pendingDuplicateSelect = null;
-        pendingDuplicateProduct = null;
-        $('#duplicateItemModal').modal('hide');
-    });
-
-    addRow();
+    if(itemsTableBody && itemsTableBody.children.length === 0){
+        createRow();
+    }
 
     const customerSelect = document.getElementById('customer_id');
     const walkInFields = document.getElementById('walk_in_fields');

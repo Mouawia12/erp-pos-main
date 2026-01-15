@@ -9,7 +9,6 @@
     @endif  
     </title>
     <meta charset="utf-8"/>
-    <link href="{{asset('/assets/css/bootstrap.min.css')}}" rel="stylesheet"/>
     <style type="text/css" media="screen">
         @font-face {
             font-family: 'Almarai';

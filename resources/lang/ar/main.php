@@ -550,6 +550,8 @@ return [
     'purchases_return_report' => 'تقرير مرتجع مشتريات' ,
     'sales_return_report' => 'تقرير مرتجع المبيعات' ,
     'quotations_report' => 'تقرير عروض الأسعار',
+    'quotations' => 'عروض الأسعار',
+    'quotation' => 'عرض سعر',
     'inventory_value_report' => 'تقرير قيمة المخزون',
     'inventory_aging_report' => 'تقرير أعمار المخزون',
     'inventory_variance_report' => 'تقرير العجز والزيادة',

@@ -1,45 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
+@extends('admin.layouts.master')
 
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <link rel="apple-touch-icon" sizes="76x76" href="../assets/img/apple-icon.png">
-    <link rel="icon" type="image/png" href="../assets/img/favicon.png">
-    <title>
-        ERP System Dashboard
-    </title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
-    <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700" rel="stylesheet" />
-    <link href="../assets/css/nucleo-icons.css" rel="stylesheet" />
-    <link href="../assets/css/nucleo-svg.css" rel="stylesheet" />
-    <script src="https://kit.fontawesome.com/42d5adcbca.js" crossorigin="anonymous"></script>
+@section('title', __('main.representatives'))
 
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.2.0/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.1/css/dataTables.bootstrap5.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.4.0/css/responsive.bootstrap5.min.css">
-
-
-    <script type="text/javascript" src="https://code.jquery.com/jquery-3.5.1.js"></script>
-    <script type="text/javascript" src="https://cdn.datatables.net/1.12.1/js/jquery.dataTables.min.js"></script>
-    <script type="text/javascript" src="https://cdn.datatables.net/1.12.1/js/dataTables.bootstrap5.min.js"></script>
-
-
-    <link href="../assets/css/nucleo-svg.css" rel="stylesheet" />
-    <link id="pagestyle" href="../assets/css/soft-ui-dashboard.css?v=1.0.7" rel="stylesheet" />
-</head>
-
-<body @if(Config::get('app.locale') == 'en') class="g-sidenav-show  bg-gray-100" @else  class="g-sidenav-show rtl bg-gray-100" @endif>
-@include('layouts.side' , ['slag' => 6 , 'subSlag' => 130])
-
-
-<main class="main-content position-relative max-height-vh-100 h-100 border-radius-lg ">
-    @include('flash-message')
-    <!-- Navbar -->
-    @include('layouts.nav' , ['page_title' => __('main.representatives') ])
-    <!-- End Navbar -->
-    <div class="container-fluid py-4">
-        <div class="row">
+@section('content')
+@include('flash-message')
+<div class="py-4">
+    <div class="row">
             <div class="col-12">
                 <div class="card mb-4">
                     <div class="card-header pb-0">
@@ -91,7 +57,7 @@
                                         <br>
                                         <button type="button" class="btn btn-labeled btn-warning resetButton "  value="{{$user -> id}}">
                                             <span class="btn-label" style="margin-right: 10px;"></span>{{__('main.connect_with_client')}}</button>
-                                        <button type="button" class="btn btn-labeled btn-info" data-bs-toggle="modal" data-bs-target="#docModal-{{$user->id}}">
+                                        <button type="button" class="btn btn-labeled btn-info" data-toggle="modal" data-target="#docModal-{{$user->id}}">
                                             <span class="btn-label" style="margin-right: 10px;"><i class="fa fa-folder-open"></i></span>{{__('main.rep_documents')}}</button>
 
                                     </td>
@@ -106,11 +72,8 @@
             </div>
         </div>
 
-        @include('layouts.footer')
     </div>
-</main>
-    @include('layouts.fixed')
-<!--   Core JS Files   -->
+</div>
 
 
 <!--   Create Modal   -->
@@ -119,7 +82,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <label class="modelTitle"> {{ __('main.representatives')}}</label>
-                <button type="button" class="close modal-close-btn"  data-bs-dismiss="modal"  aria-label="Close" >
+                <button type="button" class="close modal-close-btn"  data-dismiss="modal"  aria-label="Close" >
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
@@ -143,7 +106,7 @@
                                 <input type="text"  id="name" name="name"
                                        class="form-control"
                                        placeholder="{{ __('main.name') }}"  />
-                                <input type="text"  id="id" name="id"
+                                <input type="text"  id="reset_id" name="id"
                                        class="form-control"
                                        placeholder="{{ __('main.code') }}"  hidden=""/>
                             </div>
@@ -264,7 +227,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <label class="modelTitle"> {{ __('main.reset_pass')}}</label>
-                <button type="button" class="close modal-close-btn"  data-bs-dismiss="modal"  aria-label="Close" >
+                <button type="button" class="close modal-close-btn"  data-dismiss="modal"  aria-label="Close" >
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
@@ -292,7 +255,7 @@
                         <div class="col-6 " >
                             <div class="form-group">
                                 <label>{{ __('main.password') }} <span style="color:red; font-size:20px; font-weight:bold;">*</span> </label>
-                                <input type="text"  id="password" name="password"
+                                <input type="text"  id="reset_password" name="password"
                                        class="form-control"
                                        placeholder="{{ __('main.password') }}"  />
                             </div>
@@ -322,12 +285,12 @@
     <div class="modal-dialog modal-sm" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <button type="button" class="close"  data-bs-dismiss="modal"  aria-label="Close" style="color: red; font-size: 20px; font-weight: bold;">
+                <button type="button" class="close"  data-dismiss="modal"  aria-label="Close" style="color: red; font-size: 20px; font-weight: bold;">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
             <div class="modal-body" id="smallBody">
-                <img src=assets/img/warning.png" class="alertImage">
+                <img src="{{ asset('assets/img/warning.png') }}" class="alertImage" alt="warning">
                 <label class="alertTitle">{{__('main.delete_alert')}}</label>
                 <br> <label  class="alertSubTitle" id="modal_table_bill"></label>
                 <div class="row">
@@ -349,7 +312,7 @@
     <div class="modal-dialog modal-md" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <button type="button" class="close"  data-bs-dismiss="modal"  aria-label="Close" style="color: red; font-size: 20px; font-weight: bold;">
+                <button type="button" class="close"  data-dismiss="modal"  aria-label="Close" style="color: red; font-size: 20px; font-weight: bold;">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
@@ -396,7 +359,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <label class="modelTitle">{{ __('main.rep_documents') }} - {{$user->name}}</label>
-                <button type="button" class="close modal-close-btn" data-bs-dismiss="modal" aria-label="Close">
+                <button type="button" class="close modal-close-btn" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
@@ -480,6 +443,9 @@
 </div>
 @endforeach
 
+@endsection
+
+@section('js')
 <script type="text/javascript">
     let id = 0 ;
     $(document).ready(function()
@@ -488,79 +454,41 @@
         $(document).on('click', '#createButton', function(event) {
             id = 0 ;
             event.preventDefault();
-            let href = $(this).attr('data-attr');
-            $.ajax({
-                url: href,
-                beforeSend: function() {
-                    $('#loader').show();
-                },
-                // return the result
-                success: function(result) {
-                    $('#createModal').modal("show");
-                    $(".modal-body #name").val( "" );
-                    $(".modal-body #last_name").val( "" );
-                    $(".modal-body #gender").val( "" );
-                    $(".modal-body #company").val( "" );
-                    $(".modal-body #phone").val( "" );
-                    $(".modal-body #code").val( "" );
-                    $(".modal-body #id").val( 0 );
-                    $(".modal-body #email").val( "" );
-                    $(".modal-body #password").val( "" );
-                    $(".modal-body #document_name").val( "" );
-                    $(".modal-body #document_number").val( "" );
-                    $(".modal-body #document_expiry_date").val( "" );
-                    $(".modal-body #warehouse_id").val( "" );
-                    $(".modal-body #price_level_id").val( "" );
-                    $(".modal-body #profit_margin").val( "" );
-                    $(".modal-body #discount_percent").val( "" );
-                    $(".modal-body #create_warehouse").prop('checked', false);
-                    $(".modal-body #status").val( "" );
-                    $(".modal-body #group").val( "" );
-                    $(".modal-body #conf_password").val( "" );
+            $('#createModal').modal("show");
+            $(".modal-body #name").val( "" );
+            $(".modal-body #last_name").val( "" );
+            $(".modal-body #gender").val( "" );
+            $(".modal-body #company").val( "" );
+            $(".modal-body #phone").val( "" );
+            $(".modal-body #code").val( "" );
+            $(".modal-body #id").val( 0 );
+            $(".modal-body #email").val( "" );
+            $(".modal-body #password").val( "" );
+            $(".modal-body #document_name").val( "" );
+            $(".modal-body #document_number").val( "" );
+            $(".modal-body #document_expiry_date").val( "" );
+            $(".modal-body #warehouse_id").val( "" );
+            $(".modal-body #price_level_id").val( "" );
+            $(".modal-body #profit_margin").val( "" );
+            $(".modal-body #discount_percent").val( "" );
+            $(".modal-body #create_warehouse").prop('checked', false);
+            $(".modal-body #status").val( "" );
+            $(".modal-body #group").val( "" );
+            $(".modal-body #conf_password").val( "" );
 
 
-                    $(".modal-body #email").prop('readonly' , false);
-                    $(".modal-body #password").prop('readonly' , false);
-                    $(".modal-body #status").prop('readonly' , false);
-                    $(".modal-body #group").prop('readonly' , false);
-                    $(".modal-body #conf_password").prop('readonly' , false);
-                    $(".modal-body #password").prop('type' , 'text');
-                    $(".modal-body #conf_password").prop('type' , 'text');
-                },
-                complete: function() {
-                    $('#loader').hide();
-                },
-                error: function(jqXHR, testStatus, error) {
-                    console.log(error);
-                    alert("Page " + href + " cannot open. Error:" + error);
-                    $('#loader').hide();
-                },
-                timeout: 8000
-            })
+            $(".modal-body #email").prop('readonly' , false);
+            $(".modal-body #password").prop('readonly' , false);
+            $(".modal-body #status").prop('readonly' , false);
+            $(".modal-body #group").prop('readonly' , false);
+            $(".modal-body #conf_password").prop('readonly' , false);
+            $(".modal-body #password").prop('type' , 'text');
+            $(".modal-body #conf_password").prop('type' , 'text');
         });
         $(document).on('click', '.deleteBtn', function(event) {
              id = event.currentTarget.id ;
             event.preventDefault();
-            let href = $(this).attr('data-attr');
-            $.ajax({
-                url: href,
-                beforeSend: function() {
-                    $('#loader').show();
-                },
-                // return the result
-                success: function(result) {
-                    $('#deleteModal').modal("show");
-                },
-                complete: function() {
-                    $('#loader').hide();
-                },
-                error: function(jqXHR, testStatus, error) {
-                    console.log(error);
-                    alert("Page " + href + " cannot open. Error:" + error);
-                    $('#loader').hide();
-                },
-                timeout: 8000
-            })
+            $('#deleteModal').modal("show");
         });
 
         $(document).on('click', '.deleteClientModalBtn', function(event) {
@@ -584,55 +512,36 @@
                     console.log(response);
                     event.preventDefault();
                     if(response){
-                        let href = $(this).attr('data-attr');
+                        $('#clientsModal').modal("show");
 
-                        $.ajax({
-                            url: href,
-                            beforeSend: function() {
-                                $('#loader').show();
-                            },
-                            // return the result
-                            success: function(result) {
-                                $('#clientsModal').modal("show");
+                        $(".modal-body #clients_table tbody").empty();
 
-                                $(".modal-body #clients_table tbody").empty();
+                        $('.modal-body #client')
+                            .empty()
+                            .append('<option selected="selected" value="">select</option>');
+                        $('.modal-body #rep').val(id);
 
+                        for(let i = 0 ; i < response.length ; i++){
+                            if(response[i].representative_id_ == id){
+                                var newTr = $('<tr data-item-id="'+response[i].id+'">');
+                                var tr_html ='<td class="text-center"> <span>'+response[i].name +'</span> </td>';
+                                tr_html += `<td class="text-center">      <button type="button" class="btn btn-labeled btn-danger deleteClientModalBtn "
+                                  value= "  `+response[i].id + ` ">
+                                    <span class="btn-label" style="margin-right: 10px;"><i class="fa fa-trash"></i></span></button> </td>`;
+                                newTr.html(tr_html);
+                                newTr.appendTo('#clients_table');
+                            }  if(response[i].representative_id_ == 0){
+                                $('.modal-body #client').append($("<option />").val(response[i].id).text(response[i].name));
+                            }
 
-                                $('.modal-body #client')
-                                    .empty()
-                                    .append('<option selected="selected" value="">select</option>');
-                                $('.modal-body #rep').val(id);
-
-
-
-                                for(let i = 0 ; i < response.length ; i++){
-                                    if(response[i].representative_id_ == id){
-                                        var newTr = $('<tr data-item-id="'+response[i].id+'">');
-                                        var tr_html ='<td class="text-center"> <span>'+response[i].name +'</span> </td>';
-                                        tr_html += `<td class="text-center">      <button type="button" class="btn btn-labeled btn-danger deleteClientModalBtn "
-                                          value= "  `+response[i].id + ` ">
-                                            <span class="btn-label" style="margin-right: 10px;"><i class="fa fa-trash"></i></span></button> </td>`;
-                                        newTr.html(tr_html);
-                                        newTr.appendTo('#clients_table');
-                                    }  if(response[i].representative_id_ == 0){
-                                        $('.modal-body #client').append($("<option />").val(response[i].id).text(response[i].name));
-                                    }
-
-                                }
-                            },
-                            complete: function() {
-                                $('#loader').hide();
-                            },
-                            error: function(jqXHR, testStatus, error) {
-                                console.log(error);
-                                alert("Page " + href + " cannot open. Error:" + error);
-                                $('#loader').hide();
-                            },
-                            timeout: 8000
-                        })
+                        }
                     } else {
 
                     }
+                },
+                error: function(jqXHR, testStatus, error) {
+                    console.log(error);
+                    alert("Unable to load representative clients.");
                 }
             });
 
@@ -662,39 +571,20 @@
             success:function(response){
                 console.log(response);
                 if(response){
-                    let href = $(this).attr('data-attr');
-                    $.ajax({
-                        url: href,
-                        beforeSend: function() {
-                            $('#loader').show();
-                        },
-                        // return the result
-                        success: function(result) {
-                            $('#createModal').modal("show");
-                            $(".modal-body #name").val( response.name  );
-                            $(".modal-body #code").val( response.code  );
-                            $(".modal-body #user_name").val( response.user_name  );
-                            $(".modal-body #password").val( response.password  );
-                            $(".modal-body #document_name").val( response.document_name  );
-                            $(".modal-body #document_number").val( response.document_number  );
-                            $(".modal-body #document_expiry_date").val( response.document_expiry_date  );
-                            $(".modal-body #warehouse_id").val( response.warehouse_id  );
-                            $(".modal-body #price_level_id").val( response.price_level_id  );
-                            $(".modal-body #profit_margin").val( response.profit_margin  );
-                            $(".modal-body #discount_percent").val( response.discount_percent  );
-                            $(".modal-body #create_warehouse").prop('checked', false);
-                            $(".modal-body #id").val( response.id  );
-                        },
-                        complete: function() {
-                            $('#loader').hide();
-                        },
-                        error: function(jqXHR, testStatus, error) {
-                            console.log(error);
-                            alert("Page " + href + " cannot open. Error:" + error);
-                            $('#loader').hide();
-                        },
-                        timeout: 8000
-                    })
+                    $('#createModal').modal("show");
+                    $(".modal-body #name").val( response.name  );
+                    $(".modal-body #code").val( response.code  );
+                    $(".modal-body #user_name").val( response.user_name  );
+                    $(".modal-body #password").val( response.password  );
+                    $(".modal-body #document_name").val( response.document_name  );
+                    $(".modal-body #document_number").val( response.document_number  );
+                    $(".modal-body #document_expiry_date").val( response.document_expiry_date  );
+                    $(".modal-body #warehouse_id").val( response.warehouse_id  );
+                    $(".modal-body #price_level_id").val( response.price_level_id  );
+                    $(".modal-body #profit_margin").val( response.profit_margin  );
+                    $(".modal-body #discount_percent").val( response.discount_percent  );
+                    $(".modal-body #create_warehouse").prop('checked', false);
+                    $(".modal-body #id").val( response.id  );
                 } else {
 
                 }
@@ -702,25 +592,4 @@
         });
     }
 </script>
-
-
-<script src="../assets/js/core/popper.min.js"></script>
-<script src="../assets/js/core/bootstrap.min.js"></script>
-<script src="../assets/js/plugins/perfect-scrollbar.min.js"></script>
-<script src="../assets/js/plugins/smooth-scrollbar.min.js"></script>
-<script>
-    var win = navigator.platform.indexOf('Win') > -1;
-    if (win && document.querySelector('#sidenav-scrollbar')) {
-        var options = {
-            damping: '0.5'
-        }
-        Scrollbar.init(document.querySelector('#sidenav-scrollbar'), options);
-    }
-</script>
-<!-- Github buttons -->
-<script async defer src="https://buttons.github.io/buttons.js"></script>
-<!-- Control Center for Soft Dashboard: parallax effects, scripts for the example pages etc -->
-<script src="../assets/js/soft-ui-dashboard.min.js?v=1.0.7"></script>
-</body>
-
-</html>
+@endsection

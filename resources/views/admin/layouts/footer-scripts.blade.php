@@ -2,8 +2,53 @@
 <a href="#top" id="back-to-top"><i class="las la-angle-double-up"></i></a>
 <!-- JQuery min js -->
 <script src="{{URL::asset('assets/plugins/jquery/jquery.min.js')}}"></script>
-<!-- Bootstrap Bundle js -->
+<!-- Bootstrap js (for modals/tooltips/popovers only) -->
 <script src="{{URL::asset('assets/plugins/bootstrap/js/bootstrap.bundle.min.js')}}"></script>
+<script>
+    (function ($) {
+        if (!$.fn.tooltip) {
+            $.fn.tooltip = function () {
+                return this;
+            };
+        }
+        if (!$.fn.toast) {
+            $.fn.toast = function () {
+                return this;
+            };
+        }
+        if (!$.fn.popover) {
+            $.fn.popover = function () {
+                return this;
+            };
+        }
+        if ($.fn.modal) {
+            return;
+        }
+        function showModal($modal) {
+            $modal.addClass('is-open').attr('aria-hidden', 'false');
+            $('body').addClass('modal-open');
+            $modal.trigger('shown.bs.modal');
+        }
+        function hideModal($modal) {
+            $modal.removeClass('is-open').attr('aria-hidden', 'true');
+            $('body').removeClass('modal-open');
+            $modal.trigger('hidden.bs.modal');
+        }
+        $.fn.modal = function (action) {
+            return this.each(function () {
+                var $modal = $(this);
+                if (action === 'hide') {
+                    hideModal($modal);
+                } else {
+                    showModal($modal);
+                }
+            });
+        };
+        $(document).on('click', '[data-bs-dismiss="modal"]', function () {
+            $(this).closest('.modal').modal('hide');
+        });
+    })(jQuery);
+</script>
 <!-- Ionicons js -->
 <script src="{{URL::asset('assets/plugins/ionicons/ionicons.js')}}"></script>
 <!-- Moment js -->
@@ -16,17 +61,13 @@
 @yield('js')
 <!-- Sticky js -->
 <script src="{{URL::asset('assets/js/sticky.js')}}"></script>
-<script src="{{URL::asset('assets/js/bootstrap-select.js')}}"></script>
 <!-- custom js -->
 <script src="{{URL::asset('assets/js/custom.js')}}"></script><!-- Left-menu js-->
 <script src="{{URL::asset('assets/plugins/side-menu/sidemenu.js')}}"></script>
 <!-- datatables js -->
 <script src="{{URL::asset('assets/plugins/datatables/jquery.dataTables.min.js')}}"></script>
-<script src="{{URL::asset('assets/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js')}}"></script>
 <script src="{{URL::asset('assets/plugins/datatables-responsive/js/dataTables.responsive.min.js')}}"></script>
-<script src="{{URL::asset('assets/plugins/datatables-responsive/js/responsive.bootstrap4.min.js')}}"></script>
 <script src="{{URL::asset('assets/plugins/datatables-buttons/js/dataTables.buttons.min.js')}}"></script>
-<script src="{{URL::asset('assets/plugins/datatables-buttons/js/buttons.bootstrap4.min.js')}}"></script>
 <script src="{{URL::asset('assets/plugins/jszip/jszip.min.js')}}"></script>
 <script src="{{URL::asset('assets/plugins/datatables-buttons/js/buttons.html5.min.js')}}"></script>
 <script src="{{URL::asset('assets/plugins/datatables-buttons/js/buttons.print.js')}}"></script>
@@ -86,7 +127,9 @@
 
 <script>
     $(function () {
-        $('[data-toggle="tooltip"]').tooltip()
+        if ($.fn && $.fn.tooltip) {
+            $('[data-toggle="tooltip"]').tooltip();
+        }
     });
     $('.js-example-basic-single').select2({
         placeholder: "اختر مما يلى"
@@ -139,20 +182,35 @@
  
  
 $(document).ready( function () {
- 
-            $("#example1").DataTable({
+            function safeDataTable(selector, options, buttonsTarget) {
+                if (!$.fn || !$.fn.dataTable) {
+                    return;
+                }
+                var $table = $(selector);
+                if (!$table.length) {
+                    return;
+                }
+                try {
+                    var dt = $table.DataTable(options || {});
+                    if (buttonsTarget && dt.buttons) {
+                        dt.buttons().container().appendTo(buttonsTarget);
+                    }
+                } catch (e) {
+                    // Fail quietly so other scripts continue.
+                }
+            }
+
+            safeDataTable("#example1", {
                 "responsive": true, "lengthChange": true, "autoWidth": false, 
-                "buttons": ["copy", "excel", "print", "colvis",
-				], 
-            }).buttons().container().appendTo('#example1_wrapper .col-md-6:eq(0)');
+                "buttons": ["copy", "excel", "print", "colvis"],
+            }, '#example1_wrapper .col-md-6:eq(0)');
 
-            $("#invoice").DataTable({
+            safeDataTable("#invoice", {
                 "responsive": true, "lengthChange": true, "autoWidth": false, "ordering": false,
-                "buttons": ["copy", "excel", "print", "colvis",
-				], 
-            }).buttons().container().appendTo('#example1_wrapper .col-md-6:eq(0)');
+                "buttons": ["copy", "excel", "print", "colvis"],
+            }, '#example1_wrapper .col-md-6:eq(0)');
 
-            $('#example2').DataTable({
+            safeDataTable('#example2', {
                 "paging": false,
                 "lengthChange": true,
                 "searching": false,
@@ -160,9 +218,9 @@ $(document).ready( function () {
                 "info": false,
                 "autoWidth": false,
                 "responsive": true 
-            }); 
+            });
 
-            $('#sTable').DataTable({
+            safeDataTable('#sTable', {
                 "paging": false,
                 "lengthChange": true,
                 "searching": false,
@@ -170,9 +228,9 @@ $(document).ready( function () {
                 "info": false,
                 "autoWidth": false,
                 "responsive": true 
-            }); 
+            });
 
-            $('#example3').DataTable({
+            safeDataTable('#example3', {
                 "paging": false,
                 "lengthChange": true,
                 "searching": false,
@@ -180,7 +238,7 @@ $(document).ready( function () {
                 "info": false,
                 "autoWidth": false,
                 "responsive": false 
-            });  
+            });
 
     
 $("#btnFullScreen").click(function () {

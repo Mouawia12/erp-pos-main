@@ -43,7 +43,9 @@
 
 
 	//Activate bootstrip tooltips
-	$("[data-toggle='tooltip']").tooltip();
+	if ($.fn && $.fn.tooltip) {
+		$("[data-toggle='tooltip']").tooltip();
+	}
 
 
 	// ______________Active Class

@@ -1325,6 +1325,7 @@ class SalesController extends Controller
             ->join('warehouses','sales.warehouse_id','=','warehouses.id')
             ->join('companies','sales.customer_id','=','companies.id')
             ->join('branches','sales.branch_id','=','branches.id')
+            ->leftJoin('representatives', 'sales.representative_id', '=', 'representatives.id')
             ->leftJoin('pos_sections', 'sales.pos_section_id', '=', 'pos_sections.id')
             ->leftJoin('pos_shifts', 'sales.pos_shift_id', '=', 'pos_shifts.id')
             ->select(
@@ -1338,6 +1339,8 @@ class SalesController extends Controller
                 'branches.tax_number as branch_tax_number',
                 'branches.manager_name as branch_manager',
                 'branches.contact_email as branch_email',
+                'representatives.user_name as representative_user_name',
+                'representatives.name as representative_name',
                 'pos_sections.name as pos_section_name',
                 'pos_sections.type as pos_section_type',
                 'pos_shifts.opened_at as shift_opened_at'
@@ -1354,7 +1357,15 @@ class SalesController extends Controller
 
         $details = DB::table('sale_details')
             ->join('products','sale_details.product_id','=','products.id')
-            ->select('sale_details.*', 'products.code','products.name','products.tax as taxRate','products.tax_excise as taxExciseRate')
+            ->leftJoin('units', 'sale_details.unit_id', '=', 'units.id')
+            ->select(
+                'sale_details.*',
+                'products.code',
+                'products.name',
+                'products.tax as taxRate',
+                'products.tax_excise as taxExciseRate',
+                'units.name as unit_name'
+            )
             ->where('sale_details.sale_id','=', $id)
             ->when(Auth::user()->subscriber_id ?? null,function($q,$sub){
                 $q->where('sale_details.subscriber_id',$sub);

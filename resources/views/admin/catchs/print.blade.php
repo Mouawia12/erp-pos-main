@@ -5,7 +5,6 @@
          مستند قبض نقدية {{$bill -> docNumber}}
     </title>
     <meta charset="utf-8"/>
-    <link href="{{asset('/assets/css/bootstrap.min.css')}}" rel="stylesheet"/>
 	<link href="{{asset('css/all.min.css')}}" rel="stylesheet" />
     <style type="text/css" media="screen">
   

@@ -42,11 +42,11 @@
         }
 
         h1, h2, h3, h4, h5, h6 {
-            font-family: 'Almarai' !important;
+            font-family: "Cairo", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif !important;
         }
 
         body, html {
-            font-family: 'Almarai' !important;
+            font-family: "Cairo", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif !important;
             font-size: 14px !important;
             direction: {{ $isRtl ? 'rtl' : 'ltr' }};
         }
@@ -56,7 +56,7 @@
         }
 
         .btn-md, .badge {
-            font-family: 'Almarai' !important;
+            font-family: "Cairo", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif !important;
             font-size: 14px !important;
         }
 
@@ -205,7 +205,7 @@
         }
     </style>
 </head> 
-<body class="main-body app sidebar-mini {{ $isRtl ? 'rtl' : 'ltr' }}">
+<body class="main-body app sidebar-mini tw-modern {{ $isRtl ? 'rtl' : 'ltr' }}">
 @include('admin.layouts.main-sidebar')
 <!-- main-content -->
 <div class="main-content app-content">

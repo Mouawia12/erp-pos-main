@@ -16,10 +16,6 @@
 <link rel="stylesheet" href="{{URL::asset('assets/css/sidemenu.css')}}">
 @endif
 <!-- datatables css -->
-<link rel="stylesheet" href="{{URL::asset('assets/plugins/datatables-buttons/css/buttons.bootstrap4.min.css')}}">
-<link rel="stylesheet" href="{{URL::asset('assets/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css')}}"> 
-<link rel="stylesheet" href="{{URL::asset('assets/plugins/datatables-responsive/css/responsive.bootstrap4.min.css')}}">
-<link rel="stylesheet" href="{{URL::asset('assets/plugins/datatables-buttons/css/buttons.bootstrap4.min.css')}}">
 <link href="{{asset('assets/plugins/select2/css/select2.min.css')}}"  rel="stylesheet" > 
 @yield('css')
 <!--- Style css -->
@@ -27,15 +23,13 @@
 <link href="{{URL::asset('assets/css-rtl/style.css')}}" rel="stylesheet">
 <link href="{{URL::asset('assets/css-rtl/style-dark.css')}}" rel="stylesheet">
 <link href="{{URL::asset('assets/css-rtl/skin-modes.css')}}" rel="stylesheet">
-<link href="{{asset('assets/css-rtl/bootstrap-select.css')}}" rel="stylesheet"/>
 <link rel="stylesheet" href="{{asset('assets/css-rtl/progress-chart.css')}}">
 @else
 <link href="{{URL::asset('assets/css/style.css')}}" rel="stylesheet">
 <link href="{{URL::asset('assets/css/style-dark.css')}}" rel="stylesheet">
 <link href="{{URL::asset('assets/css/skin-modes.css')}}" rel="stylesheet">
-<link href="{{asset('assets/css-rtl/bootstrap-select.css')}}" rel="stylesheet"/>
 <link rel="stylesheet" href="{{asset('assets/css-rtl/progress-chart.css')}}">
 @endif
-<link href="{{asset('assets/plugins/select2-bootstrap4-theme/select2-bootstrap4.min.css')}}"  rel="stylesheet" >
 <link href="{{asset('assets/plugins/fontawesome-free/css/all.min.css')}}" rel="stylesheet" />
+@vite(['resources/css/app.css', 'resources/js/app.js'])
 <!-- حذف أي @font-face مخصص لتجنب أخطاء الخط -->

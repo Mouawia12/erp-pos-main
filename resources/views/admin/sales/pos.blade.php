@@ -352,7 +352,7 @@ label.total {
                                 </div>
                                 <div class="col-lg-4">
                                     <div class="form-group">
-                                        <label>{{ __('main.quotation_prefix') ?? 'عروض الأسعار' }}</label>
+                                        <label>{{ __('main.quotations') }}</label>
                                         <select class="form-control pos-input" id="quotation_id">
                                             <option value="">{{ __('main.choose') }}</option>
                                         </select>

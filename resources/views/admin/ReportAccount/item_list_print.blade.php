@@ -3,7 +3,6 @@
 <head>
     <meta charset="utf-8">
     <title>Invoice</title>
-    <link rel="stylesheet" href="{{asset('assets/css/bootstrap.min.css')}}">
     <script src="{{asset('assets/js/print.js')}}"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
     <link href="{{asset('assets/css/printA4Landscape.css')}}" rel="stylesheet">

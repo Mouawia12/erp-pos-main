@@ -3,7 +3,7 @@
 <div class="container-fluid py-4">
     <div class="row mb-3">
         <div class="col-6">
-            <h4>{{ __('main.quotation_prefix') ?? 'عروض الأسعار' }}</h4>
+            <h4>{{ __('main.quotations') }}</h4>
         </div>
         <div class="col-6 text-end">
             <a href="{{ route('quotations.create') }}" class="btn btn-primary">{{ __('main.add_new') }}</a>

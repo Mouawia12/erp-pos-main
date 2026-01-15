@@ -1,8 +1,9 @@
 @extends('admin.layouts.master')
 @section('title') [ {{ __('main.sale')}} ]@endsection   
 @section('content')
+    <div class="tw-invoice">
     @if (session('success'))
-        <div class="alert alert-success  fade show">
+        <div class="alert alert-success fade show">
             <button class="close" data-dismiss="alert" aria-label="Close">×</button>
             {{ session('success') }}
         </div>
@@ -56,15 +57,15 @@ span strong {font-size:12px;}
             </div>
         </div>
     @endif
-    <div class="row row-sm">
+    <div class="row row-sm tw-invoice-grid">
         <div class="col-xl-12">
             <form method="POST" action="{{ route('store_sale') }}" id="salesform"
                            enctype="multipart/form-data" autocomplete="off">
             @csrf 
             <input type="hidden" name="tax_mode" value="inclusive">
-            <div class="card shadow mb-4 col-xl-12"> 
-                <div class="card-header"  id="head-right" > 
-                    <div class="row"> 
+            <div class="card shadow mb-4 col-xl-12 tw-invoice-panel"> 
+                <div class="card-header tw-invoice-header"  id="head-right" > 
+                    <div class="row g-3"> 
                         <div class="col-md-2">
                             <div class="form-group">
                                 <label>{{ __('main.invoice_no') }} <span class="text-danger">*</span> </label>
@@ -252,17 +253,17 @@ span strong {font-size:12px;}
                     </div> 
                 </div>    
                 <div class="row"> 
-                    <div class="card shadow mb-4 col-9">
+                    <div class="card shadow mb-4 col-lg-9 col-12 tw-invoice-items">
                         <div class="card-body">   
                                 <div class="row"> 
                                     <div class="col-md-12" id="sticker">
                                         <div class="well well-sm" @if(Config::get('app.locale') == 'ar')style="direction: rtl;" @endif>
                                             <div class="form-group">
-                                                <div class="input-group wide-tip">
+                                                <div class="input-group wide-tip tw-barcode-input">
                                                     <div class="input-group-addon">
                                                         <i class="fa fa-3x fa-barcode addIcon"></i>
                                                     </div>
-                                                    <input type="text" name="add_item" id="add_item" value="" class="form-control input-lg ui-autocomplete-input" placeholder="{{__('main.barcode.note')}}" autocomplete="off">
+                                                    <input type="text" name="add_item" id="add_item" value="" class="form-control input-lg ui-autocomplete-input tw-barcode-field" placeholder="{{__('main.barcode.note')}}" autocomplete="off">
                                                 </div> 
                                                 <div class="mt-1">
                                                     <a href="{{ route('createProduct') }}" target="_blank" class="btn btn-sm btn-outline-primary">
@@ -270,23 +271,23 @@ span strong {font-size:12px;}
                                                     </a>
                                                 </div>
                                             </div>
-                                            <ul class="suggestions" id="products_suggestions" style="display: block">
+                                            <ul class="suggestions tw-suggestions" id="products_suggestions" style="display: block">
                                             </ul>
                                             <div class="clearfix"></div>
                                         </div>
                                     </div>  
                                 </div> 
                                 <div class="row"> 
-                                    <div class="card shadow mb-4 col-xl-12">
-                                        <div class="card-header pb-0">
-                                            <h4 class="alert alert-info text-center">
+                                    <div class="card shadow mb-4 col-xl-12 tw-invoice-items-card">
+                                        <div class="card-header pb-0 tw-items-header">
+                                            <h4 class="tw-items-title text-center">
                                                 <i class="fa fa-cart-shopping"></i>
                                                 {{__('main.items_invoice')}} 
                                             </h4>
                                         </div>  
                                         <div class="card-body px-0 pt-0">
                                             <div class="table-responsive hoverable-table">
-                                                <table class="display w-100 table-bordered" id="sTable" 
+                                                <table class="display w-100 table-bordered tw-items-table" id="sTable" 
                                                        style="text-align: center;">  
                                                     <thead>
                                                         <tr>
@@ -309,22 +310,24 @@ span strong {font-size:12px;}
                                                     </thead>
                                                     <tbody id="tbody"></tbody>
                                                     <tfoot>
-                                                        <th colspan="7">
-                                                            {{__('main.sum')}}
-                                                        </th>
-                                                        <td class="text-center" colspan="1">
-                                                            <strong id="discount-text">0</strong>   
-                                                        </td>  
-                                                        <td class="text-center" colspan="1">
-                                                            <strong id="total-text">0</strong>   
-                                                        </td> 
-                                                        <td class="text-center" colspan="1">
-                                                            <strong id="tax-text">0</strong>   
-                                                        </td> 
-                                                        <td class="text-center" colspan="1">
-                                                            <strong id="net-text">0</strong>   
-                                                        </td> 
-                                                        <td class="text-center" colspan="1"></td>   
+                                                        <tr>
+                                                            <th colspan="7">
+                                                                {{__('main.sum')}}
+                                                            </th>
+                                                            <td class="text-center" colspan="1">
+                                                                <strong id="discount-text">0</strong>   
+                                                            </td>  
+                                                            <td class="text-center" colspan="1">
+                                                                <strong id="total-text">0</strong>   
+                                                            </td> 
+                                                            <td class="text-center" colspan="1">
+                                                                <strong id="tax-text">0</strong>   
+                                                            </td> 
+                                                            <td class="text-center" colspan="1">
+                                                                <strong id="net-text">0</strong>   
+                                                            </td> 
+                                                            <td class="text-center" colspan="1"></td>   
+                                                        </tr>
                                                     </tfoot>
                                                 </table>
                                             </div>
@@ -338,9 +341,9 @@ span strong {font-size:12px;}
                             
                         </div> 
                     </div> 
-                    <div class="card shadow mb-4 col-3"> 
+                    <div class="card shadow mb-4 col-lg-3 col-12 tw-summary-card"> 
                         <div class="card-body ">
-                            <div class="row document_type1" style="align-items: center; margin-bottom: 10px;">
+                            <div class="row document_type1 tw-summary-row" style="align-items: center; margin-bottom: 10px;">
                                 <div class="col-6">
                                     <label style="text-align: right;float: right;"> {{__('main.items_count')}} </label>
                                 </div>
@@ -348,7 +351,7 @@ span strong {font-size:12px;}
                                     <input type="text" readonly class="form-control" id="items_count">
                                 </div>
                             </div>  
-                            <div class="row" style="align-items: center; margin-bottom: 10px;">
+                            <div class="row tw-summary-row" style="align-items: center; margin-bottom: 10px;">
                                 <div class="col-6">
                                     <label style="text-align: right;float: right;"> {{__('main.total_mount')}} </label>
                                 </div>
@@ -356,7 +359,7 @@ span strong {font-size:12px;}
                                     <input type="text" readonly class="form-control" id="first_total">
                                 </div>
                             </div> 
-                            <div class="row" style="align-items: center; margin-bottom: 10px;">
+                            <div class="row tw-summary-row" style="align-items: center; margin-bottom: 10px;">
                                 <div class="col-6">
                                     <label style="text-align: right;float: right;"> {{__('main.total_tax')  }} </label>
                                 </div>
@@ -364,7 +367,7 @@ span strong {font-size:12px;}
                                     <input type="text" readonly class="form-control" id="tax_total">
                                 </div>
                             </div>  
-                            <div class="row" hidden style="align-items: center; margin-bottom: 10px;">
+                            <div class="row tw-summary-row" hidden style="align-items: center; margin-bottom: 10px;">
                                 <div class="col-6">
                                     <label style="text-align: right;float: right;"> {{__('main.discount_total')  }} </label>
                                 </div>
@@ -372,7 +375,7 @@ span strong {font-size:12px;}
                                     <input type="text" readonly class="form-control" id="discount_total">
                                 </div>
                             </div>  
-                            <div class="row" style="align-items: center; margin-bottom: 10px;">
+                            <div class="row tw-summary-row" style="align-items: center; margin-bottom: 10px;">
                                 <div class="col-6">
                                     <label style="text-align: right;float: right;"> {{__('main.total.final')}} </label>
                                 </div>
@@ -381,7 +384,7 @@ span strong {font-size:12px;}
                                 </div>
                             </div>
                             <hr class="sidebar-divider d-none d-md-block">
-                            <div class="row" style="align-items: baseline; margin-bottom: 10px;">
+                            <div class="row tw-summary-row" style="align-items: baseline; margin-bottom: 10px;">
                                 <div class="col-md-6">
                                     <div class="form-group">
                                         <label>{{ __('main.discount_type') }} </label> 
@@ -413,7 +416,7 @@ span strong {font-size:12px;}
                                     </div>
                                 </div>
                                 <div class="col-md-12 text-center" style="display: block; margin: auto;">
-                                    <button type="button" class="btn btn-primary" id="SaveSales">
+                                    <button type="submit" class="btn btn-primary w-100 tw-save-btn" id="SaveSales">
                                         <i class="fa fa-save"></i>
                                         {{__('main.save_btn')}}
                                     </button> 
@@ -426,6 +429,7 @@ span strong {font-size:12px;}
             </form> 
         </div>  
     </div>  
+    </div>
 
 <audio id="mysoundclip1" preload="auto">
     <source src="{{URL::asset('assets/sound/beep/beep-timber.mp3')}}"></source>
@@ -1101,7 +1105,7 @@ span strong {font-size:12px;}
             playSuccessSound();
         });
 
-        $(document).on('click', '#SaveSales', function () {
+        $(document).on('click', '#SaveSales', function (event) {
             var rows =  0 ; 
             rows = ($('#sTable tbody tr').length);
             console.log(rows);
@@ -1112,16 +1116,23 @@ span strong {font-size:12px;}
 
             if(client > 0 && warehouse_id > 0){
                 if (rows > 0){ 
-                    if((paymentMethodSelect.val() || '').toLowerCase() === 'credit'){
+                    var paymentValue = '';
+                    if (paymentMethodSelect && paymentMethodSelect.length) {
+                        paymentValue = (paymentMethodSelect.val() || '');
+                    }
+                    if(paymentValue.toLowerCase() === 'credit'){
                         // لا حاجة لفتح نافذة الدفع في حالة الدائن
-                        document.getElementById('salesform').submit();
+                        return;
                     } else {
+                        event.preventDefault();
                         addPayments(net_after_discount);
                     }
                 } else {
+                    event.preventDefault();
                     alert($('<div>{{__('main.invoice_details_required')}}</div>').text());
                 }
             } else {
+                event.preventDefault();
                 alert($('<div>{{__('main.customer_warehouse_required')}}</div>').text());
             } 
         });
@@ -1348,12 +1359,12 @@ span strong {font-size:12px;}
                         showSuggestions(response);
                     } else {
                         //showNotFoundAlert
-                        openDialog();
+                        openDialog('{{ __('main.notfound') }}: ' + code);
                         document.getElementById('add_item').value = '' ;
                     }
                 } else {
                     //showNotFoundAlert
-                    openDialog();
+                    openDialog('{{ __('main.notfound') }}: ' + code);
                     document.getElementById('add_item').value = '' ;
                 }
             }
@@ -1374,27 +1385,14 @@ span strong {font-size:12px;}
         document.getElementById('products_suggestions').innerHTML = $data;
     }
 
-    function openDialog(){
-      let href = $(this).attr('data-attr');
-      $.ajax({
-          url: href,
-          beforeSend: function() {
-              $('#loader').show();
-          },
-          // return the result
-          success: function(result) {
-              $('#deleteModal').modal("show");
-          },
-          complete: function() {
-              $('#loader').hide();
-          },
-          error: function(jqXHR, testStatus, error) {
-              console.log(error);
-              alert("Page " + href + " cannot open. Error:" + error);
-              $('#loader').hide();
-          },
-          timeout: 8000
-      })
+    function openDialog(message){
+        var $modal = $('#deleteModal');
+        if(!$modal.length){
+            alert(message || '{{ __('main.notfound') }}');
+            return;
+        }
+        $('#modal_table_bill').text(message || '');
+        $modal.modal('show');
     }
 
     function needsVariantSelection(item){
@@ -1882,10 +1880,18 @@ span strong {font-size:12px;}
             var route = '{{route('show_sales_payments',":remain")}}';
                 route = route.replace(":remain",remain); 
             
-            $.get( route, function(data){
+            $.get(route, function(data){
                 $(".show_modal").html(data);
                 setupPaymentModal();
-                $('#paymentsModal').modal({backdrop: 'static', keyboard: false} ,'show');
+                var $modal = $('#paymentsModal');
+                if ($modal.length) {
+                    $modal.modal({backdrop: 'static', keyboard: false}, 'show');
+                } else {
+                    document.getElementById('salesform').submit();
+                }
+            }).fail(function(){
+                alert('{{ __('main.payment_modal_failed') ?? 'تعذر فتح نافذة الدفع، سيتم الحفظ بدون تحصيل.' }}');
+                document.getElementById('salesform').submit();
             });
         }
 

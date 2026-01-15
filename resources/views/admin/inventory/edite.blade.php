@@ -208,7 +208,6 @@ select option {
 @endcan 
 @endsection 
 @section('js') 
-<script src="{{asset('assets/plugins/bootstrap/js/bootstrap.min.js')}}"></script>
 <script type="text/javascript">
     var suggestionItems = {};
     var sItems = {}; 

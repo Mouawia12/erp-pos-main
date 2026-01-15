@@ -127,7 +127,15 @@ class InvoiceController extends Controller
 
         $details = DB::table('sale_details')
             ->join('products', 'sale_details.product_id', '=', 'products.id')
-            ->select('sale_details.*', 'products.code', 'products.name', 'products.tax as taxRate', 'products.tax_excise as taxExciseRate')
+            ->leftJoin('units', 'sale_details.unit_id', '=', 'units.id')
+            ->select(
+                'sale_details.*',
+                'products.code',
+                'products.name',
+                'products.tax as taxRate',
+                'products.tax_excise as taxExciseRate',
+                'units.name as unit_name'
+            )
             ->where('sale_details.sale_id', '=', $id)
             ->when(Auth::user()->subscriber_id ?? null, function ($q, $sub) {
                 $q->where('sale_details.subscriber_id', $sub);

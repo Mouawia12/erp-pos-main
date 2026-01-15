@@ -7,7 +7,7 @@
     $isSubscriberContext = (bool) $subscriberId;
     $isSystemOwner = $user && ! $subscriberId && $user->hasRole('system_owner');
 @endphp
-<aside class="app-sidebar sidebar-scroll" style="{{ $isRtl ? '' : 'direction:ltr;text-align:left;' }}">
+<aside class="app-sidebar sidebar-scroll tw-sidebar" style="{{ $isRtl ? '' : 'direction:ltr;text-align:left;' }}">
     <style type="text/css">
         ::-webkit-scrollbar {width: 7px !important;}
         ::-webkit-scrollbar-track {background: #eee !important;}
@@ -16,7 +16,7 @@
         ::-webkit-scrollbar-track {background: #eee !important;}
         ::-webkit-scrollbar-thumb {background: #1989da !important;}
 	    .main-sidemenu{margin-top:10px !important; height:98% !important;} 
-	    .side-menu__label{color:#666;font-size:13px;font-weight:600;padding-top:5%;}
+	    .side-menu__label{color:#e2e8f0;font-size:13px;font-weight:600;padding-top:0;}
         .main-header {height: 50px !important;}
         .main-profile-menu.show .dropdown-menu {top: 50px !important;}
     </style> 
@@ -147,12 +147,14 @@
                     <ul class="slide-menu">   
                         @can('اضافة مبيعات') 
                         <li><a class="slide-item" href="{{route('add_sale')}}">{{__('main.add_sale')}}</a></li>
+                        <li><a class="slide-item" href="{{route('quotations.create')}}">{{ __('main.add') }} {{ __('main.quotation') }}</a></li>
                         <li><a class="slide-item" href="{{route('pos')}}">{{__('main.pos')}}</a></li> 
                         <li><a class="slide-item" href="{{route('pos.shifts')}}">{{ __('main.pos_shifts') ?? 'شفتات نقاط البيع' }}</a></li>
                         <li><a class="slide-item" href="{{route('pos.sections')}}">{{ __('main.pos_sections') ?? 'أقسام نقاط البيع' }}</a></li>
                         <li><a class="slide-item" href="{{route('pos.reservations')}}">{{ __('main.pos_reservations') ?? 'حجوزات نقاط البيع' }}</a></li>
                         @endcan 
                         <li><a class="slide-item" href="{{route('sales')}}">{{__('main.sales_bill')}}</a></li>
+                        <li><a class="slide-item" href="{{route('quotations.index')}}">{{ __('main.quotations') }}</a></li>
                         <li><a class="slide-item" href="{{route('sales.return')}}">{{__('main.sales.return')}}</a></li>
                     </ul>
                 </li>  
@@ -526,6 +528,7 @@
                         <li><a class="slide-item" href="{{route('companyInfo')}}">{{__('main.companyInfo')}}</a></li>
                         <li><a class="slide-item" href="{{route('system_settings')}}">{{__('main.system_settings')}}</a></li>
                         <li><a class="slide-item" href="{{route('pos_settings')}}">{{__('main.pos_settings')}}</a></li>
+                        <li><a class="slide-item" href="{{route('admin.invoice_terms.index')}}">{{ __('main.invoice_terms') }}</a></li>
                         <li><a class="slide-item" href="{{route('cost_centers')}}?create=1">{{ __('main.add_new') }} {{__('main.cost_centers')}}</a></li>
                         <li><a class="slide-item" href="{{route('cost_centers')}}">{{__('main.cost_centers')}}</a></li>
                     </ul>

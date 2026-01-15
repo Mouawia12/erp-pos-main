@@ -2,7 +2,7 @@
         @if(Config::get('app.locale') == 'ar') style="padding: 5px;" @endif>
 
     <!-- Sidebar - Brand -->
-    <a class="sidebar-brand d-flex align-items-center justify-content-center" href="{{route('home')}}">
+    <a class="sidebar-brand d-flex align-items-center justify-content-center" href="{{route('admin.home')}}">
         <div class="sidebar-brand-icon rotate-n-15">
             <i class="fas fa-laugh-wink"></i>
         </div>
@@ -16,7 +16,7 @@
 
     <li class="nav-item @if($slag == 1) active @endif"
         @if(Config::get('app.locale') == 'ar') style="direction: rtl" @endif>
-        <a class="nav-link" href="{{route('home')}}"
+        <a class="nav-link" href="{{route('admin.home')}}"
            @if(Config::get('app.locale') == 'ar') style="text-align: right ; " @endif>
             <i class="fas fa-fw fa-tachometer-alt"></i>
             <span>{{__('main.cpanel')}}</span></a>
@@ -158,7 +158,7 @@
     </li>
     @endif
 
-    @if(env('PROGRAMME_TYPE') == 0)
+    @if(env('PROGRAMME_TYPE') == 0 && (\Route::has('workExitAll') || \Route::has('workExitCreate')))
     <li class="nav-item @if($slag == 8) active @endif"
         @if(Config::get('app.locale') == 'ar') style="direction: rtl" @endif>
         <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseEight"
@@ -169,10 +169,14 @@
         </a>
         <div id="collapseEight" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionSidebar">
             <div class="bg-white py-2 collapse-inner rounded @if(Config::get('app.locale') == 'ar') text-right @endif">
+                @if(\Route::has('workExitAll'))
                 <a class="collapse-item @if($subSlag == 16) active @endif"
                    href="{{route('workExitAll')}}">{{__('main.work_exit_list')}}</a>
+                @endif
+                @if(\Route::has('workExitCreate'))
                 <a class="collapse-item @if($subSlag == 17) active @endif "
                    href="{{route('workExitCreate')}}">{{__('main.work_exit_create')}}</a>
+                @endif
 
             </div>
         </div>
@@ -545,31 +549,30 @@
     @endif
 
 
-    <hr class="sidebar-divider d-none d-md-block">
-    <li class="nav-item @if($slag == 19) active @endif"
-        @if(Config::get('app.locale') == 'ar') style="direction: rtl" @endif>
-        <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapse19"
-           aria-expanded="true" aria-controls="collapse19"
-           @if(Config::get('app.locale') == 'ar') style="text-align: right ; direction: rtl; " @endif>
-            <i class="fas fa-fw fa-cog"></i>
-            <span>{{__('main.gold_convert_doc')}}</span>
-        </a>
-        <div id="collapse19" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionSidebar">
-            <div class="bg-white py-2 collapse-inner rounded @if(Config::get('app.locale') == 'ar') text-right @endif">
-                    <a class="collapse-item @if($subSlag == 191) active @endif"
-                       href="{{route('gold_convert_doc')}}">{{__('main.gold_convert_list')}}</a>
-
-                <a class="collapse-item @if($subSlag == 192) active @endif"
-                   href="{{route('gold_convert_create')}}">{{__('main.gold_convert_create')}}</a>
-
-
-
-
+    @if(\Route::has('gold_convert_doc') || \Route::has('gold_convert_create'))
+        <hr class="sidebar-divider d-none d-md-block">
+        <li class="nav-item @if($slag == 19) active @endif"
+            @if(Config::get('app.locale') == 'ar') style="direction: rtl" @endif>
+            <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapse19"
+               aria-expanded="true" aria-controls="collapse19"
+               @if(Config::get('app.locale') == 'ar') style="text-align: right ; direction: rtl; " @endif>
+                <i class="fas fa-fw fa-cog"></i>
+                <span>{{__('main.gold_convert_doc')}}</span>
+            </a>
+            <div id="collapse19" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded @if(Config::get('app.locale') == 'ar') text-right @endif">
+                    @if(\Route::has('gold_convert_doc'))
+                        <a class="collapse-item @if($subSlag == 191) active @endif"
+                           href="{{route('gold_convert_doc')}}">{{__('main.gold_convert_list')}}</a>
+                    @endif
+                    @if(\Route::has('gold_convert_create'))
+                        <a class="collapse-item @if($subSlag == 192) active @endif"
+                           href="{{route('gold_convert_create')}}">{{__('main.gold_convert_create')}}</a>
+                    @endif
+                </div>
             </div>
-
-
-        </div>
-    </li>
+        </li>
+    @endif
 
     <li class="nav-item @if($slag == 20) active @endif"
         @if(Config::get('app.locale') == 'ar') style="direction: rtl" @endif>
