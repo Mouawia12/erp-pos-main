@@ -8,6 +8,9 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::getConnection()->getDriverName() === 'sqlite') {
+            return;
+        }
         if (Schema::hasTable('zatca_documents')) {
             DB::statement('ALTER TABLE `zatca_documents` MODIFY `qr_value` LONGTEXT NULL');
         }
@@ -15,6 +18,9 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (Schema::getConnection()->getDriverName() === 'sqlite') {
+            return;
+        }
         if (Schema::hasTable('zatca_documents')) {
             DB::statement('ALTER TABLE `zatca_documents` MODIFY `qr_value` VARCHAR(255) NULL');
         }

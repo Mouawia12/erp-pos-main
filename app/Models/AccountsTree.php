@@ -40,4 +40,20 @@ class AccountsTree extends Model
     {
         return $query->where('is_active', 1);
     }
+
+    public static function buildTree($accounts, int $rootParentId = 0)
+    {
+        $grouped = $accounts->groupBy(function ($account) {
+            return $account->parent_id ?? 0;
+        });
+
+        $build = function ($parentId) use (&$build, $grouped) {
+            return $grouped->get($parentId, collect())->map(function ($account) use (&$build) {
+                $account->setRelation('children', $build($account->id));
+                return $account;
+            });
+        };
+
+        return $build($rootParentId);
+    }
 }

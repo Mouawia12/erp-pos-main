@@ -27,10 +27,10 @@ class AccountsTreeController extends Controller
     {
         $topLevelAccount = AccountsTree::where('level', '>', 0)->orderBy('level', 'desc')->first();
         $top_level = $topLevelAccount ? $topLevelAccount->level : 0;
-        $accounts = AccountsTree::where('level' , '>' , 0) -> orderBy('level') -> get();
-        $roots = AccountsTree::where('level' , '=' , 1 ) -> orderBy('id') -> get();
+        $accounts = AccountsTree::where('level', '>', 0)->orderBy('level')->get();
+        $tree = AccountsTree::buildTree($accounts);
 
-        return view('admin.accounts.index',compact('accounts', 'top_level', 'roots'));
+        return view('admin.accounts.index', compact('accounts', 'top_level', 'tree'));
     }
 
     public function index2()

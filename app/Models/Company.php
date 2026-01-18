@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Traits\BelongsToSubscriber;
+use Illuminate\Support\Facades\DB;
 
 class Company extends Model
 {
@@ -65,45 +66,65 @@ class Company extends Model
 
     public function ensureAccount(): ?AccountsTree
     {
-        if ($this->account_id) {
-            $existing = AccountsTree::withoutGlobalScope('subscriber')->find($this->account_id);
-            if ($existing) {
-                return $existing;
+        return DB::transaction(function () {
+            $this->refresh();
+
+            if ($this->account_id) {
+                $existing = AccountsTree::withoutGlobalScope('subscriber')->find($this->account_id);
+                if ($existing) {
+                    return $existing;
+                }
             }
-        }
 
-        if (!in_array((int) $this->group_id, [3, 4], true)) {
-            return null;
-        }
+            if (!in_array((int) $this->group_id, [3, 4], true)) {
+                return null;
+            }
 
-        $parentCode = $this->group_id == 3 ? 1107 : 2101;
-        $parentAccount = AccountsTree::withoutGlobalScope('subscriber')->where('code', $parentCode)->first();
-        if (!$parentAccount) {
-            return null;
-        }
+            $parentCode = $this->group_id == 3 ? 1107 : 2101;
+            $parentAccount = AccountsTree::withoutGlobalScope('subscriber')
+                ->where('code', $parentCode)
+                ->lockForUpdate()
+                ->first();
+            if (!$parentAccount) {
+                return null;
+            }
 
-        $maxCode = AccountsTree::withoutGlobalScope('subscriber')
-            ->where('parent_id', $parentAccount->id)
-            ->max('code');
-        $nextCode = $maxCode ? (int) $maxCode + 1 : ($this->group_id == 3 ? 110701 : 210101);
+            $accountName = $this->company ?: $this->name;
+            $existingByName = AccountsTree::withoutGlobalScope('subscriber')
+                ->where('parent_id', $parentAccount->id)
+                ->where('name', $accountName)
+                ->first();
+            if ($existingByName) {
+                $this->account_id = $existingByName->id;
+                $this->save();
+                return $existingByName;
+            }
 
-        $child = AccountsTree::create([
-            'code' => (string) $nextCode,
-            'name' => $this->company ?: $this->name,
-            'type' => 3,
-            'parent_id' => $parentAccount->id,
-            'parent_code' => $parentAccount->code,
-            'level' => ($parentAccount->level ?? 0) + 1,
-            'list' => $parentAccount->list,
-            'department' => $parentAccount->department,
-            'side' => $parentAccount->side,
-            'is_active' => 1,
-        ]);
+            $lastChild = AccountsTree::withoutGlobalScope('subscriber')
+                ->where('parent_id', $parentAccount->id)
+                ->orderByDesc('code')
+                ->lockForUpdate()
+                ->first();
+            $nextCode = $lastChild ? ((int) $lastChild->code + 1) : ($this->group_id == 3 ? 110701 : 210101);
 
-        $this->account_id = $child->id;
-        $this->save();
+            $child = AccountsTree::create([
+                'code' => (string) $nextCode,
+                'name' => $accountName,
+                'type' => 3,
+                'parent_id' => $parentAccount->id,
+                'parent_code' => $parentAccount->code,
+                'level' => ($parentAccount->level ?? 0) + 1,
+                'list' => $parentAccount->list,
+                'department' => $parentAccount->department,
+                'side' => $parentAccount->side,
+                'is_active' => 1,
+            ]);
 
-        return $child;
+            $this->account_id = $child->id;
+            $this->save();
+
+            return $child;
+        });
     }
 
     public static function ensureWalkInCustomer(?int $subscriberId = null): ?self

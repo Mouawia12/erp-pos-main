@@ -128,73 +128,9 @@
                                 </div>
                                 <div class="col-4">
                                     <ul id="myUL" class="myUL text-left">
-                                        @foreach($roots as $root)
-                                            <li>
-                                                <span class="caret">{{$root -> name . ' --- ' . $root -> code}}</span>
-                                                <?php $childs = [];  ?>
-                                                <?php $childs2 = [];  ?>
-                                                <?php $childs3 = [];  ?>
-                                                <?php $childs4 = [];  ?>
-                                                <?php $childs5 = [];  ?>
-                                                <?php $childs = \App\Models\AccountsTree::where('parent_id' , '=' , $root -> id ) -> get()   ?>
-                                                <ul class="nested">
-                                                    @foreach($childs as $child)
-                                                        <?php $childs2 = \App\Models\AccountsTree::where('parent_id' , '=' , $child -> id ) -> get()   ?>
-                                                    @if( count($childs2) > 0 )
-                                                                <li>
-                                                                    <span class="caret"> {{$child -> name . ' --- ' . $child -> code}}  </span>
-                                                                    <ul class="nested">
-                                                                        @foreach($childs2 as $child2)
-                                                                            <?php $childs3 = \App\Models\AccountsTree::where('parent_id' , '=' , $child2 -> id ) -> get()   ?>
-                                                                                @if( count($childs3) > 0 )
-                                                                               <li>
-                                                                                   <span class="caret"> {{$child2 -> name . ' --- ' . $child2 -> code}}  </span>
-                                                                                   <ul class="nested">
-                                                                                       @foreach($childs3 as $child3)
-                                                                                           <?php $childs4 = \App\Models\AccountsTree::where('parent_id' , '=' , $child3 -> id ) -> get()   ?>
-                                                                                               @if( count($childs4) > 0 )
-                                                                                                   <li>
-                                                                                                       <span class="caret"> {{$child3 -> name . ' --- ' . $child3 -> code}}  </span>
-                                                                                                       <ul class="nested">
-                                                                                                           @foreach($childs4 as $child4)
-                                                                                                       <?php $childs5 = \App\Models\AccountsTree::where('parent_id' , '=' , $child4 -> id ) -> get()   ?>
-                                                                                                           @if( count($childs5) > 0 )
-                                                                                                               <li>
-                                                                                                                   <span class="caret"> {{$child4 -> name . ' --- ' . $child4 -> code}}  </span>
-
-                                                                                                               </li>
-                                                                                                               @else
-                                                                                                               <li> {{$child4 -> name . ' --- ' . $child4 -> code}}
-
-                                                                                                               </li>
-                                                                                                           @endif
-                                                                                                           @endforeach
-                                                                                                       </ul>
-                                                                                                   </li>
-                                                                                                   @else
-                                                                                                   <li> {{$child3 -> name . ' --- ' . $child3 -> code}}</li>
-                                                                                               @endif
-                                                                                       @endforeach
-                                                                                   </ul>
-
-                                                                               </li>
-                                                                                @else
-                                                                                    <li> {{$child2 -> name . ' --- ' . $child2 -> code}}</li>
-                                                                                @endif
-
-                                                                        @endforeach
-                                                                    </ul>
-                                                                </li>
-                                                        @else
-                                                                <li> {{$child -> name . ' --- ' . $child -> code}}</li>
-                                                            @endif
-
-                                                    @endforeach
-
-                                                </ul>
-
-                                            </li> 
-                                        @endforeach 
+                                        @foreach($tree as $node)
+                                            @include('admin.accounts.partials.tree-node', ['node' => $node])
+                                        @endforeach
                                     </ul>
                                 </div>
                             </div>
