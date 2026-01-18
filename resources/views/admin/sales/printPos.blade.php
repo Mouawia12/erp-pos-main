@@ -22,7 +22,8 @@
             $data->invoice_type == 'tax_invoice' ? 'Tax Invoice' :
             ($data->invoice_type == 'non_tax_invoice' ? 'Non-tax Invoice' : 'Simplified Tax Invoice')
         );
-        $logoPath = !empty($company?->logo) ? asset('uploads/profiles/' . $company->logo) : asset('assets/img/logo.png');
+        $companyLogoFile = $company?->logo ?? $company?->image_url ?? null;
+        $logoPath = !empty($companyLogoFile) ? asset('uploads/profiles/' . $companyLogoFile) : asset('assets/img/logo.png');
     @endphp
     {{$typeLabel}}{{$returnTag}} {{$data->id}}
     </title>

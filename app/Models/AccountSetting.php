@@ -14,6 +14,7 @@ class AccountSetting extends Model
         ,'return_sales_account','return_purchase_account',
         'stock_account','sales_discount_account','sales_tax_account','sales_tax_excise_account',
         'purchase_discount_account','purchase_tax_account','cost_account',
-        'profit_account','reverse_profit_account','bank_account','branch_id','subscriber_id'
+        'profit_account','reverse_profit_account','bank_account','branch_id','subscriber_id',
+        'customer_control_account','supplier_control_account',
     ];
 }

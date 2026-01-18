@@ -205,8 +205,11 @@ class InvoiceController extends Controller
     private function resolveLogoDataUri(?CompanyInfo $company): ?string
     {
         $logoPath = null;
-        if ($company && !empty($company->logo)) {
-            $logoPath = public_path('uploads/profiles/' . $company->logo);
+        if ($company) {
+            $logoFile = $company->logo ?? $company->image_url ?? null;
+            if (!empty($logoFile)) {
+                $logoPath = public_path('uploads/profiles/' . $logoFile);
+            }
         }
         if (! $logoPath || ! file_exists($logoPath)) {
             $logoPath = public_path('assets/img/logo.png');

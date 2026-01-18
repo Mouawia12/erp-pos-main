@@ -32,6 +32,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
+use App\Services\AccountingService;
 
 class SystemController extends Controller
 {
@@ -255,97 +257,8 @@ class SystemController extends Controller
     //region Journals
 
     public function saleJournals($id){
-        $saleInvoice = Sales::find($id);
-        if($saleInvoice->net < 0){
-            return $this->returnSaleJournal($id);
-        }
-
-        //$settings = AccountSetting::query()->where('warehouse_id',$saleInvoice->warehouse_id)->first();
-        $settings = AccountSetting::query()->where('branch_id',$saleInvoice->branch_id)->first();
-        if(!$settings){
-            return;
-        }
-            
-        $headerData = [
-            'branch_id' => $saleInvoice->branch_id,
-            'cost_center_id' => $saleInvoice->cost_center_id ?? null,
-            'date' => $saleInvoice->date,
-            'basedon_no' => $saleInvoice->invoice_no,
-            'basedon_id' => $id,
-            'baseon_text' => 'فاتورة مبيعات',
-            'total_debit' => 0,
-            'total_credit' => 0, 
-            'notes' => ''
-        ];
-        //journal details
-        $detailsData = [];
-
-        //credit for details
-        //حساب الصندوق - الخصم
-        if($saleInvoice->discount > 0){
-            if (!$this->pushDetail($detailsData, $settings->sales_discount_account, $saleInvoice->discount, 0, 0, '')) {
-                return;
-            }
-        }
-
-        if($saleInvoice->net > 0){
-
-            $remain = $saleInvoice->net;
-
-            if($remain > 0){
-                $customerAccount = $this->getCompanyAccountId($saleInvoice->customer_id);
-                if (!$customerAccount) {
-                    return;
-                }
-                if (!$this->pushDetail($detailsData, $customerAccount, $remain, 0, $saleInvoice->customer_id, '')) {
-                    return;
-                }
-            }
-        }
-        //debit for details
-        //الضريبة - المبيعات
-        if($saleInvoice->total > 0){
-            if (!$this->pushDetail($detailsData, $settings->sales_account, 0, $saleInvoice->total, 0, '')) {
-                return;
-            }
-        }
-
-        if($saleInvoice->tax > 0){
-            if (!$this->pushDetail($detailsData, $settings->sales_tax_account, 0, $saleInvoice->tax, 0, '')) {
-                return;
-            }
-        }
-
-        if($saleInvoice->tax_excise > 0){
-            if (!$this->pushDetail($detailsData, $settings->sales_tax_excise_account, 0, $saleInvoice->tax_excise, 0, '')) {
-                return;
-            }
-        }
-
-        if($saleInvoice->total > 0 && $settings->profit_account > 0 && $settings->cost_account > 0){
-
-            // هيدخل هنا في التكلفة وفي الارباح
-            if (!$this->pushDetail($detailsData, $settings->profit_account, $saleInvoice->profit, 0, 0, '')) {
-                return;
-            }
-
-            if($settings->reverse_profit_account > 0){
-                if (!$this->pushDetail($detailsData, $settings->reverse_profit_account, 0, $saleInvoice->profit, 0, '')) {
-                    return;
-                }
-            }
-
-            if (!$this->pushDetail($detailsData, $settings->cost_account, $saleInvoice->total - $saleInvoice->profit, 0, 0, '')) {
-                return;
-            }
-
-            if (!$this->pushDetail($detailsData, $settings->stock_account, 0, $saleInvoice->total - $saleInvoice->profit, 0, '')) {
-                return;
-            }
-
-        }
-
-        $this->insertJournal($headerData,$detailsData);
+        $service = app(AccountingService::class);
+        return $service->recordSale((int) $id);
     }
 
     private function returnSaleJournal($id){
@@ -671,66 +584,8 @@ class SystemController extends Controller
     }
 
     public function ExpenseAccounting($id){
-        $bill = Expenses::find($id);
-        if ($bill) {
-            $settings = AccountSetting::where('branch_id',$bill->branch_id)->first();
-            if (!$settings)
-                return;
-
-            //journal header
-            $headerData = [
-                'branch_id' => $bill->branch_id,
-                'date' => $bill->date,
-                'basedon_no' => $bill->docNumber,
-                'basedon_id' => $id,
-                'baseon_text' => 'سند صرف',
-                'total_credit' => 0,
-                'total_debit' => 0,
-                'notes' => ''
-            ];
-
-            $detailsData = [];
-
-            $from_account = $this->resolveAccountId($bill->from_account);
-            if (!$from_account) {
-                return;
-            }
-            $taxAccount = $settings->purchase_tax_account ?? $settings->sales_tax_account ?? null;
-
-            $details = $bill->details()->get();
-            if ($details->isEmpty()) {
-                $to_account = $this->resolveAccountId($bill->to_account);
-                if (!$to_account) {
-                    return;
-                }
-                $details = collect([[
-                    'account_id' => $to_account,
-                    'amount' => $bill->amount,
-                    'tax_amount' => $bill->tax_amount ?? 0,
-                ]]);
-            }
-
-            $taxAmount = (float) $details->sum('tax_amount');
-            $totalOut = (float) $details->sum('amount') + $taxAmount;
-
-            if (!$this->pushDetail($detailsData, $from_account, 0, $totalOut, 0, '')) {
-                return;
-            }
-
-            foreach ($details as $detail) {
-                if (!$this->pushDetail($detailsData, $detail['account_id'], $detail['amount'], 0, 0, '')) {
-                    return;
-                }
-                if ($taxAccount && !empty($detail['tax_amount'])) {
-                    if (!$this->pushDetail($detailsData, $taxAccount, $detail['tax_amount'], 0, 0, 'ضريبة مصروف')) {
-                        return;
-                    }
-                }
-            }
-
-            $this->insertJournal($headerData, $detailsData);
-
-        }
+        $service = app(AccountingService::class);
+        return $service->recordExpense((int) $id);
     }
 
     public function CatchAccounting($id){
@@ -815,17 +670,30 @@ class SystemController extends Controller
             return false;
         }
 
+        $this->validateControlAccountUsage($header, $details);
+
         $totals = $this->calculateJournalTotals($details);
         if (!$totals) {
             return false;
         }
         $header['total_debit'] = $totals['total_debit'];
         $header['total_credit'] = $totals['total_credit'];
+        $header['status'] = \App\Models\Journal::STATUS_DRAFT;
 
         return DB::transaction(function () use ($header, $details, $manual) {
             if($id = $this->getJournal($header)){
                 $journal = Journal::find($id);
                 if ($journal) {
+                    if ($journal->status === \App\Models\Journal::STATUS_POSTED) {
+                        throw ValidationException::withMessages([
+                            'journal' => 'لا يمكن تعديل قيد مرحل. استخدم العكس بدل التعديل.',
+                        ]);
+                    }
+                    if ($journal->status === \App\Models\Journal::STATUS_REVERSED) {
+                        throw ValidationException::withMessages([
+                            'journal' => 'لا يمكن تعديل قيد معكوس.',
+                        ]);
+                    }
                     $journal->update($header);
                 }
 
@@ -851,6 +719,9 @@ class SystemController extends Controller
                     $this->updateAccountBalance($detail['account_id'],$detail['credit'],$detail['debit'],$header['date'],$id);
                 }
 
+                if ($journal) {
+                    $journal->update(['status' => \App\Models\Journal::STATUS_POSTED]);
+                }
                 return true;
             }
 
@@ -873,6 +744,7 @@ class SystemController extends Controller
                         $journal->update(['baseon_text' => 'سند قيد يدوي رقم '.$journal_id]);
                     }
                 }
+                DB::table('journals')->where('id', $journal_id)->update(['status' => \App\Models\Journal::STATUS_POSTED]);
             }
             return true;
         });
@@ -983,6 +855,59 @@ class SystemController extends Controller
         return true;
     }
 
+    private function validateControlAccountUsage(array $header, array $details): void
+    {
+        $controlAccounts = $this->resolveControlAccountIdsForBranch($header['branch_id'] ?? null);
+        if (empty($controlAccounts)) {
+            return;
+        }
+
+        foreach ($details as $detail) {
+            $accountId = (int) ($detail['account_id'] ?? 0);
+            if (! $accountId) {
+                continue;
+            }
+            if (in_array($accountId, $controlAccounts, true) && empty($detail['ledger_id'])) {
+                throw ValidationException::withMessages([
+                    'journal' => 'لا يمكن التسجيل مباشرة على حساب التحكم بدون بيانات عميل/مورد.',
+                ]);
+            }
+        }
+    }
+
+    private function resolveControlAccountIdsForBranch(?int $branchId): array
+    {
+        $settingsQuery = AccountSetting::query();
+        if ($branchId) {
+            $settingsQuery->where('branch_id', $branchId);
+        }
+        $settings = $settingsQuery->first();
+
+        $controlAccounts = [];
+        $customerControl = (int) ($settings->customer_control_account ?? 0);
+        $supplierControl = (int) ($settings->supplier_control_account ?? 0);
+
+        if ($customerControl) {
+            $controlAccounts[] = $customerControl;
+        } else {
+            $controlAccounts[] = $this->resolveAccountByCode('1107');
+        }
+
+        if ($supplierControl) {
+            $controlAccounts[] = $supplierControl;
+        } else {
+            $controlAccounts[] = $this->resolveAccountByCode('2101');
+        }
+
+        return array_values(array_filter($controlAccounts));
+    }
+
+    private function resolveAccountByCode(string $code): ?int
+    {
+        $account = $this->accountQueryForSubscriber()->where('code', $code)->first();
+        return $account?->id;
+    }
+
     private function normalizeJournalDetails(array $details): array
     {
         $normalized = [];
@@ -1021,11 +946,9 @@ class SystemController extends Controller
         }
 
         if (abs($totalDebit - $totalCredit) > 0.0001) {
-            Log::warning('Unbalanced journal detected', [
-                'total_debit' => $totalDebit,
-                'total_credit' => $totalCredit,
+            throw ValidationException::withMessages([
+                'journal' => 'القيد غير متوازن: مجموع المدين يجب أن يساوي مجموع الدائن.',
             ]);
-            return null;
         }
 
         return [
@@ -1066,6 +989,17 @@ class SystemController extends Controller
     public function deleteJournal($header){
 
         if($id = $this->getJournalForDelete($header)){
+            $journal = Journal::find($id);
+            if ($journal && $journal->status === \App\Models\Journal::STATUS_POSTED) {
+                throw ValidationException::withMessages([
+                    'journal' => 'لا يمكن حذف قيد مرحل.',
+                ]);
+            }
+            if ($journal && $journal->status === \App\Models\Journal::STATUS_REVERSED) {
+                throw ValidationException::withMessages([
+                    'journal' => 'لا يمكن حذف قيد معكوس.',
+                ]);
+            }
 
             $oldDetails = $this->getOldDetails($id);
             foreach($oldDetails as $oldDetail){
@@ -1087,6 +1021,12 @@ class SystemController extends Controller
 
             return true;
         }
+    }
+
+    public function reverseJournal(int $journalId, ?string $notes = null)
+    {
+        $service = app(AccountingService::class);
+        return $service->reverseJournal($journalId, $notes);
     }
 
     //endregion

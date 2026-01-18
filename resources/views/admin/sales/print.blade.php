@@ -43,7 +43,8 @@
         $representativeName = $data->representative_user_name ?? $data->representative_name ?? '-';
         $totalItems = (float) $details->sum('quantity');
         $totalDiscount = (float) $data->discount + $promoDiscount;
-        $logoPath = !empty($company?->logo) ? asset('uploads/profiles/' . $company->logo) : $logoSrc;
+        $companyLogoFile = $company?->logo ?? $company?->image_url ?? null;
+        $logoPath = !empty($companyLogoFile) ? asset('uploads/profiles/' . $companyLogoFile) : $logoSrc;
     @endphp
     <title>{{ $titleAr }} {{ $data->id }}</title>
     <style>

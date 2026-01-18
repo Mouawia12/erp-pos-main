@@ -372,6 +372,7 @@ Route::group(
     Route::get('reports/trial-balance', [FinancialReportController::class, 'trialBalance'])->name('reports.trial_balance');
     Route::get('reports/general-ledger', [FinancialReportController::class, 'generalLedger'])->name('reports.general_ledger');
     Route::get('reports/account-balances', [FinancialReportController::class, 'accountBalances'])->name('reports.account_balances');
+    Route::get('reports/sub-ledger-reconciliation', [FinancialReportController::class, 'subLedgerReconciliation'])->name('reports.sub_ledger_reconciliation');
     Route::get('reports/income-statement', [FinancialStatementController::class, 'incomeStatement'])->name('reports.income_statement');
     Route::get('reports/income-statement-totals', [FinancialStatementController::class, 'incomeStatementTotals'])->name('reports.income_statement_totals');
     Route::get('reports/trading-account', [FinancialStatementController::class, 'tradingAccount'])->name('reports.trading_account');

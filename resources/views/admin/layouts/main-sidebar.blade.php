@@ -380,6 +380,11 @@
                             </a>
                         </li> 
                         <li>
+                            <a class="slide-item" href="{{route('reports.sub_ledger_reconciliation')}}">
+                                {{ __('main.sub_ledger_reconciliation') ?? 'مطابقة الأستاذ المساعد' }}
+                            </a>
+                        </li>
+                        <li>
                             <a class="slide-item" href="{{route('tax.declaration')}}">
                                 {{ __('main.tax_declaration') }}
                             </a>

@@ -5,8 +5,11 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AccountsTree;
 use App\Models\AccountMovement;
+use App\Models\AccountSetting;
 use App\Models\Branch;
 use App\Models\CostCenter;
+use App\Models\SubLedgerEntry;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 
@@ -133,5 +136,92 @@ class FinancialReportController extends Controller
             });
 
         return view('admin.finance.account_balances', compact('accounts','branches','costCenters','branchId','costCenterId'));
+    }
+
+    public function subLedgerReconciliation(Request $request)
+    {
+        $start = $request->start_date ?? now()->startOfYear()->toDateString();
+        $end = $request->end_date ?? now()->toDateString();
+        $branchId = (int) ($request->branch_id ?? 0);
+
+        $subscriberId = auth()->user()->subscriber_id ?? null;
+        $branches = Branch::where('status', 1)
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->get();
+
+        $branchIds = $branchId > 0 ? collect([$branchId]) : $branches->pluck('id');
+
+        $defaultCustomerControl = AccountsTree::where('code', '1107')->first();
+        $defaultSupplierControl = AccountsTree::where('code', '2101')->first();
+
+        $rows = [];
+        foreach ($branchIds as $bid) {
+            $settingsQuery = AccountSetting::query()->where('branch_id', $bid);
+            if ($subscriberId && \Schema::hasColumn('account_settings', 'subscriber_id')) {
+                $settingsQuery->where('subscriber_id', $subscriberId);
+            }
+            $settings = $settingsQuery->first();
+
+            $customerControlId = (int) ($settings->customer_control_account ?? 0) ?: ($defaultCustomerControl->id ?? 0);
+            $supplierControlId = (int) ($settings->supplier_control_account ?? 0) ?: ($defaultSupplierControl->id ?? 0);
+
+            $controlAccounts = array_values(array_filter([
+                ['id' => $customerControlId, 'type' => 'customers'],
+                ['id' => $supplierControlId, 'type' => 'suppliers'],
+            ], fn ($item) => ! empty($item['id'])));
+
+            foreach ($controlAccounts as $control) {
+                $account = AccountsTree::find($control['id']);
+                if (! $account) {
+                    continue;
+                }
+
+                $subTotalsQuery = SubLedgerEntry::query()
+                    ->join('sub_ledgers', 'sub_ledgers.id', '=', 'sub_ledger_entries.sub_ledger_id')
+                    ->where('sub_ledgers.control_account_id', $control['id'])
+                    ->where('sub_ledgers.branch_id', $bid)
+                    ->whereBetween('sub_ledger_entries.date', [$start, $end]);
+
+                $subTotals = $subTotalsQuery->selectRaw('COALESCE(SUM(sub_ledger_entries.debit),0) as debit')
+                    ->selectRaw('COALESCE(SUM(sub_ledger_entries.credit),0) as credit')
+                    ->first();
+
+                $accTotalsQuery = DB::table('account_movements')
+                    ->join('journals', 'journals.id', '=', 'account_movements.journal_id')
+                    ->where('account_movements.account_id', $control['id'])
+                    ->whereBetween('account_movements.date', [$start, $end])
+                    ->where('journals.branch_id', $bid);
+                if ($subscriberId && \Schema::hasColumn('journals', 'subscriber_id')) {
+                    $accTotalsQuery->where('journals.subscriber_id', $subscriberId);
+                }
+                $accTotals = $accTotalsQuery->selectRaw('COALESCE(SUM(account_movements.debit),0) as debit')
+                    ->selectRaw('COALESCE(SUM(account_movements.credit),0) as credit')
+                    ->first();
+
+                $subDebit = (float) ($subTotals->debit ?? 0);
+                $subCredit = (float) ($subTotals->credit ?? 0);
+                $accDebit = (float) ($accTotals->debit ?? 0);
+                $accCredit = (float) ($accTotals->credit ?? 0);
+
+                $subBalance = $subDebit - $subCredit;
+                $accBalance = $accDebit - $accCredit;
+
+                $rows[] = [
+                    'branch' => optional($branches->firstWhere('id', $bid))->branch_name ?? ('#' . $bid),
+                    'control_type' => $control['type'],
+                    'account_code' => $account->code,
+                    'account_name' => $account->name,
+                    'sub_debit' => $subDebit,
+                    'sub_credit' => $subCredit,
+                    'sub_balance' => $subBalance,
+                    'acc_debit' => $accDebit,
+                    'acc_credit' => $accCredit,
+                    'acc_balance' => $accBalance,
+                    'difference' => $subBalance - $accBalance,
+                ];
+            }
+        }
+
+        return view('admin.finance.sub_ledger_reconciliation', compact('rows', 'branches', 'branchId', 'start', 'end'));
     }
 }
