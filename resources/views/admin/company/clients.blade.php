@@ -82,7 +82,7 @@
                                                 
                                       
                                                 @can('التقارير المحاسبية')     
-                                                <a href="{{route('account.company.report.search', $company ->account_id)}}" type="button" class="btn btn-labeled btn-success"  onclick="openReport({{$company -> id}})">
+                                                <a href="{{ route('client_balance_report', [$company->id, $type]) }}" type="button" class="btn btn-labeled btn-success">
                                                     <span class="btn-label" style="margin-right: 10px;">
                                                     <i class="fa fa-chart"></i></span>
                                                     {{__('main.Report')}}
@@ -629,13 +629,5 @@
         });
     }
 
-    function openReport(id) {
-        const type = document.getElementById('type').value ;
-        let url = "{{ route('client_balance_report', [':id' , ':slag']) }}";
-        url = url.replace(':id', id);
-        url = url.replace(':slag', type);
-
-        window.location.href=url;
-    }
 </script>
 @endsection 

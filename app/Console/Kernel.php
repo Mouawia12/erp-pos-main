@@ -29,5 +29,6 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\DatabaseBackupCommand::class,
         \App\Console\Commands\ZatcaOnboardCommand::class,
         \App\Console\Commands\ZatcaSendInvoiceCommand::class,
+        \App\Console\Commands\BackfillSubLedgerEntries::class,
     ];
 }

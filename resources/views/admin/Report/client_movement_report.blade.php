@@ -116,6 +116,7 @@
                                         @elseif($unit->invoice_type == 'Purchases') فاتورة مشتريات
                                         @elseif($unit->invoice_type == 'Purchase_Payment') مدفوعات فاتورة مشتريات
                                         @elseif($unit->invoice_type == 'Opening_Balance') رصيد افتتاحي
+                                        @else {{ $unit->invoice_type ?? '-' }}
                                         @endif
                                     </td>
                                     <td class="text-center">{{$unit->invoice_no}}</td>
