@@ -301,7 +301,7 @@ class SystemController extends Controller
             if (!$customerAccount) {
                 return;
             }
-            if (!$this->pushDetail($detailsData, $customerAccount, 0, $saleInvoice->net * -1, $saleInvoice->customer_id, '')) {
+            if (!$this->pushDetail($detailsData, $customerAccount, 0, $saleInvoice->net * -1, $saleInvoice->customer_id, '', $saleInvoice->branch_id)) {
                 return;
             }
         }
@@ -394,7 +394,7 @@ class SystemController extends Controller
             if (!$customerAccount) {
                 return;
             }
-            if (!$this->pushDetail($detailsData, $customerAccount, 0, $purchaseInvoice->net, $purchaseInvoice->customer_id, '')) {
+            if (!$this->pushDetail($detailsData, $customerAccount, 0, $purchaseInvoice->net, $purchaseInvoice->customer_id, '', $purchaseInvoice->branch_id)) {
                 return;
             }
         }
@@ -463,7 +463,7 @@ class SystemController extends Controller
                 if (!$customerAccount) {
                     return;
                 }
-                if (!$this->pushDetail($detailsData, $customerAccount, $purchaseInvoice->net * -1, 0, $purchaseInvoice->customer_id, '')) {
+                if (!$this->pushDetail($detailsData, $customerAccount, $purchaseInvoice->net * -1, 0, $purchaseInvoice->customer_id, '', $purchaseInvoice->branch_id)) {
                     return;
                 }
         }
@@ -529,7 +529,7 @@ class SystemController extends Controller
                 return;
             }
 
-            if (!$this->pushDetail($detailsData, $customerAccount, 0, $bill->amount, $bill->company_id, '')) {
+            if (!$this->pushDetail($detailsData, $customerAccount, 0, $bill->amount, $bill->company_id, '', $bill->branch_id)) {
                 return;
             }
 
@@ -573,7 +573,7 @@ class SystemController extends Controller
             }
              
             //من حساب الصندوق او البنك - الى حساب المورد 
-            if (!$this->pushDetail($detailsData, $customerAccount, $bill->amount, 0, $bill->company_id, '')) {
+            if (!$this->pushDetail($detailsData, $customerAccount, $bill->amount, 0, $bill->company_id, '', $bill->branch_id)) {
                 return;
             }
 
@@ -832,7 +832,7 @@ class SystemController extends Controller
         return $account?->id;
     }
 
-    private function pushDetail(array &$details, $accountId, $debit, $credit, $ledgerId = 0, $notes = ''): bool
+    private function pushDetail(array &$details, $accountId, $debit, $credit, $ledgerId = 0, $notes = '', ?int $branchId = null): bool
     {
         $resolvedAccount = $this->resolveAccountId($accountId);
         if (!$resolvedAccount) {
@@ -843,7 +843,7 @@ class SystemController extends Controller
         }
 
         if ($ledgerId) {
-            $controlAccountId = $this->resolveControlAccountId($ledgerId, Auth::user()?->branch_id);
+            $controlAccountId = $this->resolveControlAccountId($ledgerId, $branchId);
             if ($controlAccountId) {
                 $resolvedAccount = $controlAccountId;
             }

@@ -63,7 +63,7 @@ class AccountingService
                     'journal' => 'لا يوجد حساب تحكم للعملاء. يرجى ضبطه في إعدادات الحسابات.',
                 ]);
             }
-            if (! $this->pushDetail($detailsData, $controlAccount, $remain, 0, $saleInvoice->customer_id, '')) {
+            if (! $this->pushDetail($detailsData, $controlAccount, $remain, 0, $saleInvoice->customer_id, '', $saleInvoice->branch_id)) {
                 return false;
             }
         }
@@ -354,7 +354,7 @@ class AccountingService
                     'journal' => 'لا يوجد حساب تحكم للعملاء. يرجى ضبطه في إعدادات الحسابات.',
                 ]);
             }
-            if (! $this->pushDetail($detailsData, $controlAccount, 0, $saleInvoice->net * -1, $saleInvoice->customer_id, '')) {
+            if (! $this->pushDetail($detailsData, $controlAccount, 0, $saleInvoice->net * -1, $saleInvoice->customer_id, '', $saleInvoice->branch_id)) {
                 return false;
             }
         }
@@ -521,7 +521,7 @@ class AccountingService
         return $account?->id;
     }
 
-    private function pushDetail(array &$details, $accountId, $debit, $credit, $ledgerId = 0, $notes = ''): bool
+    private function pushDetail(array &$details, $accountId, $debit, $credit, $ledgerId = 0, $notes = '', ?int $branchId = null): bool
     {
         $resolvedAccount = $this->resolveAccountId($accountId);
         if (! $resolvedAccount) {
@@ -532,7 +532,7 @@ class AccountingService
         }
 
         if ($ledgerId && $this->isControlAccount($resolvedAccount)) {
-            $controlAccountId = $this->resolveControlAccountId($ledgerId, null);
+            $controlAccountId = $this->resolveControlAccountId($ledgerId, $branchId);
             if ($controlAccountId) {
                 $resolvedAccount = $controlAccountId;
             }

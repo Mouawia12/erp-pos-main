@@ -21,6 +21,7 @@ use App\Models\Branch;
 use App\Models\CostCenter;
 use App\Models\Sales;
 use App\Models\Purchase;
+use App\Models\SubLedgerEntry;
 use Carbon\Carbon; 
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -1690,7 +1691,55 @@ class ReportAccountController extends Controller
         $branchId = (int) ($request->branch_id ?? 0);
         $costCenterId = (int) ($request->cost_center_id ?? 0);
 
-        $accounts = DB::table('accounts_trees')
+        $isaccount = AccountsTree::where('id', $request->account_id)->first();
+        $account_name = $isaccount ? ($isaccount->name . ' - ' . $isaccount->code) : '';
+        $companyAccount = Company::query()->where('account_id', $request->account_id)->first();
+
+        if ($companyAccount) {
+            $side = (int) $companyAccount->group_id === 4 ? 2 : 1;
+            $accounts = DB::table('sub_ledger_entries')
+                ->join('sub_ledgers', 'sub_ledgers.id', '=', 'sub_ledger_entries.sub_ledger_id')
+                ->join('journals', 'journals.id', '=', 'sub_ledger_entries.journal_id')
+                ->select(
+                    DB::raw("'" . ($isaccount->code ?? '') . "' as code"),
+                    DB::raw("'" . ($isaccount->name ?? '') . "' as name"),
+                    DB::raw($side . ' as side'),
+                    'journals.basedon_no',
+                    'journals.baseon_text',
+                    'sub_ledger_entries.credit as credit',
+                    'sub_ledger_entries.debit as debit',
+                    'sub_ledger_entries.date'
+                )
+                ->where('sub_ledgers.company_id', $companyAccount->id)
+                ->where('sub_ledger_entries.date', '>=', $startDate)
+                ->where('sub_ledger_entries.date', '<=', $endDate)
+                ->when($branchId > 0, function ($q) use ($branchId) {
+                    $q->where('journals.branch_id', $branchId);
+                })
+                ->when($costCenterId > 0, function ($q) use ($costCenterId) {
+                    $q->where('journals.cost_center_id', $costCenterId);
+                })
+                ->get();
+
+            $account_balance = DB::table('sub_ledger_entries')
+                ->join('sub_ledgers', 'sub_ledgers.id', '=', 'sub_ledger_entries.sub_ledger_id')
+                ->join('journals', 'journals.id', '=', 'sub_ledger_entries.journal_id')
+                ->select(
+                    DB::raw($side . ' as side'),
+                    DB::raw('SUM(sub_ledger_entries.credit) before_credit'),
+                    DB::raw('SUM(sub_ledger_entries.debit) before_debit')
+                )
+                ->where('sub_ledger_entries.date', '<', $startDate)
+                ->where('sub_ledgers.company_id', $companyAccount->id)
+                ->when($branchId > 0, function ($q) use ($branchId) {
+                    $q->where('journals.branch_id', $branchId);
+                })
+                ->when($costCenterId > 0, function ($q) use ($costCenterId) {
+                    $q->where('journals.cost_center_id', $costCenterId);
+                })
+                ->first();
+        } else {
+            $accounts = DB::table('accounts_trees')
                         ->join('account_movements','accounts_trees.id','=','account_movements.account_id')
                         ->join('journals','journals.id','=','account_movements.journal_id')
                         ->select('accounts_trees.code','accounts_trees.name','accounts_trees.side'
@@ -1714,7 +1763,7 @@ class ReportAccountController extends Controller
                         })
                         ->get();
 
-        $account_balance = DB::table('accounts_trees')
+            $account_balance = DB::table('accounts_trees')
                         ->join('account_movements','accounts_trees.id','=','account_movements.account_id')
                         ->join('journals','journals.id','=','account_movements.journal_id')
                         ->select('accounts_trees.code','accounts_trees.name as account_name','accounts_trees.side',
@@ -1735,11 +1784,9 @@ class ReportAccountController extends Controller
                             }
                         })
                         ->first();
+        }
  
        
-        $isaccount = AccountsTree::where('id',$request -> account_id) -> first();
-        $account_name = $isaccount ? ($isaccount->name .' - '. $isaccount->code) : '';
-        $companyAccount = Company::query()->where('account_id', $request->account_id)->first();
         if ($companyAccount && (float) $companyAccount->opening_balance != 0.0) {
             $openingAmount = abs((float) $companyAccount->opening_balance);
             $openingDebit = 0.0;
@@ -1777,7 +1824,40 @@ class ReportAccountController extends Controller
         $period_ar .= 'من البداية' ;  
         $period_ar .= ' -- '  . 'حتى اليوم' ; 
 
-        $accounts = DB::table('accounts_trees')
+        $isaccount = AccountsTree::where('id', $id)->first();
+        $account_name = $isaccount ? ($isaccount->name . ' - ' . $isaccount->code) : '';
+        $companyAccount = Company::query()->where('account_id', $id)->first();
+
+        if ($companyAccount) {
+            $side = (int) $companyAccount->group_id === 4 ? 2 : 1;
+            $accounts = DB::table('sub_ledger_entries')
+                ->join('sub_ledgers', 'sub_ledgers.id', '=', 'sub_ledger_entries.sub_ledger_id')
+                ->join('journals', 'journals.id', '=', 'sub_ledger_entries.journal_id')
+                ->select(
+                    DB::raw("'" . ($isaccount->code ?? '') . "' as code"),
+                    DB::raw("'" . ($isaccount->name ?? '') . "' as name"),
+                    DB::raw($side . ' as side'),
+                    'journals.basedon_no',
+                    'journals.baseon_text',
+                    'sub_ledger_entries.credit as credit',
+                    'sub_ledger_entries.debit as debit',
+                    'sub_ledger_entries.date'
+                )
+                ->where('sub_ledgers.company_id', $companyAccount->id)
+                ->get();
+
+            $account_balance = DB::table('sub_ledger_entries')
+                ->join('sub_ledgers', 'sub_ledgers.id', '=', 'sub_ledger_entries.sub_ledger_id')
+                ->select(
+                    DB::raw($side . ' as side'),
+                    DB::raw('SUM(sub_ledger_entries.credit) before_credit'),
+                    DB::raw('SUM(sub_ledger_entries.debit) before_debit')
+                )
+                ->whereYear('sub_ledger_entries.date', '<', date("Y"))
+                ->where('sub_ledgers.company_id', $companyAccount->id)
+                ->first();
+        } else {
+            $accounts = DB::table('accounts_trees')
                         ->join('account_movements','accounts_trees.id','=','account_movements.account_id')
                         ->join('journals','journals.id','=','account_movements.journal_id')
                         ->select('accounts_trees.code','accounts_trees.name','accounts_trees.side'
@@ -1788,7 +1868,7 @@ class ReportAccountController extends Controller
                         ->where('accounts_trees.id',$id) 
                         ->get();
 
-        $account_balance = DB::table('accounts_trees')
+            $account_balance = DB::table('accounts_trees')
                         ->join('account_movements','accounts_trees.id','=','account_movements.account_id')
                         ->select('accounts_trees.code','accounts_trees.name as account_name','accounts_trees.side',
                             DB::raw('SUM(account_movements.credit) before_credit'),
@@ -1797,11 +1877,9 @@ class ReportAccountController extends Controller
                         ->whereYear('account_movements.date','<',date("Y"))
                         ->where('accounts_trees.id', $id) 
                         ->first();
+        }
  
        
-        $isaccount = AccountsTree::where('id',$id) -> first();
-        $account_name = $isaccount ? ($isaccount->name .' - '. $isaccount->code) : '';
-        $companyAccount = Company::query()->where('account_id', $id)->first();
         if ($companyAccount && (float) $companyAccount->opening_balance != 0.0) {
             $openingAmount = abs((float) $companyAccount->opening_balance);
             $openingDebit = 0.0;
@@ -1874,16 +1952,39 @@ class ReportAccountController extends Controller
         }
 
         $costCenterId = (int) ($request->cost_center_id ?? 0);
-        $accounts = DB::table('accounts_trees')
-                        ->join('account_movements','accounts_trees.id','=','account_movements.account_id')
-                        ->join('journals','journals.id','=','account_movements.journal_id')
-                        ->select('accounts_trees.code','accounts_trees.name','accounts_trees.side'
-                            ,'journals.basedon_no','journals.branch_id', 'journals.basedon_id','journals.baseon_text','journals.total_credit AS K24','journals.total_debit AS K21','journals.notes AS K18'
-                            ,'account_movements.credit as credit'
-                            ,'account_movements.debit as debit' , 'account_movements.notes','account_movements.date') 
-                        ->where('account_movements.date','>=',$startDate)
-                        ->where('account_movements.date','<=',$endDate)
-                        ->where('accounts_trees.id' , '=' , $request -> account_id); 
+        $isaccount = AccountsTree::where('id', $request->account_id)->first();
+        $companyAccount = Company::query()->where('account_id', $request->account_id)->first();
+        $side = $companyAccount && (int) $companyAccount->group_id === 4 ? 2 : 1;
+
+        if ($companyAccount) {
+            $accounts = DB::table('sub_ledger_entries')
+                ->join('sub_ledgers', 'sub_ledgers.id', '=', 'sub_ledger_entries.sub_ledger_id')
+                ->join('journals', 'journals.id', '=', 'sub_ledger_entries.journal_id')
+                ->select(
+                    DB::raw("'" . ($isaccount->code ?? '') . "' as code"),
+                    DB::raw("'" . ($isaccount->name ?? '') . "' as name"),
+                    DB::raw($side . ' as side'),
+                    'journals.basedon_no','journals.branch_id','journals.basedon_id','journals.baseon_text','journals.total_credit AS K24','journals.total_debit AS K21','journals.notes AS K18',
+                    'sub_ledger_entries.credit as credit',
+                    'sub_ledger_entries.debit as debit',
+                    'sub_ledger_entries.notes',
+                    'sub_ledger_entries.date'
+                )
+                ->where('sub_ledger_entries.date','>=',$startDate)
+                ->where('sub_ledger_entries.date','<=',$endDate)
+                ->where('sub_ledgers.company_id', $companyAccount->id);
+        } else {
+            $accounts = DB::table('accounts_trees')
+                ->join('account_movements','accounts_trees.id','=','account_movements.account_id')
+                ->join('journals','journals.id','=','account_movements.journal_id')
+                ->select('accounts_trees.code','accounts_trees.name','accounts_trees.side'
+                    ,'journals.basedon_no','journals.branch_id', 'journals.basedon_id','journals.baseon_text','journals.total_credit AS K24','journals.total_debit AS K21','journals.notes AS K18'
+                    ,'account_movements.credit as credit'
+                    ,'account_movements.debit as debit' , 'account_movements.notes','account_movements.date') 
+                ->where('account_movements.date','>=',$startDate)
+                ->where('account_movements.date','<=',$endDate)
+                ->where('accounts_trees.id' , '=' , $request -> account_id);
+        }
 
         if($request -> branch_id > 0){
             $accounts = $accounts->where('journals.branch_id', $request -> branch_id);
@@ -1892,38 +1993,96 @@ class ReportAccountController extends Controller
             $accounts = $accounts->where('journals.cost_center_id', $costCenterId);
         }
         $accounts = $accounts->get();
-         
+
         if($request -> branch_id > 0){
-            $account_balance = DB::table('accounts_trees')
-                ->join('account_movements','accounts_trees.id','=','account_movements.account_id')
-                ->join('journals','journals.id','=','account_movements.journal_id')
-                ->select('accounts_trees.code','accounts_trees.name as account_name','accounts_trees.side',
-                    DB::raw('SUM(account_movements.credit) before_credit'),
-                    DB::raw('SUM(account_movements.debit) before_debit'))
-                ->groupBy('accounts_trees.id','accounts_trees.code','accounts_trees.name','accounts_trees.side')
-                ->where('account_movements.date','<',$startDate)
-                ->where('accounts_trees.id' , '=' , $request -> account_id)
-                ->where('journals.branch_id' , '=' , $request -> branch_id)
-                ->when($costCenterId > 0, function ($q) use ($costCenterId) {
-                    $q->where('journals.cost_center_id', $costCenterId);
-                })
-                ->first();
+            if ($companyAccount) {
+                $account_balance = DB::table('sub_ledger_entries')
+                    ->join('sub_ledgers', 'sub_ledgers.id', '=', 'sub_ledger_entries.sub_ledger_id')
+                    ->join('journals','journals.id','=','sub_ledger_entries.journal_id')
+                    ->select(
+                        DB::raw($side . ' as side'),
+                        DB::raw('SUM(sub_ledger_entries.credit) before_credit'),
+                        DB::raw('SUM(sub_ledger_entries.debit) before_debit')
+                    )
+                    ->where('sub_ledger_entries.date','<',$startDate)
+                    ->where('sub_ledgers.company_id', $companyAccount->id)
+                    ->where('journals.branch_id' , '=' , $request -> branch_id)
+                    ->when($costCenterId > 0, function ($q) use ($costCenterId) {
+                        $q->where('journals.cost_center_id', $costCenterId);
+                    })
+                    ->first();
+            } else {
+                $account_balance = DB::table('accounts_trees')
+                    ->join('account_movements','accounts_trees.id','=','account_movements.account_id')
+                    ->join('journals','journals.id','=','account_movements.journal_id')
+                    ->select('accounts_trees.code','accounts_trees.name as account_name','accounts_trees.side',
+                        DB::raw('SUM(account_movements.credit) before_credit'),
+                        DB::raw('SUM(account_movements.debit) before_debit'))
+                    ->groupBy('accounts_trees.id','accounts_trees.code','accounts_trees.name','accounts_trees.side')
+                    ->where('account_movements.date','<',$startDate)
+                    ->where('accounts_trees.id' , '=' , $request -> account_id)
+                    ->where('journals.branch_id' , '=' , $request -> branch_id)
+                    ->when($costCenterId > 0, function ($q) use ($costCenterId) {
+                        $q->where('journals.cost_center_id', $costCenterId);
+                    })
+                    ->first();
+            }
         }else{
-            $account_balance = DB::table('accounts_trees')
-                ->join('account_movements','accounts_trees.id','=','account_movements.account_id')
-                ->join('journals','journals.id','=','account_movements.journal_id')
-                ->select('accounts_trees.code','accounts_trees.name as account_name','accounts_trees.side',
-                    DB::raw('SUM(account_movements.credit) before_credit'),
-                    DB::raw('SUM(account_movements.debit) before_debit'))
-                ->groupBy('accounts_trees.id','accounts_trees.code','accounts_trees.name','accounts_trees.side')
-                ->where('account_movements.date','<',$startDate)
-                ->where('accounts_trees.id' , '=' , $request -> account_id)
-                ->when($costCenterId > 0, function ($q) use ($costCenterId) {
-                    $q->where('journals.cost_center_id', $costCenterId);
-                })
-                ->first();
+            if ($companyAccount) {
+                $account_balance = DB::table('sub_ledger_entries')
+                    ->join('sub_ledgers', 'sub_ledgers.id', '=', 'sub_ledger_entries.sub_ledger_id')
+                    ->select(
+                        DB::raw($side . ' as side'),
+                        DB::raw('SUM(sub_ledger_entries.credit) before_credit'),
+                        DB::raw('SUM(sub_ledger_entries.debit) before_debit')
+                    )
+                    ->where('sub_ledger_entries.date','<',$startDate)
+                    ->where('sub_ledgers.company_id', $companyAccount->id)
+                    ->first();
+            } else {
+                $account_balance = DB::table('accounts_trees')
+                    ->join('account_movements','accounts_trees.id','=','account_movements.account_id')
+                    ->join('journals','journals.id','=','account_movements.journal_id')
+                    ->select('accounts_trees.code','accounts_trees.name as account_name','accounts_trees.side',
+                        DB::raw('SUM(account_movements.credit) before_credit'),
+                        DB::raw('SUM(account_movements.debit) before_debit'))
+                    ->groupBy('accounts_trees.id','accounts_trees.code','accounts_trees.name','accounts_trees.side')
+                    ->where('account_movements.date','<',$startDate)
+                    ->where('accounts_trees.id' , '=' , $request -> account_id)
+                    ->when($costCenterId > 0, function ($q) use ($costCenterId) {
+                        $q->where('journals.cost_center_id', $costCenterId);
+                    })
+                    ->first();
+            }
         }
   
+        if ($companyAccount && (float) $companyAccount->opening_balance != 0.0) {
+            $openingAmount = abs((float) $companyAccount->opening_balance);
+            $openingDebit = 0.0;
+            $openingCredit = 0.0;
+            $isCustomer = (int) $companyAccount->group_id === 3;
+            $isSupplier = (int) $companyAccount->group_id === 4;
+
+            if ($companyAccount->opening_balance < 0) {
+                $openingDebit = $isSupplier ? $openingAmount : 0.0;
+                $openingCredit = $isCustomer ? $openingAmount : 0.0;
+            } else {
+                $openingDebit = $isCustomer ? $openingAmount : 0.0;
+                $openingCredit = $isSupplier ? $openingAmount : 0.0;
+            }
+
+            if ($account_balance) {
+                $account_balance->before_debit = (float) ($account_balance->before_debit ?? 0) + $openingDebit;
+                $account_balance->before_credit = (float) ($account_balance->before_credit ?? 0) + $openingCredit;
+            } else {
+                $account_balance = (object) [
+                    'side' => $isaccount->side ?? ($isSupplier ? 2 : 1),
+                    'before_debit' => $openingDebit,
+                    'before_credit' => $openingCredit,
+                ];
+            }
+        }
+
         foreach ($accounts as $account){ 
              
             if (EnterOld::where('bill_number', $account->basedon_no)->exists()) {  
