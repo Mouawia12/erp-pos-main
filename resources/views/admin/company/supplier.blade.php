@@ -80,7 +80,7 @@
                                             <td class="text-center">{{ $company -> group ? $company -> group -> name : '---'}}</td>
                                             @endif
                                             <td class="text-center">{{$company->tax_number ?? $company->vat_no}}</td>
-                                            <td class="text-center">{{$company -> deposit_amount}}</td>
+                                            <td class="text-center">{{ number_format((float) ($company->opening_balance ?? 0) + (float) ($company->deposit_amount ?? 0), 2) }}</td>
                                             <td class="text-center">
                                                
                                                @can('التقارير المحاسبية')     

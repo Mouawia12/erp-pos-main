@@ -38,6 +38,23 @@
     border-bottom: 0 !important;
 }
 span strong {font-size:12px;}
+.tw-items-table th.tw-col-unit,
+.tw-items-table td.tw-col-unit {
+    min-width: 120px;
+    white-space: nowrap;
+}
+.tw-items-table th.tw-col-qty,
+.tw-items-table td.tw-col-qty {
+    min-width: 110px;
+}
+.tw-items-table input[type=number]::-webkit-outer-spin-button,
+.tw-items-table input[type=number]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.tw-items-table input[type=number] {
+    -moz-appearance: textfield;
+}
 </style>  
 @php $enableVehicleFeatures = $enableVehicleFeatures ?? false; @endphp
     @can('اضافة مبيعات')   
@@ -295,11 +312,11 @@ span strong {font-size:12px;}
                                                             <th class="text-center">{{__('main.available_qty')}}</th>
                                                             <th class="text-center">{{__('main.cost')}}</th>
                                                             <th class="text-center">{{__('main.last_sale_price')}}</th>
-                                                            <th class="text-center">{{ __('main.unit') }}</th>
+                                                            <th class="text-center tw-col-unit">{{ __('main.unit') }}</th>
                                                             <th class="text-center batch-col">{{ __('main.batch_no') }}</th>
                                                             <th class="text-center batch-col">{{ __('main.production_date') }}</th>
                                                             <th class="text-center batch-col">{{ __('main.expiry_date') }}</th>
-                                                            <th class="text-center">{{ __('main.quantity') }}</th>
+                                                            <th class="text-center tw-col-qty">{{ __('main.quantity') }}</th>
                                                             <th class="text-center">{{__('main.price.unit')}}</th>
                                                             <th class="text-center">{{__('main.discount')}}</th> 
                                                             <th class="text-center">{{__('main.mount')}}</th>
@@ -1814,11 +1831,11 @@ span strong {font-size:12px;}
                 unitSelect += '</select><input type="hidden" name="unit_factor[]" class="unitFactor" value="'+(item.unit_factor ?? 1)+'">';
                 var qtyInput = '<div class="mt-2"><input type="number" step="0.01" min="0" class="form-control form-control-sm iQuantity" name="qnt[]" value="'+item.qnt+'"></div>';
 
-                tr_html +='<td>'+unitSelect+'</td>';
+                tr_html +='<td class="tw-col-unit">'+unitSelect+'</td>';
                 tr_html +='<td class="batch-col"><input type="hidden" name="batch_no[]" value="'+escapeHtml(item.batch_no ?? '')+'"><span class="text-nowrap d-block">'+escapeHtml(item.batch_no ?? '')+'</span></td>';
                 tr_html +='<td class="batch-col"><input type="hidden" name="production_date[]" value="'+(item.production_date ?? '')+'"><span class="text-nowrap d-block">'+escapeHtml(item.production_date ?? '')+'</span></td>';
                 tr_html +='<td class="batch-col"><input type="hidden" name="expiry_date[]" value="'+(item.expiry_date ?? '')+'"><span class="text-nowrap d-block">'+escapeHtml(item.expiry_date ?? '')+'</span></td>';
-                tr_html +='<td>'+qtyInput+'</td>';
+                tr_html +='<td class="tw-col-qty">'+qtyInput+'</td>';
                 tr_html +='<td><input type="number" step="0.01" class="form-control iPrice" name="price_unit[]" value="'+Number(item.price_withoute_tax ?? 0).toFixed(2)+'"><input type="hidden" name="original_price[]" value="'+Number(item.original_price ?? 0).toFixed(2)+'"></td>';
                 tr_html +='<td><input type="number" class="form-control iDiscount" name="discount_unit[]" value="'+Number(item.discount ?? 0).toFixed(2)+'"></td>';
                 tr_html +='<td hidden><input type="hidden" class="form-control iPriceWTax" name="price_with_tax[]" value="'+Number(item.price_with_tax ?? 0).toFixed(2)+'"></td>'; 

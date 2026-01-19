@@ -1738,7 +1738,34 @@ class ReportAccountController extends Controller
  
        
         $isaccount = AccountsTree::where('id',$request -> account_id) -> first();
-        $account_name = $isaccount->name .' - '. $isaccount ->code;
+        $account_name = $isaccount ? ($isaccount->name .' - '. $isaccount->code) : '';
+        $companyAccount = Company::query()->where('account_id', $request->account_id)->first();
+        if ($companyAccount && (float) $companyAccount->opening_balance != 0.0) {
+            $openingAmount = abs((float) $companyAccount->opening_balance);
+            $openingDebit = 0.0;
+            $openingCredit = 0.0;
+            $isCustomer = (int) $companyAccount->group_id === 3;
+            $isSupplier = (int) $companyAccount->group_id === 4;
+
+            if ($companyAccount->opening_balance < 0) {
+                $openingDebit = $isSupplier ? $openingAmount : 0.0;
+                $openingCredit = $isCustomer ? $openingAmount : 0.0;
+            } else {
+                $openingDebit = $isCustomer ? $openingAmount : 0.0;
+                $openingCredit = $isSupplier ? $openingAmount : 0.0;
+            }
+
+            if ($account_balance) {
+                $account_balance->before_debit = (float) ($account_balance->before_debit ?? 0) + $openingDebit;
+                $account_balance->before_credit = (float) ($account_balance->before_credit ?? 0) + $openingCredit;
+            } else {
+                $account_balance = (object) [
+                    'side' => $isaccount->side ?? ($isSupplier ? 2 : 1),
+                    'before_debit' => $openingDebit,
+                    'before_credit' => $openingCredit,
+                ];
+            }
+        }
         $company = CompanyInfo::all() -> first();
       
         return view('admin.ReportAccount.account_movement_report',compact('accounts','account_balance','period', 'period_ar', 'company','account_name'));
@@ -1773,7 +1800,34 @@ class ReportAccountController extends Controller
  
        
         $isaccount = AccountsTree::where('id',$id) -> first();
-        $account_name = $isaccount->name .' - '. $isaccount ->code;
+        $account_name = $isaccount ? ($isaccount->name .' - '. $isaccount->code) : '';
+        $companyAccount = Company::query()->where('account_id', $id)->first();
+        if ($companyAccount && (float) $companyAccount->opening_balance != 0.0) {
+            $openingAmount = abs((float) $companyAccount->opening_balance);
+            $openingDebit = 0.0;
+            $openingCredit = 0.0;
+            $isCustomer = (int) $companyAccount->group_id === 3;
+            $isSupplier = (int) $companyAccount->group_id === 4;
+
+            if ($companyAccount->opening_balance < 0) {
+                $openingDebit = $isSupplier ? $openingAmount : 0.0;
+                $openingCredit = $isCustomer ? $openingAmount : 0.0;
+            } else {
+                $openingDebit = $isCustomer ? $openingAmount : 0.0;
+                $openingCredit = $isSupplier ? $openingAmount : 0.0;
+            }
+
+            if ($account_balance) {
+                $account_balance->before_debit = (float) ($account_balance->before_debit ?? 0) + $openingDebit;
+                $account_balance->before_credit = (float) ($account_balance->before_credit ?? 0) + $openingCredit;
+            } else {
+                $account_balance = (object) [
+                    'side' => $isaccount->side ?? ($isSupplier ? 2 : 1),
+                    'before_debit' => $openingDebit,
+                    'before_credit' => $openingCredit,
+                ];
+            }
+        }
         $company = CompanyInfo::all() -> first();
       
         return view('admin.ReportAccount.account_movement_report',compact('accounts','account_balance','period_ar', 'company','account_name'));

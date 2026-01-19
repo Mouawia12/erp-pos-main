@@ -69,10 +69,8 @@
         .qr-cell { width:45mm; text-align:right; }
         .qr-cell img { width:40mm; height:40mm; }
         .meta-title-row td { border:0; vertical-align:top; }
-        .meta-cell { width:60%; }
-        .title-qr-cell { width:40%; }
-        .title-qr-wrap { width:100%; table-layout:fixed; border-collapse:collapse; }
-        .title-qr-wrap td { border:0; }
+        .meta-cell { width:55%; }
+        .title-between { width:20%; text-align:center; }
         .meta-wrapper { direction:ltr; }
         .meta-wrapper td { border:0; }
         .meta-table { width:100%; border-collapse:collapse; table-layout:fixed; direction:ltr; }
@@ -205,20 +203,14 @@
 
     <table class="meta-title-row" dir="rtl">
         <tr>
-            <td class="title-qr-cell">
-                <table class="title-qr-wrap" dir="rtl">
-                    <tr>
-                        <td class="title-cell">
-                            <div class="title-ar">فاتورة ضريبية</div>
-                            <div class="title-en">Tax invoice</div>
-                        </td>
-                        <td class="qr-cell">
-                            @if(!empty($qrCodeImage))
-                                <img src="{{ $qrCodeImage }}" alt="QR Code"/>
-                            @endif
-                        </td>
-                    </tr>
-                </table>
+            <td class="qr-cell">
+                @if(!empty($qrCodeImage))
+                    <img src="{{ $qrCodeImage }}" alt="QR Code"/>
+                @endif
+            </td>
+            <td class="title-cell title-between">
+                <div class="title-ar">فاتورة ضريبية</div>
+                <div class="title-en">Tax invoice</div>
             </td>
             <td class="meta-cell">
                 <table class="meta-table">
@@ -351,8 +343,8 @@
                     $qty = (float) $detail->quantity;
                     $discountUnit = (float) ($detail->discount_unit ?? 0);
                     $discountLine = $discountUnit * $qty;
-                    $unitPrice = (float) $detail->price_unit + $discountUnit;
-                    $taxable = ($unitPrice * $qty) - $discountLine;
+                    $taxable = (float) $detail->total;
+                    $unitPrice = $qty > 0 ? ($taxable / $qty) : 0;
                     $lineTax = (float) $detail->tax + (float) $detail->tax_excise;
                     $vatRate = $taxable > 0 ? ($lineTax / $taxable) * 100 : 0;
                     $lineTotal = $taxable + $lineTax;
@@ -385,11 +377,6 @@
 
     <table class="totals-table">
         <tr>
-            <td class="label-en">Number Of Items</td>
-            <td class="num-right">{{ number_format($totalItems, 3) }}</td>
-            <td class="label-ar">عدد الأصناف</td>
-        </tr>
-        <tr>
             <td class="label-en">Total Amount</td>
             <td class="num-right">{{ $currency }} {{ number_format($data->net, 2) }}</td>
             <td class="label-ar">إجمالي المبلغ</td>
@@ -405,29 +392,9 @@
             <td class="label-ar">مجموع الخصومات</td>
         </tr>
         <tr>
-            <td class="label-en">Total Taxable Amount (Excluding VAT)</td>
-            <td class="num-right">{{ $currency }} {{ number_format($taxableAmount, 2) }}</td>
-            <td class="label-ar">الإجمالي الخاضع للضريبة (غير شامل الضريبة)</td>
-        </tr>
-        <tr>
             <td class="label-en">Total VAT</td>
             <td class="num-right">{{ $currency }} {{ number_format($vatTotal, 2) }}</td>
             <td class="label-ar">مجموع الضريبة</td>
-        </tr>
-        <tr>
-            <td class="label-en strong">Total Amount Due</td>
-            <td class="num-right strong">{{ $currency }} {{ number_format($data->net, 2) }}</td>
-            <td class="label-ar strong">إجمالي المبلغ المستحق</td>
-        </tr>
-        <tr>
-            <td class="label-en">Paid Amount</td>
-            <td class="num-right">{{ $currency }} {{ number_format($data->paid, 2) }}</td>
-            <td class="label-ar">المبلغ المدفوع</td>
-        </tr>
-        <tr>
-            <td class="label-en">Remaining amount</td>
-            <td class="num-right">{{ $currency }} {{ number_format($amountDue, 2) }}</td>
-            <td class="label-ar">المتبقي على الفاتورة</td>
         </tr>
     </table>
 

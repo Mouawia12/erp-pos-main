@@ -158,12 +158,23 @@ textarea.form-control.pos-input {
     text-transform: capitalize;
     width: 20%
 }
-.btn-default.minus,.btn-default.minus:focus,.btn-default.plus,.btn-default.plus:focus {
-    background-color: #00b9ff;  
-    border:1px solid #d6deff;
-    color:#fff;
+.order-list th.tw-col-unit,
+.order-list td.tw-col-unit {
+    min-width: 120px;
+    white-space: nowrap;
 }
-span.fa.fa-minus,span.fa.fa-plus {  font-weight:700;}
+.order-list th.tw-col-qty,
+.order-list td.tw-col-qty {
+    min-width: 110px;
+}
+.order-list input[type=number]::-webkit-outer-spin-button,
+.order-list input[type=number]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.order-list input[type=number] {
+    -moz-appearance: textfield;
+}
 label.total {
     width: 100%;
     padding: 2%;
@@ -488,7 +499,7 @@ label.total {
                                                             <th class="text-center">{{__('main.cost')}}</th>
                                                             <th class="text-center">{{__('main.last_sale_price')}}</th>
                                                             <th class="text-center col-md-2">{{__('main.prices')}}</th>
-                                                            <th class="text-center col-md-3">{{__('main.quantity')}} </th>
+                                                            <th class="text-center col-md-3 tw-col-qty">{{__('main.quantity')}} </th>
                                                             <th class="text-center">{{__('main.total')}}</th>
                                                             <th class="text-center">...</th> 
                                                         </tr>
@@ -1577,55 +1588,6 @@ label.total {
             loadItems();
         });
 
-        $("#sTable").on('click', '.plus', function() {   
-            rowindex = $(this).closest('tr').index(); 
-            var qty = $('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ') .qty').val();
-            
-            if(!qty){
-                qty = 1;
-            }else{
-                qty = parseFloat(qty) + 1;
-            }
-            
-            var row = $(this).closest('tr');
-            item_id = row.attr('data-item-id');  
-           
-            if(!isQuantityValid(sItems[item_id], qty)){
-                alert(formatInsufficientMessage(sItems[item_id]));
-                return;
-            }
-
-            sItems[item_id].qnt = qty;  
-            loadItems();
-            var audio = $("#mysoundclip1")[0];
-            audio.play();
-        });
-            
-        $("#sTable").on('click', '.minus', function() {
-            rowindex = $(this).closest('tr').index();
-            var qty = parseFloat($('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ') .qty').val()) - 1;
-            if (qty > 0) {
-                $('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ') .qty').val(qty);
-            } else {
-                qty = 1;
-            } 
-
-            var row = $(this).closest('tr');
-            item_id = row.attr('data-item-id');  
-           
-            if(!isQuantityValid(sItems[item_id], qty)){
-                alert(formatInsufficientMessage(sItems[item_id]));
-                $('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ') .qty').val(sItems[item_id].qnt);
-                return;
-            }
-
-            sItems[item_id].qnt = qty;  
-            loadItems();
-
-            var audio = $("#mysoundclip1")[0];
-            audio.play();
-        });
-
     function is_numeric(mixed_var) {
         var whitespace = ' \n\r\t\f\x0b\xa0\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u3000';
         return (
@@ -1670,25 +1632,13 @@ label.total {
                     });
                 }
                 unitSelect += '</select><input type="hidden" name="unit_factor[]" class="unitFactor" value="'+(item.unit_factor ?? 1)+'">';
-                tr_html +='<td>'+unitSelect+'</td>';
+                tr_html +='<td class="tw-col-unit">'+unitSelect+'</td>';
                 tr_html +='<td hidden><input type="text" class="form-control iPrice" name="price_unit[]" value="'+item.price_withoute_tax.toFixed(2)+'"></td>';
                 tr_html +='<td><input type="text" class="form-control text-center iPriceWTax" name="price_with_tax[]" value="'+(item.price_withoute_tax + item.item_tax).toFixed(2)+'"></td>';
                 //tr_html +='<td><input type="text" class="form-control iQuantity" name="qnt[]" value="'+item.qnt.toFixed(2)+'"></td>';
                 var qtyReadonly = item.reservation_item_id ? 'readonly' : '';
-                var qtyDisabled = item.reservation_item_id ? 'disabled' : '';
-                tr_html +=`<td><div class="input-group">
-	                            <span class="input-group-btn">
-	                        	    <button type="button" class="btn btn-default minus" ${qtyDisabled}>
-	                        		    <span class="fa fa-minus"></span>
-	                        		</button>
-	                        	</span>
-	                        	<input type="text" name="qnt[]" class="form-control qty numkey input-number text-center" step="any" value="`+item.qnt+`" required="" ${qtyReadonly}>
-	                        	<span class="input-group-btn">
-	                        	    <button type="button" class="btn btn-default plus" ${qtyDisabled}>
-	                        		    <span class="fa fa-plus"></span>
-	                        		</button>
-	                        	</span>
-	                        </div>
+                tr_html +=`<td class="tw-col-qty">
+                            <input type="text" name="qnt[]" class="form-control qty numkey input-number text-center" step="any" value="`+item.qnt+`" required="" ${qtyReadonly}>
                         </td>`; 
                 tr_html +='<td hidden><input type="text" readonly="readonly" class="form-control" name="total[]" value="'+(item.price_withoute_tax*item.qnt).toFixed(2)+'"></td>';
                 tr_html +='<td hidden><input type="text" readonly="readonly" class="form-control" name="tax[]" value="'+(item.item_tax*item.qnt).toFixed(2)+'"></td>';

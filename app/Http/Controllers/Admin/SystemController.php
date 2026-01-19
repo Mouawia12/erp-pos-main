@@ -26,6 +26,8 @@ use App\Models\Branch;
 use App\Models\Payment;
 use App\Models\CatchRecipt;
 use App\Models\Expenses; 
+use App\Models\SubLedger;
+use App\Models\SubLedgerEntry;
 use App\Models\SystemSettings;
 use Database\Factories\JournalFactory;
 use Illuminate\Support\Facades\Auth;
@@ -719,6 +721,7 @@ class SystemController extends Controller
                     $this->updateAccountBalance($detail['account_id'],$detail['credit'],$detail['debit'],$header['date'],$id);
                 }
 
+                $this->recordSubLedgerEntries($id, $header, $details);
                 if ($journal) {
                     $journal->update(['status' => \App\Models\Journal::STATUS_POSTED]);
                 }
@@ -738,6 +741,7 @@ class SystemController extends Controller
                     $this->updateAccountBalance($detail['account_id'],$detail['credit'],$detail['debit'],$header['date'],$journal_id);
                 }
 
+                $this->recordSubLedgerEntries($journal_id, $header, $details);
                 if($manual  == 1){
                     $journal  = Journal::find($journal_id);
                     if ($journal) {
@@ -838,6 +842,13 @@ class SystemController extends Controller
             return false;
         }
 
+        if ($ledgerId) {
+            $controlAccountId = $this->resolveControlAccountId($ledgerId, Auth::user()?->branch_id);
+            if ($controlAccountId) {
+                $resolvedAccount = $controlAccountId;
+            }
+        }
+
         $debit = (float) $debit;
         $credit = (float) $credit;
         if ($debit == 0.0 && $credit == 0.0) {
@@ -902,10 +913,85 @@ class SystemController extends Controller
         return array_values(array_filter($controlAccounts));
     }
 
+    private function resolveControlAccountId(int $companyId, ?int $branchId): ?int
+    {
+        $company = Company::find($companyId);
+        if (! $company) {
+            return null;
+        }
+
+        $settingsQuery = AccountSetting::query();
+        if ($branchId) {
+            $settingsQuery->where('branch_id', $branchId);
+        }
+        $settings = $settingsQuery->first();
+
+        if ((int) $company->group_id === 3) {
+            return (int) ($settings->customer_control_account ?? 0) ?: $this->resolveAccountByCode('1107');
+        }
+        if ((int) $company->group_id === 4) {
+            return (int) ($settings->supplier_control_account ?? 0) ?: $this->resolveAccountByCode('2101');
+        }
+
+        return null;
+    }
+
     private function resolveAccountByCode(string $code): ?int
     {
         $account = $this->accountQueryForSubscriber()->where('code', $code)->first();
         return $account?->id;
+    }
+
+    private function recordSubLedgerEntries(int $journalId, array $header, array $details): void
+    {
+        $branchId = $header['branch_id'] ?? null;
+        $date = $header['date'] ?? date('Y-m-d');
+        $notes = $header['notes'] ?? null;
+
+        $controlAccounts = $this->resolveControlAccountIdsForBranch($branchId);
+        if (empty($controlAccounts)) {
+            return;
+        }
+
+        foreach ($details as $detail) {
+            $ledgerId = (int) ($detail['ledger_id'] ?? 0);
+            if (! $ledgerId) {
+                continue;
+            }
+
+            $accountId = (int) ($detail['account_id'] ?? 0);
+            if (! in_array($accountId, $controlAccounts, true)) {
+                continue;
+            }
+
+            $company = Company::find($ledgerId);
+            if (! $company) {
+                continue;
+            }
+
+            $subLedger = SubLedger::firstOrCreate(
+                [
+                    'company_id' => $company->id,
+                    'control_account_id' => $accountId,
+                    'branch_id' => $branchId,
+                ],
+                [
+                    'type' => $company->group_id == 4 ? 'supplier' : 'customer',
+                    'subscriber_id' => Auth::user()?->subscriber_id,
+                ]
+            );
+
+            SubLedgerEntry::create([
+                'sub_ledger_id' => $subLedger->id,
+                'journal_id' => $journalId,
+                'date' => $date,
+                'debit' => (float) ($detail['debit'] ?? 0),
+                'credit' => (float) ($detail['credit'] ?? 0),
+                'notes' => $detail['notes'] ?? $notes,
+                'branch_id' => $branchId,
+                'subscriber_id' => Auth::user()?->subscriber_id,
+            ]);
+        }
     }
 
     private function normalizeJournalDetails(array $details): array

@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AccountsTree;
+use App\Models\Company;
 use App\Models\Journal;
+use App\Models\VendorMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
@@ -97,6 +99,34 @@ class OpeningBalanceController extends Controller
         $systemController = new SystemController();
         $systemController->insertJournal($header, $details, 0);
 
+        $journal = Journal::query()
+            ->where('basedon_no', $header['basedon_no'])
+            ->where('baseon_text', $this->baseonText())
+            ->first();
+
+        foreach ($details as $detail) {
+            $company = Company::query()
+                ->where('account_id', $detail['account_id'])
+                ->whereIn('group_id', [3, 4])
+                ->first();
+            if (! $company) {
+                continue;
+            }
+
+            VendorMovement::create([
+                'vendor_id' => $company->id,
+                'paid' => 0,
+                'debit' => (float) $detail['debit'],
+                'credit' => (float) $detail['credit'],
+                'date' => $validated['date'],
+                'invoice_type' => 'Opening_Balance',
+                'invoice_id' => $journal?->id ?? 0,
+                'invoice_no' => $header['basedon_no'],
+                'paid_by' => '',
+                'branch_id' => $header['branch_id'],
+            ]);
+        }
+
         return redirect()->route('opening_balances.index')->with('success', __('main.created'));
     }
 
@@ -125,7 +155,12 @@ class OpeningBalanceController extends Controller
             }
         }
 
-        return response()->json($query->get());
+        $accounts = $query->get();
+        $companyAccounts = $this->resolveCompanyAccounts($code);
+
+        return response()->json(
+            $accounts->merge($companyAccounts)->unique('id')->values()
+        );
     }
 
     private function getSingleAccount($code): ?AccountsTree
@@ -148,6 +183,29 @@ class OpeningBalanceController extends Controller
         }
 
         return $query->first();
+    }
+
+    private function resolveCompanyAccounts(string $code)
+    {
+        $query = Company::query()
+            ->whereIn('group_id', [3, 4])
+            ->where(function ($q) use ($code) {
+                $q->where('name', 'like', '%' . $code . '%')
+                    ->orWhere('company', 'like', '%' . $code . '%');
+            })
+            ->limit(5);
+
+        if (Auth::user()->subscriber_id ?? null) {
+            if (Schema::hasColumn('companies', 'subscriber_id')) {
+                $query->where('subscriber_id', Auth::user()->subscriber_id);
+            }
+        }
+
+        return $query->get()
+            ->map(function (Company $company) {
+                return $company->ensureAccount();
+            })
+            ->filter();
     }
 
     private function baseonText(): string
