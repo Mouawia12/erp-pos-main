@@ -40,6 +40,37 @@
                     </div>
                 </div>      
                 <div class="card-body">
+                    <form method="GET" action="{{ route('client_balance_report', [$companyId ?? 0, $slag ?? 0]) }}" class="mb-3">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-3">
+                                <label class="mb-1">{{ __('main.from_date') ?? 'من تاريخ' }}</label>
+                                <input type="date" name="start_date" class="form-control" value="{{ $startDateValue ?? '' }}">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="mb-1">{{ __('main.to_date') ?? 'إلى تاريخ' }}</label>
+                                <input type="date" name="end_date" class="form-control" value="{{ $endDateValue ?? '' }}">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="mb-1">{{ __('main.branche') ?? 'الفرع' }}</label>
+                                <select name="branch_id" class="form-control">
+                                    <option value="0">{{ __('main.all') ?? 'كل الفروع' }}</option>
+                                    @foreach($branches ?? [] as $branch)
+                                        <option value="{{ $branch->id }}" @if(($branchId ?? 0) == $branch->id) selected @endif>
+                                            {{ $branch->branch_name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <button type="submit" class="btn btn-primary w-100">{{ __('main.search') ?? 'بحث' }}</button>
+                            </div>
+                            <div class="col-md-3">
+                                <a href="{{ route('client_balance_report', [$companyId ?? 0, $slag ?? 0]) }}" class="btn btn-outline-secondary w-100">
+                                    {{ __('main.reset') ?? 'إعادة تعيين' }}
+                                </a>
+                            </div>
+                        </div>
+                    </form>
                     <div class="table-responsive hoverable-table" style="direction: rtl;"> 
                         <table class="display w-100 text-nowrap table-bordered" id="example1" 
                            style="text-align: center;direction: rtl;">

@@ -22,6 +22,7 @@ use App\Models\Representative;
 use App\Models\Inventory;
 use App\Models\InventoryDetails;
 use App\Models\PosShift;
+use App\Models\SubLedgerEntry;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -1193,11 +1194,115 @@ class ReportController extends Controller
         ]);
     }
 
-    public function client_balance_report($id , $slag){
-        $data = VendorMovement::query()->where('vendor_id',$id)->get();
-        $company = CompanyInfo::first();
+    public function client_balance_report(Request $request, $id , $slag){
+        $companyAccount = Company::find($id);
+        $side = $companyAccount && (int) $companyAccount->group_id === 4 ? 2 : 1;
+        $subscriberId = Auth::user()->subscriber_id ?? null;
+        $branchId = (int) ($request->branch_id ?? 0);
+        $startDate = $request->start_date ? Carbon::parse($request->start_date)->startOfDay() : null;
+        $endDate = $request->end_date ? Carbon::parse($request->end_date)->endOfDay() : null;
 
-        return view('admin.Report.client_movement_report',compact('data' , 'slag','company'));
+        $subQuery = SubLedgerEntry::query()
+            ->join('sub_ledgers', 'sub_ledgers.id', '=', 'sub_ledger_entries.sub_ledger_id')
+            ->join('journals', 'journals.id', '=', 'sub_ledger_entries.journal_id')
+            ->select(
+                'sub_ledger_entries.date',
+                'journals.basedon_no as invoice_no',
+                'journals.baseon_text as invoice_type',
+                'sub_ledger_entries.debit',
+                'sub_ledger_entries.credit',
+                DB::raw($side . ' as side')
+            )
+            ->where('sub_ledgers.company_id', $id)
+            ->when($branchId > 0, function ($q) use ($branchId) {
+                $q->where('journals.branch_id', $branchId);
+            })
+            ->when($startDate, function ($q) use ($startDate) {
+                $q->where('sub_ledger_entries.date', '>=', $startDate->toDateString());
+            })
+            ->when($endDate, function ($q) use ($endDate) {
+                $q->where('sub_ledger_entries.date', '<=', $endDate->toDateString());
+            })
+            ->orderBy('sub_ledger_entries.date')
+            ->orderBy('sub_ledger_entries.id');
+
+        if ($subscriberId && Schema::hasColumn('sub_ledger_entries', 'subscriber_id')) {
+            $subQuery->where('sub_ledger_entries.subscriber_id', $subscriberId);
+        }
+
+        $data = $subQuery->get();
+        if ($data->isEmpty()) {
+            $fallbackQuery = VendorMovement::query()->where('vendor_id',$id);
+            if ($branchId > 0) {
+                $fallbackQuery->where('branch_id', $branchId);
+            }
+            if ($startDate) {
+                $fallbackQuery->where('date', '>=', $startDate->toDateString());
+            }
+            if ($endDate) {
+                $fallbackQuery->where('date', '<=', $endDate->toDateString());
+            }
+            $data = $fallbackQuery->get();
+        }
+
+        $openingDebit = 0.0;
+        $openingCredit = 0.0;
+        if ($companyAccount && (float) $companyAccount->opening_balance != 0.0) {
+            $openingAmount = abs((float) $companyAccount->opening_balance);
+            $isCustomer = (int) $companyAccount->group_id === 3;
+            $isSupplier = (int) $companyAccount->group_id === 4;
+
+            if ($companyAccount->opening_balance < 0) {
+                $openingDebit = $isSupplier ? $openingAmount : 0.0;
+                $openingCredit = $isCustomer ? $openingAmount : 0.0;
+            } else {
+                $openingDebit = $isCustomer ? $openingAmount : 0.0;
+                $openingCredit = $isSupplier ? $openingAmount : 0.0;
+            }
+        }
+
+        $openingDate = $startDate?->toDateString() ?? (optional($companyAccount->created_at)->format('Y-m-d') ?? date('Y-m-d'));
+        if ($companyAccount && $startDate) {
+            $beforeQuery = SubLedgerEntry::query()
+                ->join('sub_ledgers', 'sub_ledgers.id', '=', 'sub_ledger_entries.sub_ledger_id')
+                ->join('journals', 'journals.id', '=', 'sub_ledger_entries.journal_id')
+                ->selectRaw('COALESCE(SUM(sub_ledger_entries.debit),0) as debit')
+                ->selectRaw('COALESCE(SUM(sub_ledger_entries.credit),0) as credit')
+                ->where('sub_ledgers.company_id', $id)
+                ->where('sub_ledger_entries.date', '<', $startDate->toDateString())
+                ->when($branchId > 0, function ($q) use ($branchId) {
+                    $q->where('journals.branch_id', $branchId);
+                });
+            if ($subscriberId && Schema::hasColumn('sub_ledger_entries', 'subscriber_id')) {
+                $beforeQuery->where('sub_ledger_entries.subscriber_id', $subscriberId);
+            }
+            $beforeTotals = $beforeQuery->first();
+            $openingDebit += (float) ($beforeTotals->debit ?? 0);
+            $openingCredit += (float) ($beforeTotals->credit ?? 0);
+        }
+
+        if (($openingDebit != 0.0 || $openingCredit != 0.0) && ! $data->contains(fn ($row) => ($row->invoice_type ?? null) === 'Opening_Balance')) {
+            $data = $data->prepend((object) [
+                'date' => $openingDate,
+                'invoice_no' => 'OB',
+                'invoice_type' => 'Opening_Balance',
+                'debit' => $openingDebit,
+                'credit' => $openingCredit,
+                'side' => $side,
+            ]);
+        }
+
+        $company = CompanyInfo::first();
+        $branches = Branch::where('status', 1)
+            ->when($subscriberId, fn($q) => $q->where('subscriber_id', $subscriberId))
+            ->get();
+
+        $startDateValue = $startDate ? $startDate->toDateString() : '';
+        $endDateValue = $endDate ? $endDate->toDateString() : '';
+
+        $companyId = $id;
+
+        return view('admin.Report.client_movement_report',compact('data' , 'slag','company', 'branches', 'branchId', 'startDateValue', 'endDateValue', 'companyId'));
     }
 
     public function account_balance(Request $request){
