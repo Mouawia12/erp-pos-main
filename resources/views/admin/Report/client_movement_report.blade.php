@@ -125,14 +125,6 @@
                                     <td class="text-center">
                                         {{$balance = $balance +($unit->debit - $unit->credit)}}
                                     </td>
-                                    @php 
-                                        if($unit->side == 1){
-                                            $net += ($unit->debit - $unit->credit);
-                                        }else{
-                                            $net += ($unit->credit - $unit->debit);
-                                        }    
-    
-                                    @endphp
                                 </tr>
                             @endforeach
                             </tbody>
@@ -141,7 +133,7 @@
                                    <td class="text-center" colspan="3"></td>
                                     <td class="text-center">{{__('main.total_balance')}}</td>
                                     <td class="text-center" colspan="2"></td>
-                                    <td class="text-center" >{{number_format($net,2)}}</td>  
+                                    <td class="text-center" >{{number_format($balance,2)}}</td>  
                                 </tr>
                             </tfoot>
                         </table>
