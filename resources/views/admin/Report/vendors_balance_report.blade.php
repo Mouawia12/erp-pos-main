@@ -80,6 +80,7 @@
                                 <button type="button" id="vendor-balance-pdf-btn" class="btn btn-primary" style="width: 150px; margin: 30px 10px;">
                                     {{ __('main.report') }}
                                 </button>
+                                <span id="vendor-balance-pdf-spinner" class="pdf-spinner d-none" aria-hidden="true"></span>
                             </div>
                         </div>
                     </form>
@@ -128,6 +129,21 @@
         errorBox.classList.add('d-none');
     }
 
+    function setVendorPdfLoading(isLoading) {
+        const spinner = document.getElementById('vendor-balance-pdf-spinner');
+        const button = document.getElementById('vendor-balance-pdf-btn');
+        if (!spinner || !button) {
+            return;
+        }
+        if (isLoading) {
+            spinner.classList.remove('d-none');
+            button.setAttribute('disabled', 'disabled');
+        } else {
+            spinner.classList.add('d-none');
+            button.removeAttribute('disabled');
+        }
+    }
+
     document.getElementById('vendor-balance-pdf-btn').addEventListener('click', async () => {
         const form = document.querySelector('form[action="{{ route('reports.vendors_balance') }}"]');
         if (!form) {
@@ -137,6 +153,7 @@
 
         const params = new URLSearchParams(new FormData(form));
         const reportUrl = "{{ route('reports.vendors_balance_pdf') }}" + "?" + params.toString();
+        setVendorPdfLoading(true);
         try {
             const response = await fetch(reportUrl, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' },
@@ -158,10 +175,12 @@
             const blobUrl = URL.createObjectURL(blob);
             window.vendorBalanceBlobUrl = blobUrl;
             const viewer = document.getElementById('vendor-balance-pdf-viewer');
-            viewer.src = "/pdfjs/web/viewer.html?file=" + encodeURIComponent(blobUrl);
+            viewer.src = "/pdfjs/web/viewer.html?file=" + encodeURIComponent(blobUrl) + "&lang={{ in_array(request()->segment(1), ['ar', 'en']) ? request()->segment(1) : app()->getLocale() }}";
             $('#vendorBalanceReportModal').modal('show');
         } catch (error) {
             showPdfError(error.message);
+        } finally {
+            setVendorPdfLoading(false);
         }
     });
 
@@ -176,4 +195,20 @@
         }
     });
 </script>
+<style>
+    .pdf-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        margin-inline-start: 8px;
+        border: 2px solid #cfd4da;
+        border-top-color: #0d6efd;
+        border-radius: 50%;
+        animation: pdf-spin 0.7s linear infinite;
+        vertical-align: middle;
+    }
+    @keyframes pdf-spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
 @endsection
