@@ -62,6 +62,8 @@ use App\Http\Controllers\Admin\SubscriberController;
 use App\Http\Controllers\Admin\InvoiceTermTemplateController;
 use App\Http\Controllers\Admin\ZatcaController;
 use App\Http\Controllers\Admin\InvoiceController;
+use App\Http\Controllers\Admin\VendorBalanceReportController;
+use App\Http\Controllers\Admin\ClientBalanceReportController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -76,6 +78,9 @@ use App\Http\Controllers\Admin\InvoiceController;
 Route::get('hash',function(){
     return \Hash::make(123456);
 });
+Route::get('/pdfjs/web/viewer.html', function () {
+    return response()->file(public_path('pdfjs/web/viewer.html'));
+})->name('pdfjs.viewer');
 Route::group(
     [
         'prefix' => LaravelLocalization::setLocale(),
@@ -439,7 +444,9 @@ Route::group(
     Route::get('/reports/inventory-aging', [ReportController::class, 'inventoryAgingReport'])->name('reports.inventory_aging');
     Route::get('/reports/inventory-variance', [ReportController::class, 'inventoryVarianceReport'])->name('reports.inventory_variance');
     Route::get('/reports/clients-balance', [ReportController::class, 'clientsBalanceReport'])->name('reports.clients_balance');
+    Route::get('/reports/clients-balance/pdf', [ClientBalanceReportController::class, 'pdf'])->name('reports.clients_balance_pdf');
     Route::get('/reports/vendors-balance', [ReportController::class, 'vendorsBalanceReport'])->name('reports.vendors_balance');
+    Route::get('/reports/vendors-balance/pdf', [VendorBalanceReportController::class, 'pdf'])->name('reports.vendors_balance_pdf');
     Route::get('/reports/clients-movement', [ReportController::class, 'clientsMovementReport'])->name('reports.clients_movement');
     Route::get('/reports/vendors-movement', [ReportController::class, 'vendorsMovementReport'])->name('reports.vendors_movement');
     Route::get('/reports/clients-aging', [ReportController::class, 'clientAging'])->name('reports.clients_aging');

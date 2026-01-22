@@ -77,7 +77,7 @@
                                 </div>
                             </div>
                             <div class="col-md-12 text-center">
-                                <button type="submit" class="btn btn-primary" style="width: 150px; margin: 30px auto;">
+                                <button type="button" id="vendor-balance-pdf-btn" class="btn btn-primary" style="width: 150px; margin: 30px 10px;">
                                     {{ __('main.report') }}
                                 </button>
                             </div>
@@ -88,57 +88,92 @@
         </div>
     </div>
 
-    <div class="row mt-3">
-        <div class="col-xl-12">
-            <div class="card">
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered text-center">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>{{ __('main.supplier') }}</th>
-                                    <th>{{ __('main.representative') }}</th>
-                                    <th>{{ __('main.Debit') }}</th>
-                                    <th>{{ __('main.Credit') }}</th>
-                                    <th>{{ __('main.balance') }}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($rows as $row)
-                                    <tr>
-                                        <td>{{ $loop->index + 1 }}</td>
-                                        <td>{{ $row->company_name }}</td>
-                                        <td>{{ $row->representative_name ?? '-' }}</td>
-                                        <td>{{ number_format($row->debit ?? 0, 2) }}</td>
-                                        <td>{{ number_format($row->credit ?? 0, 2) }}</td>
-                                        <td>{{ number_format($row->balance ?? 0, 2) }}</td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="6">{{ __('main.no_data') }}</td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                            <tfoot>
-                                <tr>
-                                    <th colspan="5" class="text-end">{{ __('main.total_balance') }}</th>
-                                    <th>{{ number_format($totalBalance ?? 0, 2) }}</th>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
+    @endcan
+
+    <div class="modal fade" id="vendorBalanceReportModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-xl" role="document" style="max-width: 95%;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">{{ __('main.vendors_balance_report') }}</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <iframe id="vendor-balance-pdf-viewer"
+                            src=""
+                            style="width:100%; height:80vh; border:none;"></iframe>
+                    <div id="vendor-balance-pdf-error" class="alert alert-danger mt-3 d-none"></div>
                 </div>
             </div>
         </div>
     </div>
-    @endcan
 @endsection
 
 @section('js')
 <script>
     $(document).ready(function() {
         document.title = "{{ __('main.vendors_balance_report') }}";
+    });
+
+    function showPdfError(message) {
+        const errorBox = document.getElementById('vendor-balance-pdf-error');
+        errorBox.textContent = message;
+        errorBox.classList.remove('d-none');
+    }
+
+    function clearPdfError() {
+        const errorBox = document.getElementById('vendor-balance-pdf-error');
+        errorBox.textContent = '';
+        errorBox.classList.add('d-none');
+    }
+
+    document.getElementById('vendor-balance-pdf-btn').addEventListener('click', async () => {
+        const form = document.querySelector('form[action="{{ route('reports.vendors_balance') }}"]');
+        if (!form) {
+            showPdfError('تعذر العثور على نموذج الفلاتر.');
+            return;
+        }
+
+        const params = new URLSearchParams(new FormData(form));
+        const reportUrl = "{{ route('reports.vendors_balance_pdf') }}" + "?" + params.toString();
+        try {
+            const response = await fetch(reportUrl, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                const payload = await response.json();
+                throw new Error(payload.message || 'تعذر إنشاء التقرير.');
+            }
+            if (!response.ok) {
+                throw new Error('تعذر إنشاء التقرير.');
+            }
+
+            const blob = await response.blob();
+            if (window.vendorBalanceBlobUrl) {
+                URL.revokeObjectURL(window.vendorBalanceBlobUrl);
+            }
+            const blobUrl = URL.createObjectURL(blob);
+            window.vendorBalanceBlobUrl = blobUrl;
+            const viewer = document.getElementById('vendor-balance-pdf-viewer');
+            viewer.src = "/pdfjs/web/viewer.html?file=" + encodeURIComponent(blobUrl);
+            $('#vendorBalanceReportModal').modal('show');
+        } catch (error) {
+            showPdfError(error.message);
+        }
+    });
+
+    $('#vendorBalanceReportModal').on('hidden.bs.modal', function () {
+        if (window.vendorBalanceBlobUrl) {
+            URL.revokeObjectURL(window.vendorBalanceBlobUrl);
+            window.vendorBalanceBlobUrl = null;
+        }
+        const viewer = document.getElementById('vendor-balance-pdf-viewer');
+        if (viewer) {
+            viewer.src = '';
+        }
     });
 </script>
 @endsection

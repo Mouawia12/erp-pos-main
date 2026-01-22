@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>PDF Viewer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f2f2f2;
+        }
+        .toolbar {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            padding: 10px;
+            background: #ffffff;
+            border-bottom: 1px solid #e5e5e5;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .toolbar button {
+            padding: 6px 10px;
+            border: 1px solid #d0d0d0;
+            background: #f7f7f7;
+            cursor: pointer;
+        }
+        .toolbar span {
+            margin-left: auto;
+        }
+        .viewer {
+            padding: 16px;
+        }
+        canvas {
+            display: block;
+            margin: 0 auto;
+            background: #ffffff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <button id="prev">Prev</button>
+        <button id="next">Next</button>
+        <button id="zoom-out">-</button>
+        <button id="zoom-in">+</button>
+        <button id="rotate">Rotate</button>
+        <button id="print">Print</button>
+        <button id="download">Download</button>
+        <span id="page-info">1 / 1</span>
+    </div>
+    <div class="viewer">
+        <canvas id="pdf-canvas"></canvas>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const fileUrl = urlParams.get('file');
+        const state = {
+            doc: null,
+            pageNum: 1,
+            scale: 1.2,
+            rotation: 0,
+        };
+
+        const canvas = document.getElementById('pdf-canvas');
+        const ctx = canvas.getContext('2d');
+        const pageInfo = document.getElementById('page-info');
+
+        function updatePageInfo() {
+            if (state.doc) {
+                pageInfo.textContent = state.pageNum + ' / ' + state.doc.numPages;
+            }
+        }
+
+        async function renderPage() {
+            const page = await state.doc.getPage(state.pageNum);
+            const viewport = page.getViewport({ scale: state.scale, rotation: state.rotation });
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            await page.render({ canvasContext: ctx, viewport }).promise;
+            updatePageInfo();
+        }
+
+        async function loadPdf() {
+            if (!fileUrl) {
+                return;
+            }
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            state.doc = await pdfjsLib.getDocument(fileUrl).promise;
+            state.pageNum = 1;
+            await renderPage();
+        }
+
+        document.getElementById('prev').addEventListener('click', () => {
+            if (!state.doc || state.pageNum <= 1) return;
+            state.pageNum -= 1;
+            renderPage();
+        });
+
+        document.getElementById('next').addEventListener('click', () => {
+            if (!state.doc || state.pageNum >= state.doc.numPages) return;
+            state.pageNum += 1;
+            renderPage();
+        });
+
+        document.getElementById('zoom-in').addEventListener('click', () => {
+            if (!state.doc) return;
+            state.scale = Math.min(state.scale + 0.2, 3);
+            renderPage();
+        });
+
+        document.getElementById('zoom-out').addEventListener('click', () => {
+            if (!state.doc) return;
+            state.scale = Math.max(state.scale - 0.2, 0.6);
+            renderPage();
+        });
+
+        document.getElementById('rotate').addEventListener('click', () => {
+            if (!state.doc) return;
+            state.rotation = (state.rotation + 90) % 360;
+            renderPage();
+        });
+
+        document.getElementById('print').addEventListener('click', () => {
+            if (!fileUrl) return;
+            const win = window.open(fileUrl, '_blank');
+            if (win) {
+                win.addEventListener('load', () => win.print());
+            }
+        });
+
+        document.getElementById('download').addEventListener('click', () => {
+            if (!fileUrl) return;
+            const link = document.createElement('a');
+            link.href = fileUrl;
+            link.download = 'vendor-balance.pdf';
+            link.click();
+        });
+
+        loadPdf();
+    </script>
+</body>
+</html>
