@@ -6,7 +6,7 @@
     <style>
         @font-face {
             font-family: 'Tajawal';
-            src: url('{{ base_path('fonts/Tajawal-Regular.ttf') }}') format('truetype');
+            src: url('{{ 'file://' . str_replace('\\\\', '/', public_path('fonts/Tajawal-Regular.ttf')) }}') format('truetype');
             font-weight: normal;
             font-style: normal;
         }

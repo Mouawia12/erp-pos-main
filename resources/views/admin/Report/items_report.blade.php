@@ -27,6 +27,7 @@
                     <div class="clearfix"></div> 
                 </div> 
                 <div class="card-body">
+                    <form id="items-report-form">
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group"> 
@@ -89,20 +90,44 @@
                     </div>
                     <div class="row">
                         <div class="col-md-12 text-center">
-                            <input type="submit" class="btn btn-primary" id="excute" tabindex="-1"
+                            <button type="button" class="btn btn-primary" id="excute" tabindex="-1"
                                    style="width: 150px;
-                                   margin: 30px auto;" value="{{__('main.report')}}">
-                            </input> 
+                                   margin: 30px auto;">{{__('main.report')}}</button>
+                            <span id="items-report-pdf-spinner" class="pdf-spinner d-none" aria-hidden="true"></span>
                         </div>
                     </div> 
+                    </form>
                     </div>
                 </div>
             </div>
         </div> 
     </div> 
 
-<div class="show_modal">
-
+<div class="modal fade" id="itemsReportModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document" style="max-width: 95%;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    @if($type == 0)
+                        {{__('main.items_report')}}
+                    @elseif($type == 1)
+                        {{__('main.under_limit_items_report')}}
+                    @else
+                        {{__('main.no_balance_items_report')}}
+                    @endif
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <iframe id="items-report-pdf-viewer"
+                        src=""
+                        style="width:100%; height:80vh; border:none;"></iframe>
+                <div id="items-report-pdf-error" class="alert alert-danger mt-3 d-none"></div>
+            </div>
+        </div>
+    </div>
 </div>
 @endcan 
 @endsection 
@@ -114,20 +139,20 @@
     var count = 1;
 
     $(document).ready(function() {
-        $('#excute').click(function (){ 
+        $('#excute').click(async function (){ 
             const category = document.getElementById('category_id').value;
             const brand = document.getElementById('brand_id').value; 
             const warehouse = document.getElementById('warehouse_id').value;
             const branch_id = document.getElementById('branch_id').value ;
             const type  = document.getElementById('type').value;
             
-            if(type == 0){
-                showReport( category, brand, warehouse, branch_id);
-            } else if(type == 1){
-                showReport2( category, brand, warehouse, branch_id);
-            } else if(type == 2){
-                showReport3( category, brand, warehouse, branch_id);
-            }  
+            await fetchItemsReportPdf({
+                category_id: category,
+                brand_id: brand,
+                warehouse_id: warehouse,
+                branch_id: branch_id,
+                type: type,
+            });
         }); 
 
         $('#branch_id').change(function (){
@@ -152,63 +177,97 @@
             });
         });
 
-        $(document).on('click', '.cancel-modal', function (event) {
-            $('#items_modal').modal("hide"); 
-        });
-
         document.title = "{{__('main.items_report')}}";
     });
 
-    function showReport(category,brand,warehouse,branch_id) {
-        var route = '{{route('items.report.search',[":category",":brand",":warehouse",":branch_id"] )}}';
-
-        route = route.replace(":category",category );
-        route = route.replace(":brand",brand );
-        route = route.replace(":warehouse", warehouse ? warehouse : 0);
-        route = route.replace(":branch_id", branch_id ? branch_id : 0);
-        console.log(route);
-
-        $.get( route, function( data ) {
-            $( ".show_modal" ).innerHTML = "" ;
-            $( ".show_modal" ).html( data );
-            $('#items_modal').modal('show');
-        });
+    function showItemsReportPdfError(message) {
+        const errorBox = document.getElementById('items-report-pdf-error');
+        errorBox.textContent = message;
+        errorBox.classList.remove('d-none');
     }
 
-    function showReport2(category, brand, warehouse, branch_id) {
-
-        var route = '{{route('items.limit.report.search',[ ":category", ":brand",":warehouse",":branch_id"])}}';
-
-        route = route.replace(":category",category );
-        route = route.replace(":brand",brand );
-        route = route.replace(":warehouse", warehouse ? warehouse : 0);
-        route = route.replace(":branch_id", branch_id ? branch_id : 0);
-        console.log(route);
-
-        $.get( route, function( data ) {
-            $( ".show_modal" ).innerHTML = "" ;
-            $( ".show_modal" ).html( data );
-            $('#items_modal').modal('show');
-
-        });
+    function clearItemsReportPdfError() {
+        const errorBox = document.getElementById('items-report-pdf-error');
+        errorBox.textContent = '';
+        errorBox.classList.add('d-none');
     }
 
-    function showReport3(category , brand , warehouse, branch_id) {
-
-        var route = '{{route('items.no.balance.report.search',[ ":category", ":brand",":warehouse",":branch_id"])}}';
-
-        route = route.replace(":category",category );
-        route = route.replace(":brand",brand );
-        route = route.replace(":warehouse", warehouse ? warehouse : 0);
-        route = route.replace(":branch_id", branch_id ? branch_id : 0);
-        console.log(route);
-
-        $.get( route, function( data ) {
-            $( ".show_modal" ).innerHTML = "" ;
-            $( ".show_modal" ).html( data );
-            $('#items_modal').modal('show');
-        });
+    function setItemsReportPdfLoading(isLoading) {
+        const spinner = document.getElementById('items-report-pdf-spinner');
+        const button = document.getElementById('excute');
+        if (!spinner || !button) {
+            return;
+        }
+        if (isLoading) {
+            spinner.classList.remove('d-none');
+            button.setAttribute('disabled', 'disabled');
+        } else {
+            spinner.classList.add('d-none');
+            button.removeAttribute('disabled');
+        }
     }
+
+    async function fetchItemsReportPdf(params) {
+        clearItemsReportPdfError();
+        setItemsReportPdfLoading(true);
+        try {
+            const query = new URLSearchParams(params);
+            const response = await fetch("{{ route('items_report_pdf') }}?" + query.toString(), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                const payload = await response.json();
+                throw new Error(payload.message || 'تعذر إنشاء التقرير.');
+            }
+            if (!response.ok) {
+                throw new Error('تعذر إنشاء التقرير.');
+            }
+
+            const blob = await response.blob();
+            if (window.itemsReportBlobUrl) {
+                URL.revokeObjectURL(window.itemsReportBlobUrl);
+            }
+            const blobUrl = URL.createObjectURL(blob);
+            window.itemsReportBlobUrl = blobUrl;
+
+            const viewer = document.getElementById('items-report-pdf-viewer');
+            viewer.src = blobUrl;
+            $('#itemsReportModal').modal('show');
+        } catch (error) {
+            showItemsReportPdfError(error.message);
+        } finally {
+            setItemsReportPdfLoading(false);
+        }
+    }
+
+    $('#itemsReportModal').on('hidden.bs.modal', function () {
+        if (window.itemsReportBlobUrl) {
+            URL.revokeObjectURL(window.itemsReportBlobUrl);
+            window.itemsReportBlobUrl = null;
+        }
+        const viewer = document.getElementById('items-report-pdf-viewer');
+        if (viewer) {
+            viewer.src = '';
+        }
+    });
 
 </script>
+<style>
+    .pdf-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        margin-inline-start: 8px;
+        border: 2px solid #cfd4da;
+        border-top-color: #0d6efd;
+        border-radius: 50%;
+        animation: pdf-spin 0.7s linear infinite;
+        vertical-align: middle;
+    }
+    @keyframes pdf-spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
 @endsection 

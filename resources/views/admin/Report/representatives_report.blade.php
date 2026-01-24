@@ -18,7 +18,7 @@
                     <div class="clearfix"></div>
                 </div>
                 <div class="card-body">
-                    <form method="GET" action="{{ route('reports.representatives') }}">
+                    <form method="GET" action="{{ route('reports.representatives') }}" id="representatives-report-form">
                         <div class="row">
                             <div class="col-md-3">
                                 <div class="form-group">
@@ -64,9 +64,10 @@
                                 </div>
                             </div>
                             <div class="col-md-12 text-center">
-                                <button type="submit" class="btn btn-primary" style="width: 150px; margin: 30px auto;">
+                                <button type="button" id="representatives-pdf-btn" class="btn btn-primary" style="width: 150px; margin: 30px auto;">
                                     {{ __('main.report') }}
                                 </button>
+                                <span id="representatives-pdf-spinner" class="pdf-spinner d-none" aria-hidden="true"></span>
                             </div>
                         </div>
                     </form>
@@ -75,52 +76,20 @@
         </div>
     </div>
 
-    <div class="row mt-3">
-        <div class="col-xl-12">
-            <div class="card">
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered text-center">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>{{ __('main.representative') }}</th>
-                                    <th>{{ __('main.invoices_count') }}</th>
-                                    <th>{{ __('main.sales_total') }}</th>
-                                    <th>{{ __('main.sales_paid') }}</th>
-                                    <th>{{ __('main.sales_remain') }}</th>
-                                    <th>{{ __('main.purchases_total') }}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($rows as $row)
-                                    <tr>
-                                        <td>{{ $loop->index + 1 }}</td>
-                                        <td>{{ $row['name'] }}</td>
-                                        <td>{{ $row['invoices'] }}</td>
-                                        <td>{{ number_format($row['sales_net'], 2) }}</td>
-                                        <td>{{ number_format($row['sales_paid'], 2) }}</td>
-                                        <td>{{ number_format($row['sales_remain'], 2) }}</td>
-                                        <td>{{ number_format($row['purchase_net'], 2) }}</td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="7">{{ __('main.no_data') }}</td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                            <tfoot>
-                                <tr>
-                                    <th colspan="2" class="text-end">{{ __('main.total') }}</th>
-                                    <th>{{ $totals['invoices'] ?? 0 }}</th>
-                                    <th>{{ number_format($totals['sales_net'] ?? 0, 2) }}</th>
-                                    <th>{{ number_format($totals['sales_paid'] ?? 0, 2) }}</th>
-                                    <th>{{ number_format($totals['sales_remain'] ?? 0, 2) }}</th>
-                                    <th>{{ number_format($totals['purchase_net'] ?? 0, 2) }}</th>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
+    <div class="modal fade" id="representativesReportModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-xl" role="document" style="max-width: 95%;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">{{ __('main.representatives_report') }}</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <iframe id="representatives-pdf-viewer"
+                            src=""
+                            style="width:100%; height:80vh; border:none;"></iframe>
+                    <div id="representatives-pdf-error" class="alert alert-danger mt-3 d-none"></div>
                 </div>
             </div>
         </div>
@@ -133,5 +102,100 @@
     $(document).ready(function() {
         document.title = "{{ __('main.representatives_report') }}";
     });
+
+    function showRepresentativesPdfError(message) {
+        const errorBox = document.getElementById('representatives-pdf-error');
+        errorBox.textContent = message;
+        errorBox.classList.remove('d-none');
+    }
+
+    function clearRepresentativesPdfError() {
+        const errorBox = document.getElementById('representatives-pdf-error');
+        errorBox.textContent = '';
+        errorBox.classList.add('d-none');
+    }
+
+    function setRepresentativesPdfLoading(isLoading) {
+        const spinner = document.getElementById('representatives-pdf-spinner');
+        const button = document.getElementById('representatives-pdf-btn');
+        if (!spinner || !button) {
+            return;
+        }
+        if (isLoading) {
+            spinner.classList.remove('d-none');
+            button.setAttribute('disabled', 'disabled');
+        } else {
+            spinner.classList.add('d-none');
+            button.removeAttribute('disabled');
+        }
+    }
+
+    document.getElementById('representatives-pdf-btn').addEventListener('click', async () => {
+        const form = document.getElementById('representatives-report-form');
+        if (!form) {
+            showRepresentativesPdfError('تعذر العثور على نموذج الفلاتر.');
+            return;
+        }
+
+        clearRepresentativesPdfError();
+        const params = new URLSearchParams(new FormData(form));
+        setRepresentativesPdfLoading(true);
+        try {
+            const response = await fetch("{{ route('reports.representatives_pdf') }}?" + params.toString(), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                const payload = await response.json();
+                throw new Error(payload.message || 'تعذر إنشاء التقرير.');
+            }
+            if (!response.ok) {
+                throw new Error('تعذر إنشاء التقرير.');
+            }
+
+            const blob = await response.blob();
+            if (window.representativesReportBlobUrl) {
+                URL.revokeObjectURL(window.representativesReportBlobUrl);
+            }
+            const blobUrl = URL.createObjectURL(blob);
+            window.representativesReportBlobUrl = blobUrl;
+
+            const viewer = document.getElementById('representatives-pdf-viewer');
+            viewer.src = blobUrl;
+            $('#representativesReportModal').modal('show');
+        } catch (error) {
+            showRepresentativesPdfError(error.message);
+        } finally {
+            setRepresentativesPdfLoading(false);
+        }
+    });
+
+    $('#representativesReportModal').on('hidden.bs.modal', function () {
+        if (window.representativesReportBlobUrl) {
+            URL.revokeObjectURL(window.representativesReportBlobUrl);
+            window.representativesReportBlobUrl = null;
+        }
+        const viewer = document.getElementById('representatives-pdf-viewer');
+        if (viewer) {
+            viewer.src = '';
+        }
+    });
 </script>
+<style>
+    .pdf-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        margin-inline-start: 8px;
+        border: 2px solid #cfd4da;
+        border-top-color: #0d6efd;
+        border-radius: 50%;
+        animation: pdf-spin 0.7s linear infinite;
+        vertical-align: middle;
+    }
+    @keyframes pdf-spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
 @endsection

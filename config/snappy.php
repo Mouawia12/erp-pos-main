@@ -4,7 +4,7 @@ return [
     'pdf' => [
         'enabled' => true,
         'binary' => env('WKHTMLTOPDF_BINARY', '/usr/local/bin/wkhtmltopdf'),
-        'timeout' => false,
+        'timeout' => 180,
         'options' => [
             'encoding' => 'utf-8',
             'enable-local-file-access' => true,
@@ -14,7 +14,7 @@ return [
     'image' => [
         'enabled' => true,
         'binary' => env('WKHTMLTOIMAGE_BINARY', '/usr/bin/wkhtmltoimage'),
-        'timeout' => false,
+        'timeout' => 180,
         'options' => [],
         'env' => [],
     ],

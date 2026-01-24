@@ -20,7 +20,7 @@
                     <div class="clearfix"></div>
                 </div>
                 <div class="card-body">
-                    <form method="GET" action="{{ route('reports.inventory_variance') }}">
+                    <form method="GET" action="{{ route('reports.inventory_variance') }}" id="inventory-variance-form">
                         <div class="row">
                             <div class="col-md-4">
                                 <div class="form-group">
@@ -90,9 +90,10 @@
                                 </div>
                             </div>
                             <div class="col-md-3 text-center">
-                                <button type="submit" class="btn btn-primary" style="width: 150px; margin: 30px auto;">
+                                <button type="button" id="inventory-variance-pdf-btn" class="btn btn-primary" style="width: 150px; margin: 30px auto;">
                                     {{ __('main.report') }}
                                 </button>
+                                <span id="inventory-variance-pdf-spinner" class="pdf-spinner d-none" aria-hidden="true"></span>
                             </div>
                         </div>
                     </form>
@@ -101,53 +102,20 @@
         </div>
     </div>
 
-    <div class="row mt-3">
-        <div class="col-xl-12">
-            <div class="card">
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered text-center">
-                            <thead>
-                                <tr>
-                                    <th>{{ __('main.item_name_code') }}</th>
-                                    <th>{{ __('main.inventory') }}</th>
-                                    <th>{{ __('main.warehouse') }}</th>
-                                    <th>{{ __('الفرع') }}</th>
-                                    <th>{{ __('main.quantity') }}</th>
-                                    <th>{{ __('main.counted_quantity') }}</th>
-                                    <th>{{ __('main.difference') }}</th>
-                                    <th>{{ __('main.cost') }}</th>
-                                    <th>{{ __('main.value') }}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($data as $row)
-                                    <tr>
-                                        <td>{{ $row->product_name }} <div class="small text-muted">{{ $row->product_code }}</div></td>
-                                        <td>#{{ $row->inventory_id }} - {{ $row->inventory_date ? \Carbon\Carbon::parse($row->inventory_date)->format('Y-m-d') : '' }}</td>
-                                        <td>{{ $row->warehouse_name ?? '-' }}</td>
-                                        <td>{{ $row->branch_name ?? '-' }}</td>
-                                        <td>{{ number_format($row->quantity ?? 0, 2) }}</td>
-                                        <td>{{ number_format($row->new_quantity ?? 0, 2) }}</td>
-                                        <td>{{ number_format($row->difference ?? 0, 2) }}</td>
-                                        <td>{{ number_format($row->product_cost ?? 0, 2) }}</td>
-                                        <td>{{ number_format($row->difference_value ?? 0, 2) }}</td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="9">{{ __('main.no_data') ?? 'لا يوجد بيانات' }}</td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="alert alert-light mt-3">
-                        <strong>{{ __('main.inventory_variance_report') }}</strong>
-                        <div class="d-flex flex-wrap gap-3">
-                            <span>{{ __('main.shortage') }}: {{ number_format($totals['shortage'] ?? 0, 2) }}</span>
-                            <span>{{ __('main.excess') }}: {{ number_format($totals['excess'] ?? 0, 2) }}</span>
-                        </div>
-                    </div>
+    <div class="modal fade" id="inventoryVarianceReportModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-xl" role="document" style="max-width: 95%;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">{{ __('main.inventory_variance_report') }}</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <iframe id="inventory-variance-pdf-viewer"
+                            src=""
+                            style="width:100%; height:80vh; border:none;"></iframe>
+                    <div id="inventory-variance-pdf-error" class="alert alert-danger mt-3 d-none"></div>
                 </div>
             </div>
         </div>
@@ -180,5 +148,100 @@
 
         document.title = "{{ __('main.inventory_variance_report') }}";
     });
+
+    function showInventoryVariancePdfError(message) {
+        const errorBox = document.getElementById('inventory-variance-pdf-error');
+        errorBox.textContent = message;
+        errorBox.classList.remove('d-none');
+    }
+
+    function clearInventoryVariancePdfError() {
+        const errorBox = document.getElementById('inventory-variance-pdf-error');
+        errorBox.textContent = '';
+        errorBox.classList.add('d-none');
+    }
+
+    function setInventoryVariancePdfLoading(isLoading) {
+        const spinner = document.getElementById('inventory-variance-pdf-spinner');
+        const button = document.getElementById('inventory-variance-pdf-btn');
+        if (!spinner || !button) {
+            return;
+        }
+        if (isLoading) {
+            spinner.classList.remove('d-none');
+            button.setAttribute('disabled', 'disabled');
+        } else {
+            spinner.classList.add('d-none');
+            button.removeAttribute('disabled');
+        }
+    }
+
+    document.getElementById('inventory-variance-pdf-btn').addEventListener('click', async () => {
+        const form = document.getElementById('inventory-variance-form');
+        if (!form) {
+            showInventoryVariancePdfError('تعذر العثور على نموذج الفلاتر.');
+            return;
+        }
+
+        clearInventoryVariancePdfError();
+        const params = new URLSearchParams(new FormData(form));
+        setInventoryVariancePdfLoading(true);
+        try {
+            const response = await fetch("{{ route('reports.inventory_variance_pdf') }}?" + params.toString(), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                const payload = await response.json();
+                throw new Error(payload.message || 'تعذر إنشاء التقرير.');
+            }
+            if (!response.ok) {
+                throw new Error('تعذر إنشاء التقرير.');
+            }
+
+            const blob = await response.blob();
+            if (window.inventoryVarianceReportBlobUrl) {
+                URL.revokeObjectURL(window.inventoryVarianceReportBlobUrl);
+            }
+            const blobUrl = URL.createObjectURL(blob);
+            window.inventoryVarianceReportBlobUrl = blobUrl;
+
+            const viewer = document.getElementById('inventory-variance-pdf-viewer');
+            viewer.src = blobUrl;
+            $('#inventoryVarianceReportModal').modal('show');
+        } catch (error) {
+            showInventoryVariancePdfError(error.message);
+        } finally {
+            setInventoryVariancePdfLoading(false);
+        }
+    });
+
+    $('#inventoryVarianceReportModal').on('hidden.bs.modal', function () {
+        if (window.inventoryVarianceReportBlobUrl) {
+            URL.revokeObjectURL(window.inventoryVarianceReportBlobUrl);
+            window.inventoryVarianceReportBlobUrl = null;
+        }
+        const viewer = document.getElementById('inventory-variance-pdf-viewer');
+        if (viewer) {
+            viewer.src = '';
+        }
+    });
 </script>
+<style>
+    .pdf-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        margin-inline-start: 8px;
+        border: 2px solid #cfd4da;
+        border-top-color: #0d6efd;
+        border-radius: 50%;
+        animation: pdf-spin 0.7s linear infinite;
+        vertical-align: middle;
+    }
+    @keyframes pdf-spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
 @endsection

@@ -175,7 +175,7 @@
             const blobUrl = URL.createObjectURL(blob);
             window.vendorBalanceBlobUrl = blobUrl;
             const viewer = document.getElementById('vendor-balance-pdf-viewer');
-            viewer.src = "/pdfjs/web/viewer.html?file=" + encodeURIComponent(blobUrl) + "&lang={{ in_array(request()->segment(1), ['ar', 'en']) ? request()->segment(1) : app()->getLocale() }}";
+            viewer.src = blobUrl;
             $('#vendorBalanceReportModal').modal('show');
         } catch (error) {
             showPdfError(error.message);

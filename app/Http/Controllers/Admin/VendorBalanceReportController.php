@@ -99,6 +99,7 @@ class VendorBalanceReportController extends Controller
         $pdf = SnappyPdf::loadView('reports.vendor-balance', $payload)
             ->setOption('encoding', 'utf-8')
             ->setOption('enable-local-file-access', true)
+            ->setOption('allow', [public_path('fonts')])
             ->setOption('page-size', 'A4')
             ->setOption('orientation', 'portrait');
 

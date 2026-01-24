@@ -67,8 +67,9 @@
                     </div>
                     <div class="row">
                         <div class="col-md-12 text-center">
-                            <input type="submit" class="btn btn-primary" id="excute" tabindex="-1"
-                                   style="width: 150px; margin: 30px auto;" value="{{__('main.report')}}">
+                            <button type="button" class="btn btn-primary" id="excute" tabindex="-1"
+                                   style="width: 150px; margin: 30px auto;">{{__('main.report')}}</button>
+                            <span id="client-status-pdf-spinner" class="pdf-spinner d-none" aria-hidden="true"></span>
                         </div>
                     </div>
                 </div>
@@ -76,7 +77,24 @@
         </div>
     </div>
 
-    <div class="show_modal"></div>
+    <div class="modal fade" id="clientStatusReportModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-xl" role="document" style="max-width: 95%;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">{{ __('main.client_status_report') ?? 'تقارير العملاء حسب الحالة' }}</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <iframe id="client-status-pdf-viewer"
+                            src=""
+                            style="width:100%; height:80vh; border:none;"></iframe>
+                    <div id="client-status-pdf-error" class="alert alert-danger mt-3 d-none"></div>
+                </div>
+            </div>
+        </div>
+    </div>
     @endcan
 @endsection
 
@@ -99,7 +117,7 @@
         document.getElementById('from_date').valueAsDate = new Date();
         document.getElementById('to_date').valueAsDate = new Date();
 
-        $('#excute').click(function (){
+        $('#excute').click(async function (){
             var fromDate = $('#is_from_date').is(":checked")
                 ? document.getElementById('from_date').value.toString()
                 : '0';
@@ -107,7 +125,7 @@
                 ? document.getElementById('to_date').value.toString()
                 : '0';
 
-            showReport({
+            await fetchClientStatusPdf({
                 status: document.getElementById('status').value,
                 from_date: fromDate,
                 to_date: toDate,
@@ -117,18 +135,96 @@
             });
         });
 
-        $(document).on('click', '.cancel-modal', function () {
-            $('#company_status_modal').modal("hide");
-        });
-
         document.title = "{{ __('main.client_status_report') ?? 'تقارير العملاء حسب الحالة' }}";
     });
 
-    function showReport(params) {
-        $.get('{{ route('reports.clients.status.search') }}', params, function (html) {
-            $('.show_modal').html(html);
-            $('#company_status_modal').modal('show');
-        });
+    function showClientStatusPdfError(message) {
+        const errorBox = document.getElementById('client-status-pdf-error');
+        errorBox.textContent = message;
+        errorBox.classList.remove('d-none');
     }
+
+    function clearClientStatusPdfError() {
+        const errorBox = document.getElementById('client-status-pdf-error');
+        errorBox.textContent = '';
+        errorBox.classList.add('d-none');
+    }
+
+    function setClientStatusPdfLoading(isLoading) {
+        const spinner = document.getElementById('client-status-pdf-spinner');
+        const button = document.getElementById('excute');
+        if (!spinner || !button) {
+            return;
+        }
+        if (isLoading) {
+            spinner.classList.remove('d-none');
+            button.setAttribute('disabled', 'disabled');
+        } else {
+            spinner.classList.add('d-none');
+            button.removeAttribute('disabled');
+        }
+    }
+
+    async function fetchClientStatusPdf(params) {
+        clearClientStatusPdfError();
+        setClientStatusPdfLoading(true);
+        try {
+            const query = new URLSearchParams(params);
+            const response = await fetch("{{ route('reports.clients.status_pdf') }}?" + query.toString(), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                const payload = await response.json();
+                throw new Error(payload.message || 'تعذر إنشاء التقرير.');
+            }
+            if (!response.ok) {
+                throw new Error('تعذر إنشاء التقرير.');
+            }
+
+            const blob = await response.blob();
+            if (window.clientStatusReportBlobUrl) {
+                URL.revokeObjectURL(window.clientStatusReportBlobUrl);
+            }
+            const blobUrl = URL.createObjectURL(blob);
+            window.clientStatusReportBlobUrl = blobUrl;
+
+            const viewer = document.getElementById('client-status-pdf-viewer');
+            viewer.src = blobUrl;
+            $('#clientStatusReportModal').modal('show');
+        } catch (error) {
+            showClientStatusPdfError(error.message);
+        } finally {
+            setClientStatusPdfLoading(false);
+        }
+    }
+
+    $('#clientStatusReportModal').on('hidden.bs.modal', function () {
+        if (window.clientStatusReportBlobUrl) {
+            URL.revokeObjectURL(window.clientStatusReportBlobUrl);
+            window.clientStatusReportBlobUrl = null;
+        }
+        const viewer = document.getElementById('client-status-pdf-viewer');
+        if (viewer) {
+            viewer.src = '';
+        }
+    });
 </script>
+<style>
+    .pdf-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        margin-inline-start: 8px;
+        border: 2px solid #cfd4da;
+        border-top-color: #0d6efd;
+        border-radius: 50%;
+        animation: pdf-spin 0.7s linear infinite;
+        vertical-align: middle;
+    }
+    @keyframes pdf-spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
 @endsection

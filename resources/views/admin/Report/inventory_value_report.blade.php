@@ -20,7 +20,7 @@
                     <div class="clearfix"></div>
                 </div>
                 <div class="card-body">
-                    <form method="GET" action="{{ route('reports.inventory_value') }}">
+                    <form method="GET" action="{{ route('reports.inventory_value') }}" id="inventory-value-form">
                         <div class="row">
                             <div class="col-md-3">
                                 <div class="form-group">
@@ -81,9 +81,10 @@
                                 </div>
                             </div>
                             <div class="col-md-12 text-center">
-                                <button type="submit" class="btn btn-primary" style="width: 150px; margin: 30px auto;">
+                                <button type="button" id="inventory-value-pdf-btn" class="btn btn-primary" style="width: 150px; margin: 30px auto;">
                                     {{ __('main.report') }}
                                 </button>
+                                <span id="inventory-value-pdf-spinner" class="pdf-spinner d-none" aria-hidden="true"></span>
                             </div>
                         </div>
                     </form>
@@ -92,46 +93,20 @@
         </div>
     </div>
 
-    <div class="row mt-3">
-        <div class="col-xl-12">
-            <div class="card">
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered text-center">
-                            <thead>
-                                <tr>
-                                    <th>{{ __('main.item_name_code') }}</th>
-                                    <th>{{ __('main.warehouse') }}</th>
-                                    <th>{{ __('الفرع') }}</th>
-                                    <th>{{ __('main.quantity') }}</th>
-                                    <th>{{ __('main.cost') }}</th>
-                                    <th>{{ __('main.value') }}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($data as $row)
-                                    <tr>
-                                        <td>{{ $row->name }} <div class="small text-muted">{{ $row->code }}</div></td>
-                                        <td>{{ $row->warehouse_name ?? '-' }}</td>
-                                        <td>{{ $row->branch_name ?? '-' }}</td>
-                                        <td>{{ number_format($row->quantity ?? 0, 2) }}</td>
-                                        <td>{{ number_format($row->unit_cost ?? 0, 2) }}</td>
-                                        <td>{{ number_format($row->value ?? 0, 2) }}</td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="6">{{ __('main.no_data') ?? 'لا يوجد بيانات' }}</td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                            <tfoot>
-                                <tr>
-                                    <th colspan="5" class="text-end">{{ __('main.total') }}</th>
-                                    <th>{{ number_format($totalValue ?? 0, 2) }}</th>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
+    <div class="modal fade" id="inventoryValueReportModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-xl" role="document" style="max-width: 95%;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">{{ __('main.inventory_value_report') }}</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <iframe id="inventory-value-pdf-viewer"
+                            src=""
+                            style="width:100%; height:80vh; border:none;"></iframe>
+                    <div id="inventory-value-pdf-error" class="alert alert-danger mt-3 d-none"></div>
                 </div>
             </div>
         </div>
@@ -164,5 +139,100 @@
 
         document.title = "{{ __('main.inventory_value_report') }}";
     });
+
+    function showInventoryValuePdfError(message) {
+        const errorBox = document.getElementById('inventory-value-pdf-error');
+        errorBox.textContent = message;
+        errorBox.classList.remove('d-none');
+    }
+
+    function clearInventoryValuePdfError() {
+        const errorBox = document.getElementById('inventory-value-pdf-error');
+        errorBox.textContent = '';
+        errorBox.classList.add('d-none');
+    }
+
+    function setInventoryValuePdfLoading(isLoading) {
+        const spinner = document.getElementById('inventory-value-pdf-spinner');
+        const button = document.getElementById('inventory-value-pdf-btn');
+        if (!spinner || !button) {
+            return;
+        }
+        if (isLoading) {
+            spinner.classList.remove('d-none');
+            button.setAttribute('disabled', 'disabled');
+        } else {
+            spinner.classList.add('d-none');
+            button.removeAttribute('disabled');
+        }
+    }
+
+    document.getElementById('inventory-value-pdf-btn').addEventListener('click', async () => {
+        const form = document.getElementById('inventory-value-form');
+        if (!form) {
+            showInventoryValuePdfError('تعذر العثور على نموذج الفلاتر.');
+            return;
+        }
+
+        clearInventoryValuePdfError();
+        const params = new URLSearchParams(new FormData(form));
+        setInventoryValuePdfLoading(true);
+        try {
+            const response = await fetch("{{ route('reports.inventory_value_pdf') }}?" + params.toString(), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                const payload = await response.json();
+                throw new Error(payload.message || 'تعذر إنشاء التقرير.');
+            }
+            if (!response.ok) {
+                throw new Error('تعذر إنشاء التقرير.');
+            }
+
+            const blob = await response.blob();
+            if (window.inventoryValueReportBlobUrl) {
+                URL.revokeObjectURL(window.inventoryValueReportBlobUrl);
+            }
+            const blobUrl = URL.createObjectURL(blob);
+            window.inventoryValueReportBlobUrl = blobUrl;
+
+            const viewer = document.getElementById('inventory-value-pdf-viewer');
+            viewer.src = blobUrl;
+            $('#inventoryValueReportModal').modal('show');
+        } catch (error) {
+            showInventoryValuePdfError(error.message);
+        } finally {
+            setInventoryValuePdfLoading(false);
+        }
+    });
+
+    $('#inventoryValueReportModal').on('hidden.bs.modal', function () {
+        if (window.inventoryValueReportBlobUrl) {
+            URL.revokeObjectURL(window.inventoryValueReportBlobUrl);
+            window.inventoryValueReportBlobUrl = null;
+        }
+        const viewer = document.getElementById('inventory-value-pdf-viewer');
+        if (viewer) {
+            viewer.src = '';
+        }
+    });
 </script>
+<style>
+    .pdf-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        margin-inline-start: 8px;
+        border: 2px solid #cfd4da;
+        border-top-color: #0d6efd;
+        border-radius: 50%;
+        animation: pdf-spin 0.7s linear infinite;
+        vertical-align: middle;
+    }
+    @keyframes pdf-spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
 @endsection

@@ -18,7 +18,7 @@
                     <div class="clearfix"></div>
                 </div>
                 <div class="card-body">
-                    <form method="GET" action="{{ route('reports.clients_movement') }}">
+                    <form method="GET" action="{{ route('reports.clients_movement') }}" id="clients-movement-form">
                         <div class="row">
                             <div class="col-md-3">
                                 <div class="form-group">
@@ -77,9 +77,10 @@
                                 </div>
                             </div>
                             <div class="col-md-12 text-center">
-                                <button type="submit" class="btn btn-primary" style="width: 150px; margin: 30px auto;">
+                                <button type="button" id="clients-movement-pdf-btn" class="btn btn-primary" style="width: 150px; margin: 30px auto;">
                                     {{ __('main.report') }}
                                 </button>
+                                <span id="clients-movement-pdf-spinner" class="pdf-spinner d-none" aria-hidden="true"></span>
                             </div>
                         </div>
                     </form>
@@ -88,64 +89,20 @@
         </div>
     </div>
 
-    @php
-        $typeLabels = [
-            'Sales' => 'فاتورة مبيعات',
-            'Sale_Payment' => 'مدفوعات مبيعات',
-            'Purchases' => 'فاتورة مشتريات',
-            'Purchase_Payment' => 'مدفوعات مشتريات',
-        ];
-    @endphp
-
-    <div class="row mt-3">
-        <div class="col-xl-12">
-            <div class="card">
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered text-center">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>{{ __('main.date') }}</th>
-                                    <th>{{ __('main.customer') }}</th>
-                                    <th>{{ __('main.representative') }}</th>
-                                    <th>{{ __('main.InvoiceType') }}</th>
-                                    <th>{{ __('main.bill_number') }}</th>
-                                    <th>{{ __('main.Debit') }}</th>
-                                    <th>{{ __('main.Credit') }}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($rows as $row)
-                                    <tr>
-                                        <td>{{ $loop->index + 1 }}</td>
-                                        <td>{{ $row->date }}</td>
-                                        <td>{{ $row->company_name }}</td>
-                                        <td>{{ $row->representative_name ?? '-' }}</td>
-                                        <td>{{ $typeLabels[$row->invoice_type] ?? $row->invoice_type }}</td>
-                                        <td>{{ $row->invoice_no }}</td>
-                                        <td>{{ number_format($row->debit ?? 0, 2) }}</td>
-                                        <td>{{ number_format($row->credit ?? 0, 2) }}</td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="8">{{ __('main.no_data') }}</td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                            <tfoot>
-                                <tr>
-                                    <th colspan="6" class="text-end">{{ __('main.total_balance') }}</th>
-                                    <th>{{ number_format($totalDebit ?? 0, 2) }}</th>
-                                    <th>{{ number_format($totalCredit ?? 0, 2) }}</th>
-                                </tr>
-                                <tr>
-                                    <th colspan="7" class="text-end">{{ __('main.balance') }}</th>
-                                    <th>{{ number_format($balance ?? 0, 2) }}</th>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
+    <div class="modal fade" id="clientsMovementReportModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-xl" role="document" style="max-width: 95%;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">{{ __('main.clients_movement_report') }}</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <iframe id="clients-movement-pdf-viewer"
+                            src=""
+                            style="width:100%; height:80vh; border:none;"></iframe>
+                    <div id="clients-movement-pdf-error" class="alert alert-danger mt-3 d-none"></div>
                 </div>
             </div>
         </div>
@@ -158,5 +115,100 @@
     $(document).ready(function() {
         document.title = "{{ __('main.clients_movement_report') }}";
     });
+
+    function showClientsMovementPdfError(message) {
+        const errorBox = document.getElementById('clients-movement-pdf-error');
+        errorBox.textContent = message;
+        errorBox.classList.remove('d-none');
+    }
+
+    function clearClientsMovementPdfError() {
+        const errorBox = document.getElementById('clients-movement-pdf-error');
+        errorBox.textContent = '';
+        errorBox.classList.add('d-none');
+    }
+
+    function setClientsMovementPdfLoading(isLoading) {
+        const spinner = document.getElementById('clients-movement-pdf-spinner');
+        const button = document.getElementById('clients-movement-pdf-btn');
+        if (!spinner || !button) {
+            return;
+        }
+        if (isLoading) {
+            spinner.classList.remove('d-none');
+            button.setAttribute('disabled', 'disabled');
+        } else {
+            spinner.classList.add('d-none');
+            button.removeAttribute('disabled');
+        }
+    }
+
+    document.getElementById('clients-movement-pdf-btn').addEventListener('click', async () => {
+        const form = document.getElementById('clients-movement-form');
+        if (!form) {
+            showClientsMovementPdfError('تعذر العثور على نموذج الفلاتر.');
+            return;
+        }
+
+        clearClientsMovementPdfError();
+        const params = new URLSearchParams(new FormData(form));
+        setClientsMovementPdfLoading(true);
+        try {
+            const response = await fetch("{{ route('reports.clients_movement_pdf') }}?" + params.toString(), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                const payload = await response.json();
+                throw new Error(payload.message || 'تعذر إنشاء التقرير.');
+            }
+            if (!response.ok) {
+                throw new Error('تعذر إنشاء التقرير.');
+            }
+
+            const blob = await response.blob();
+            if (window.clientsMovementReportBlobUrl) {
+                URL.revokeObjectURL(window.clientsMovementReportBlobUrl);
+            }
+            const blobUrl = URL.createObjectURL(blob);
+            window.clientsMovementReportBlobUrl = blobUrl;
+
+            const viewer = document.getElementById('clients-movement-pdf-viewer');
+            viewer.src = blobUrl;
+            $('#clientsMovementReportModal').modal('show');
+        } catch (error) {
+            showClientsMovementPdfError(error.message);
+        } finally {
+            setClientsMovementPdfLoading(false);
+        }
+    });
+
+    $('#clientsMovementReportModal').on('hidden.bs.modal', function () {
+        if (window.clientsMovementReportBlobUrl) {
+            URL.revokeObjectURL(window.clientsMovementReportBlobUrl);
+            window.clientsMovementReportBlobUrl = null;
+        }
+        const viewer = document.getElementById('clients-movement-pdf-viewer');
+        if (viewer) {
+            viewer.src = '';
+        }
+    });
 </script>
+<style>
+    .pdf-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        margin-inline-start: 8px;
+        border: 2px solid #cfd4da;
+        border-top-color: #0d6efd;
+        border-radius: 50%;
+        animation: pdf-spin 0.7s linear infinite;
+        vertical-align: middle;
+    }
+    @keyframes pdf-spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
 @endsection

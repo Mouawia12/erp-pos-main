@@ -174,7 +174,7 @@
             window.clientBalanceBlobUrl = blobUrl;
 
             const viewer = document.getElementById('client-balance-pdf-viewer');
-            viewer.src = "/pdfjs/web/viewer.html?file=" + encodeURIComponent(blobUrl) + "&lang={{ in_array(request()->segment(1), ['ar', 'en']) ? request()->segment(1) : app()->getLocale() }}";
+            viewer.src = blobUrl;
             $('#clientBalanceReportModal').modal('show');
         } catch (error) {
             showClientPdfError(error.message);

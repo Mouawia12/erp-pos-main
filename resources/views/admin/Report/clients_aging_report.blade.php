@@ -18,7 +18,7 @@
                     <div class="clearfix"></div>
                 </div>
                 <div class="card-body">
-                    <form method="GET" action="{{ route('reports.clients_aging') }}">
+                    <form method="GET" action="{{ route('reports.clients_aging') }}" id="clients-aging-form">
                         <div class="row">
                             <div class="col-md-3">
                                 <div class="form-group">
@@ -77,9 +77,10 @@
                                 </div>
                             </div>
                             <div class="col-md-12 text-center">
-                                <button type="submit" class="btn btn-primary" style="width: 150px; margin: 30px auto;">
+                                <button type="button" id="clients-aging-pdf-btn" class="btn btn-primary" style="width: 150px; margin: 30px auto;">
                                     {{ __('main.report') }}
                                 </button>
+                                <span id="clients-aging-pdf-spinner" class="pdf-spinner d-none" aria-hidden="true"></span>
                             </div>
                         </div>
                     </form>
@@ -88,46 +89,20 @@
         </div>
     </div>
 
-    <div class="row mt-3">
-        <div class="col-xl-12">
-            <div class="card">
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered text-center">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>{{ __('main.customer') }}</th>
-                                    <th>{{ __('main.representative') }}</th>
-                                    <th>0-30</th>
-                                    <th>31-60</th>
-                                    <th>61-90</th>
-                                    <th>91-120</th>
-                                    <th>120+</th>
-                                    <th>{{ __('main.balance') }}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($report as $row)
-                                    <tr>
-                                        <td>{{ $loop->index + 1 }}</td>
-                                        <td>{{ $row['company'] }}</td>
-                                        <td>{{ $row['representative_name'] ?? '-' }}</td>
-                                        <td>{{ number_format($row['aging']['current'] ?? 0, 2) }}</td>
-                                        <td>{{ number_format($row['aging']['30'] ?? 0, 2) }}</td>
-                                        <td>{{ number_format($row['aging']['60'] ?? 0, 2) }}</td>
-                                        <td>{{ number_format($row['aging']['90'] ?? 0, 2) }}</td>
-                                        <td>{{ number_format($row['aging']['over'] ?? 0, 2) }}</td>
-                                        <td>{{ number_format($row['balance'] ?? 0, 2) }}</td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="9">{{ __('main.no_data') }}</td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
+    <div class="modal fade" id="clientsAgingReportModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-xl" role="document" style="max-width: 95%;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">{{ __('main.clients_aging_report') }}</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <iframe id="clients-aging-pdf-viewer"
+                            src=""
+                            style="width:100%; height:80vh; border:none;"></iframe>
+                    <div id="clients-aging-pdf-error" class="alert alert-danger mt-3 d-none"></div>
                 </div>
             </div>
         </div>
@@ -140,5 +115,100 @@
     $(document).ready(function() {
         document.title = "{{ __('main.clients_aging_report') }}";
     });
+
+    function showClientsAgingPdfError(message) {
+        const errorBox = document.getElementById('clients-aging-pdf-error');
+        errorBox.textContent = message;
+        errorBox.classList.remove('d-none');
+    }
+
+    function clearClientsAgingPdfError() {
+        const errorBox = document.getElementById('clients-aging-pdf-error');
+        errorBox.textContent = '';
+        errorBox.classList.add('d-none');
+    }
+
+    function setClientsAgingPdfLoading(isLoading) {
+        const spinner = document.getElementById('clients-aging-pdf-spinner');
+        const button = document.getElementById('clients-aging-pdf-btn');
+        if (!spinner || !button) {
+            return;
+        }
+        if (isLoading) {
+            spinner.classList.remove('d-none');
+            button.setAttribute('disabled', 'disabled');
+        } else {
+            spinner.classList.add('d-none');
+            button.removeAttribute('disabled');
+        }
+    }
+
+    document.getElementById('clients-aging-pdf-btn').addEventListener('click', async () => {
+        const form = document.getElementById('clients-aging-form');
+        if (!form) {
+            showClientsAgingPdfError('تعذر العثور على نموذج الفلاتر.');
+            return;
+        }
+
+        clearClientsAgingPdfError();
+        const params = new URLSearchParams(new FormData(form));
+        setClientsAgingPdfLoading(true);
+        try {
+            const response = await fetch("{{ route('reports.clients_aging_pdf') }}?" + params.toString(), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                const payload = await response.json();
+                throw new Error(payload.message || 'تعذر إنشاء التقرير.');
+            }
+            if (!response.ok) {
+                throw new Error('تعذر إنشاء التقرير.');
+            }
+
+            const blob = await response.blob();
+            if (window.clientsAgingReportBlobUrl) {
+                URL.revokeObjectURL(window.clientsAgingReportBlobUrl);
+            }
+            const blobUrl = URL.createObjectURL(blob);
+            window.clientsAgingReportBlobUrl = blobUrl;
+
+            const viewer = document.getElementById('clients-aging-pdf-viewer');
+            viewer.src = blobUrl;
+            $('#clientsAgingReportModal').modal('show');
+        } catch (error) {
+            showClientsAgingPdfError(error.message);
+        } finally {
+            setClientsAgingPdfLoading(false);
+        }
+    });
+
+    $('#clientsAgingReportModal').on('hidden.bs.modal', function () {
+        if (window.clientsAgingReportBlobUrl) {
+            URL.revokeObjectURL(window.clientsAgingReportBlobUrl);
+            window.clientsAgingReportBlobUrl = null;
+        }
+        const viewer = document.getElementById('clients-aging-pdf-viewer');
+        if (viewer) {
+            viewer.src = '';
+        }
+    });
 </script>
+<style>
+    .pdf-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        margin-inline-start: 8px;
+        border: 2px solid #cfd4da;
+        border-top-color: #0d6efd;
+        border-radius: 50%;
+        animation: pdf-spin 0.7s linear infinite;
+        vertical-align: middle;
+    }
+    @keyframes pdf-spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
 @endsection

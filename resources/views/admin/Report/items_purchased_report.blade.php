@@ -21,6 +21,7 @@
                     <div class="clearfix"></div> 
                 </div>  
                 <div class="card-body">
+                    <form id="items-purchased-report-form">
                    <div class="row">
                         <div class="col-md-4">
                             <div class="form-group"> 
@@ -109,20 +110,36 @@
                     </div>   
                     <div class="row">
                         <div class="col-md-12 text-center">
-                            <input type="submit" class="btn btn-primary" id="excute" tabindex="-1"
+                            <button type="button" class="btn btn-primary" id="excute" tabindex="-1"
                                    style="width: 150px;
-                                    margin: 30px auto;" value="{{__('main.report')}}">
-                            </input> 
+                                    margin: 30px auto;">{{__('main.report')}}</button>
+                            <span id="items-purchased-pdf-spinner" class="pdf-spinner d-none" aria-hidden="true"></span>
                         </div>
                     </div> 
+                    </form>
                 </div>
             </div>
         </div>
     </div> 
 </div> 
 
-<div class="show_modal">
-
+<div class="modal fade" id="itemsPurchasedReportModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document" style="max-width: 95%;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{{ __('main.imported_items_reports') }}</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <iframe id="items-purchased-pdf-viewer"
+                        src=""
+                        style="width:100%; height:80vh; border:none;"></iframe>
+                <div id="items-purchased-pdf-error" class="alert alert-danger mt-3 d-none"></div>
+            </div>
+        </div>
+    </div>
 </div>
 @endcan 
 @endsection 
@@ -150,7 +167,7 @@
         document.getElementById('from_date').valueAsDate = new Date();
         document.getElementById('to_date').valueAsDate = new Date();
 
-        $('#excute').click(function (){
+        $('#excute').click(async function (){
             var fromDate = '' ;
             var toDate = '' ;
             if (!$('#is_from_date').is(":checked"))
@@ -181,7 +198,14 @@
                 item_id = 0 ;
             }
 
-           showReport( fromDate,toDate,warehouse,branch_id,item_id,supplier ); 
+           await fetchItemsPurchasedPdf({
+                from_date: fromDate,
+                to_date: toDate,
+                warehouse_id: warehouse,
+                branch_id: branch_id,
+                item_id: item_id,
+                supplier_id: supplier,
+           }); 
         });
 
         $('#add_item').on('input',function(e){
@@ -223,31 +247,81 @@
             });
         });
 
-        $(document).on('click', '.cancel-modal', function (event) {
-            $('#purchase_modal').modal("hide"); 
-        });
-
         document.title = "{{__('main.imported_items_reports')}}";
     });
 
-    function showReport(fdate, tdate,warehouse,branch_id,item,supplier) {
-
-        var route = '{{route('items.purchased.report.search',[":fdate",":tdate",":warehouse",":branch_id",":item",":supplier"])}}';
-
-        route = route.replace(":fdate",fdate );
-        route = route.replace(":tdate",tdate );
-        route = route.replace(":warehouse", warehouse ? warehouse : 0);
-        route = route.replace(":branch_id", branch_id ? branch_id : 0);
-        route = route.replace(":item",item );
-        route = route.replace(":supplier",supplier );
-        console.log(route);
-
-        $.get( route, function( data ) {
-            $( ".show_modal" ).innerHTML = "" ;
-            $( ".show_modal" ).html( data );
-            $('#purchase_modal').modal('show');
-        });
+    function showItemsPurchasedPdfError(message) {
+        const errorBox = document.getElementById('items-purchased-pdf-error');
+        errorBox.textContent = message;
+        errorBox.classList.remove('d-none');
     }
+
+    function clearItemsPurchasedPdfError() {
+        const errorBox = document.getElementById('items-purchased-pdf-error');
+        errorBox.textContent = '';
+        errorBox.classList.add('d-none');
+    }
+
+    function setItemsPurchasedPdfLoading(isLoading) {
+        const spinner = document.getElementById('items-purchased-pdf-spinner');
+        const button = document.getElementById('excute');
+        if (!spinner || !button) {
+            return;
+        }
+        if (isLoading) {
+            spinner.classList.remove('d-none');
+            button.setAttribute('disabled', 'disabled');
+        } else {
+            spinner.classList.add('d-none');
+            button.removeAttribute('disabled');
+        }
+    }
+
+    async function fetchItemsPurchasedPdf(params) {
+        clearItemsPurchasedPdfError();
+        setItemsPurchasedPdfLoading(true);
+        try {
+            const query = new URLSearchParams(params);
+            const response = await fetch("{{ route('items_purchased_report_pdf') }}?" + query.toString(), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                const payload = await response.json();
+                throw new Error(payload.message || 'تعذر إنشاء التقرير.');
+            }
+            if (!response.ok) {
+                throw new Error('تعذر إنشاء التقرير.');
+            }
+
+            const blob = await response.blob();
+            if (window.itemsPurchasedReportBlobUrl) {
+                URL.revokeObjectURL(window.itemsPurchasedReportBlobUrl);
+            }
+            const blobUrl = URL.createObjectURL(blob);
+            window.itemsPurchasedReportBlobUrl = blobUrl;
+
+            const viewer = document.getElementById('items-purchased-pdf-viewer');
+            viewer.src = blobUrl;
+            $('#itemsPurchasedReportModal').modal('show');
+        } catch (error) {
+            showItemsPurchasedPdfError(error.message);
+        } finally {
+            setItemsPurchasedPdfLoading(false);
+        }
+    }
+
+    $('#itemsPurchasedReportModal').on('hidden.bs.modal', function () {
+        if (window.itemsPurchasedReportBlobUrl) {
+            URL.revokeObjectURL(window.itemsPurchasedReportBlobUrl);
+            window.itemsPurchasedReportBlobUrl = null;
+        }
+        const viewer = document.getElementById('items-purchased-pdf-viewer');
+        if (viewer) {
+            viewer.src = '';
+        }
+    });
 
     function searchProduct(code){
         console.log(code);
@@ -294,4 +368,20 @@
         document.getElementById('products_suggestions').innerHTML = $data;
     } 
 </script>
+<style>
+    .pdf-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        margin-inline-start: 8px;
+        border: 2px solid #cfd4da;
+        border-top-color: #0d6efd;
+        border-radius: 50%;
+        animation: pdf-spin 0.7s linear infinite;
+        vertical-align: middle;
+    }
+    @keyframes pdf-spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
 @endsection 

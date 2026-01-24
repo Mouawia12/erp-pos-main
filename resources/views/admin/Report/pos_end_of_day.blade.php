@@ -80,9 +80,10 @@
                     </div>
                     <div class="row">
                         <div class="col-md-12 text-center">
-                            <button type="submit" class="btn btn-primary" style="width:150px; margin: 20px auto;">
+                            <button type="button" id="pos-end-of-day-pdf-btn" class="btn btn-primary" style="width:150px; margin: 20px auto;">
                                 {{ __('main.report') ?? 'تقرير' }}
                             </button>
+                            <span id="pos-end-of-day-pdf-spinner" class="pdf-spinner d-none" aria-hidden="true"></span>
                         </div>
                     </div>
                 </form>
@@ -91,67 +92,126 @@
     </div>
 </div>
 
-<div class="row">
-    <div class="col-xl-12">
-        <div class="card">
-            <div class="card-header pb-0">
-                <h5 class="mb-0">{{ __('main.summary') ?? 'الملخص' }}</h5>
+<div class="modal fade" id="posEndOfDayReportModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document" style="max-width: 95%;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{{ __('main.pos_end_of_day_report') ?? 'تقرير نهاية اليوم - نقاط البيع' }}</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
             </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-bordered text-center">
-                        <thead>
-                            <tr>
-                                <th>{{ __('main.type') ?? 'النوع' }}</th>
-                                <th>{{ __('main.total') }}</th>
-                                <th>{{ __('main.tax') }}</th>
-                                <th>{{ __('main.net') ?? 'الصافي' }}</th>
-                                <th>{{ __('main.profit') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>{{ __('main.sales') ?? 'المبيعات' }}</td>
-                                <td>{{ number_format($summary['sales']['total'] ?? 0, 2) }}</td>
-                                <td>{{ number_format(($summary['sales']['tax'] ?? 0) + ($summary['sales']['tax_excise'] ?? 0), 2) }}</td>
-                                <td>{{ number_format($summary['sales']['net'] ?? 0, 2) }}</td>
-                                <td>{{ number_format($summary['sales']['profit'] ?? 0, 2) }}</td>
-                            </tr>
-                            <tr>
-                                <td>{{ __('main.returns') ?? 'المرتجعات' }}</td>
-                                <td>{{ number_format($summary['returns']['total'] ?? 0, 2) }}</td>
-                                <td>{{ number_format(($summary['returns']['tax'] ?? 0) + ($summary['returns']['tax_excise'] ?? 0), 2) }}</td>
-                                <td>{{ number_format($summary['returns']['net'] ?? 0, 2) }}</td>
-                                <td>{{ number_format($summary['returns']['profit'] ?? 0, 2) }}</td>
-                            </tr>
-                            <tr>
-                                <th>{{ __('main.quantity') }}</th>
-                                <td colspan="4">{{ number_format($summary['quantity'] ?? 0, 2) }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="table-responsive mt-3">
-                    <table class="table table-bordered text-center">
-                        <thead>
-                            <tr>
-                                <th>{{ __('main.cash') ?? 'نقدي' }}</th>
-                                <th>{{ __('main.bank') ?? 'تحويل/شبكة' }}</th>
-                                <th>{{ __('main.cards') ?? 'بطاقات' }}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>{{ number_format($summary['payments']['cash'] ?? 0, 2) }}</td>
-                                <td>{{ number_format($summary['payments']['bank'] ?? 0, 2) }}</td>
-                                <td>{{ number_format($summary['payments']['card'] ?? 0, 2) }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+            <div class="modal-body">
+                <iframe id="pos-end-of-day-pdf-viewer"
+                        src=""
+                        style="width:100%; height:80vh; border:none;"></iframe>
+                <div id="pos-end-of-day-pdf-error" class="alert alert-danger mt-3 d-none"></div>
             </div>
         </div>
     </div>
 </div>
 @endcan
+@endsection
+
+@section('js')
+<script>
+    $(document).ready(function() {
+        document.title = "{{ __('main.pos_end_of_day_report') ?? 'تقرير نهاية اليوم - نقاط البيع' }}";
+    });
+
+    function showPosEndOfDayPdfError(message) {
+        const errorBox = document.getElementById('pos-end-of-day-pdf-error');
+        errorBox.textContent = message;
+        errorBox.classList.remove('d-none');
+    }
+
+    function clearPosEndOfDayPdfError() {
+        const errorBox = document.getElementById('pos-end-of-day-pdf-error');
+        errorBox.textContent = '';
+        errorBox.classList.add('d-none');
+    }
+
+    function setPosEndOfDayPdfLoading(isLoading) {
+        const spinner = document.getElementById('pos-end-of-day-pdf-spinner');
+        const button = document.getElementById('pos-end-of-day-pdf-btn');
+        if (!spinner || !button) {
+            return;
+        }
+        if (isLoading) {
+            spinner.classList.remove('d-none');
+            button.setAttribute('disabled', 'disabled');
+        } else {
+            spinner.classList.add('d-none');
+            button.removeAttribute('disabled');
+        }
+    }
+
+    document.getElementById('pos-end-of-day-pdf-btn').addEventListener('click', async () => {
+        const form = document.querySelector('form[action="{{ route('reports.pos_end_of_day') }}"]');
+        if (!form) {
+            showPosEndOfDayPdfError('تعذر العثور على نموذج الفلاتر.');
+            return;
+        }
+
+        clearPosEndOfDayPdfError();
+        const params = new URLSearchParams(new FormData(form));
+        setPosEndOfDayPdfLoading(true);
+        try {
+            const response = await fetch("{{ route('reports.pos_end_of_day_pdf') }}?" + params.toString(), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                const payload = await response.json();
+                throw new Error(payload.message || 'تعذر إنشاء التقرير.');
+            }
+            if (!response.ok) {
+                throw new Error('تعذر إنشاء التقرير.');
+            }
+
+            const blob = await response.blob();
+            if (window.posEndOfDayBlobUrl) {
+                URL.revokeObjectURL(window.posEndOfDayBlobUrl);
+            }
+            const blobUrl = URL.createObjectURL(blob);
+            window.posEndOfDayBlobUrl = blobUrl;
+
+            const viewer = document.getElementById('pos-end-of-day-pdf-viewer');
+            viewer.src = blobUrl;
+            $('#posEndOfDayReportModal').modal('show');
+        } catch (error) {
+            showPosEndOfDayPdfError(error.message);
+        } finally {
+            setPosEndOfDayPdfLoading(false);
+        }
+    });
+
+    $('#posEndOfDayReportModal').on('hidden.bs.modal', function () {
+        if (window.posEndOfDayBlobUrl) {
+            URL.revokeObjectURL(window.posEndOfDayBlobUrl);
+            window.posEndOfDayBlobUrl = null;
+        }
+        const viewer = document.getElementById('pos-end-of-day-pdf-viewer');
+        if (viewer) {
+            viewer.src = '';
+        }
+    });
+</script>
+<style>
+    .pdf-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        margin-inline-start: 8px;
+        border: 2px solid #cfd4da;
+        border-top-color: #0d6efd;
+        border-radius: 50%;
+        animation: pdf-spin 0.7s linear infinite;
+        vertical-align: middle;
+    }
+    @keyframes pdf-spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
 @endsection

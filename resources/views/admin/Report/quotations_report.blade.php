@@ -20,7 +20,7 @@
                     <div class="clearfix"></div>
                 </div>
                 <div class="card-body">
-                    <form method="GET" action="{{ route('reports.quotations') }}">
+                    <form method="GET" action="{{ route('reports.quotations') }}" id="quotations-report-form">
                         <div class="row">
                             <div class="col-md-3">
                                 <div class="form-group">
@@ -122,9 +122,10 @@
                                 </div>
                             </div>
                             <div class="col-md-12 text-center">
-                                <button type="submit" class="btn btn-primary" style="width: 150px; margin: 30px auto;">
+                                <button type="button" id="quotations-pdf-btn" class="btn btn-primary" style="width: 150px; margin: 30px auto;">
                                     {{ __('main.report') }}
                                 </button>
+                                <span id="quotations-pdf-spinner" class="pdf-spinner d-none" aria-hidden="true"></span>
                             </div>
                         </div>
                     </form>
@@ -133,67 +134,20 @@
         </div>
     </div>
 
-    <div class="row mt-3">
-        <div class="col-xl-12">
-            <div class="card">
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered text-center">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>{{ __('main.quotation_no') }}</th>
-                                    <th>{{ __('main.date') }}</th>
-                                    <th>{{ __('main.customer') }}</th>
-                                    <th>{{ __('main.representatives') }}</th>
-                                    <th>{{ __('الفرع') }}</th>
-                                    <th>{{ __('main.warehouse') }}</th>
-                                    <th>{{ __('main.cost_center') }}</th>
-                                    <th>{{ __('main.total') }}</th>
-                                    <th>{{ __('main.tax') }}</th>
-                                    <th>{{ __('main.net') }}</th>
-                                    <th>{{ __('main.status') }}</th>
-                                    <th>{{ __('main.actions') }}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($quotations as $row)
-                                    <tr>
-                                        <td>{{ $row->id }}</td>
-                                        <td>{{ $row->quotation_no }}</td>
-                                        <td>{{ $row->date ? \Carbon\Carbon::parse($row->date)->format('Y-m-d') : '' }}</td>
-                                        <td>{{ $row->customer_name_display ?? $row->customer_name }}</td>
-                                        <td>{{ $row->representative_name ?? '-' }}</td>
-                                        <td>{{ $row->branch_name ?? '-' }}</td>
-                                        <td>{{ $row->warehouse_name ?? '-' }}</td>
-                                        <td>{{ $row->cost_center_name ?? $row->cost_center ?? '-' }}</td>
-                                        <td>{{ number_format($row->total ?? 0, 2) }}</td>
-                                        <td>{{ number_format($row->tax ?? 0, 2) }}</td>
-                                        <td>{{ number_format($row->net ?? 0, 2) }}</td>
-                                        <td>{{ $row->status }}</td>
-                                        <td>
-                                            <a class="btn btn-sm btn-info" href="{{ route('quotations.show', $row->id) }}">
-                                                {{ __('main.preview') }}
-                                            </a>
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="13">{{ __('main.no_data') ?? 'لا يوجد بيانات' }}</td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                            <tfoot>
-                                <tr>
-                                    <th colspan="8" class="text-end">{{ __('main.total') }}</th>
-                                    <th>{{ number_format($summary['total'] ?? 0, 2) }}</th>
-                                    <th>{{ number_format($summary['tax'] ?? 0, 2) }}</th>
-                                    <th>{{ number_format($summary['net'] ?? 0, 2) }}</th>
-                                    <th colspan="2"></th>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
+    <div class="modal fade" id="quotationsReportModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-xl" role="document" style="max-width: 95%;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">{{ __('main.quotations_report') }}</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <iframe id="quotations-pdf-viewer"
+                            src=""
+                            style="width:100%; height:80vh; border:none;"></iframe>
+                    <div id="quotations-pdf-error" class="alert alert-danger mt-3 d-none"></div>
                 </div>
             </div>
         </div>
@@ -226,5 +180,100 @@
 
         document.title = "{{ __('main.quotations_report') }}";
     });
+
+    function showQuotationsPdfError(message) {
+        const errorBox = document.getElementById('quotations-pdf-error');
+        errorBox.textContent = message;
+        errorBox.classList.remove('d-none');
+    }
+
+    function clearQuotationsPdfError() {
+        const errorBox = document.getElementById('quotations-pdf-error');
+        errorBox.textContent = '';
+        errorBox.classList.add('d-none');
+    }
+
+    function setQuotationsPdfLoading(isLoading) {
+        const spinner = document.getElementById('quotations-pdf-spinner');
+        const button = document.getElementById('quotations-pdf-btn');
+        if (!spinner || !button) {
+            return;
+        }
+        if (isLoading) {
+            spinner.classList.remove('d-none');
+            button.setAttribute('disabled', 'disabled');
+        } else {
+            spinner.classList.add('d-none');
+            button.removeAttribute('disabled');
+        }
+    }
+
+    document.getElementById('quotations-pdf-btn').addEventListener('click', async () => {
+        const form = document.getElementById('quotations-report-form');
+        if (!form) {
+            showQuotationsPdfError('تعذر العثور على نموذج الفلاتر.');
+            return;
+        }
+
+        clearQuotationsPdfError();
+        const params = new URLSearchParams(new FormData(form));
+        setQuotationsPdfLoading(true);
+        try {
+            const response = await fetch("{{ route('reports.quotations_pdf') }}?" + params.toString(), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                const payload = await response.json();
+                throw new Error(payload.message || 'تعذر إنشاء التقرير.');
+            }
+            if (!response.ok) {
+                throw new Error('تعذر إنشاء التقرير.');
+            }
+
+            const blob = await response.blob();
+            if (window.quotationsReportBlobUrl) {
+                URL.revokeObjectURL(window.quotationsReportBlobUrl);
+            }
+            const blobUrl = URL.createObjectURL(blob);
+            window.quotationsReportBlobUrl = blobUrl;
+
+            const viewer = document.getElementById('quotations-pdf-viewer');
+            viewer.src = blobUrl;
+            $('#quotationsReportModal').modal('show');
+        } catch (error) {
+            showQuotationsPdfError(error.message);
+        } finally {
+            setQuotationsPdfLoading(false);
+        }
+    });
+
+    $('#quotationsReportModal').on('hidden.bs.modal', function () {
+        if (window.quotationsReportBlobUrl) {
+            URL.revokeObjectURL(window.quotationsReportBlobUrl);
+            window.quotationsReportBlobUrl = null;
+        }
+        const viewer = document.getElementById('quotations-pdf-viewer');
+        if (viewer) {
+            viewer.src = '';
+        }
+    });
 </script>
+<style>
+    .pdf-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        margin-inline-start: 8px;
+        border: 2px solid #cfd4da;
+        border-top-color: #0d6efd;
+        border-radius: 50%;
+        animation: pdf-spin 0.7s linear infinite;
+        vertical-align: middle;
+    }
+    @keyframes pdf-spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
 @endsection

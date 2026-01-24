@@ -21,6 +21,7 @@
                     <div class="clearfix"></div> 
                 </div> 
                 <div class="card-body">
+                    <form id="items-stock-report-form">
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group"> 
@@ -97,20 +98,36 @@
                     </div> 
                     <div class="row">
                         <div class="col-md-12 text-center">
-                            <input type="submit" class="btn btn-primary" id="excute" tabindex="-1"
+                            <button type="button" class="btn btn-primary" id="excute" tabindex="-1"
                                    style="width: 150px;
-                                    margin: 30px auto;" value="{{__('main.excute_btn')}}">
-                            </input>
+                                    margin: 30px auto;">{{__('main.excute_btn')}}</button>
+                            <span id="items-stock-pdf-spinner" class="pdf-spinner d-none" aria-hidden="true"></span>
                         </div>
                     </div> 
+                    </form>
                 </div>
             </div>
         </div>
     </div> 
 </div> 
 
-<div class="show_modal">
-
+<div class="modal fade" id="itemsStockReportModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document" style="max-width: 95%;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{{ __('main.users_transactions_report') }}</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <iframe id="items-stock-pdf-viewer"
+                        src=""
+                        style="width:100%; height:80vh; border:none;"></iframe>
+                <div id="items-stock-pdf-error" class="alert alert-danger mt-3 d-none"></div>
+            </div>
+        </div>
+    </div>
 </div>
 @endcan 
 @endsection 
@@ -137,7 +154,7 @@
         document.getElementById('from_date').valueAsDate = new Date();
         document.getElementById('to_date').valueAsDate = new Date();
 
-        $('#excute').click(function (){
+        $('#excute').click(async function (){
             var fromDate = '' ;
             var toDate = '' ;
             if (!$('#is_from_date').is(":checked"))
@@ -167,7 +184,13 @@
                 item_id = 0 ;
             }
 
-           showReport( fromDate, toDate, warehouse, branch_id, item_id ); 
+           await fetchItemsStockPdf({
+                from_date: fromDate,
+                to_date: toDate,
+                warehouse_id: warehouse,
+                branch_id: branch_id,
+                item_id: item_id,
+           });
         });
 
         $('#add_item').on('input',function(e){
@@ -210,30 +233,81 @@
             });
         });
 
-        $(document).on('click', '.cancel-modal', function (event) {
-            $('#items_modal').modal("hide"); 
-        });
-
         document.title = "{{__('main.users_transactions_report')}}";
     });
 
-    function showReport( fdate, tdate, warehouse, branch_id, item) {
-
-        var route = '{{route('items.stock.report.search',[":fdate",":tdate",":warehouse",":branch_id",":item" ] )}}';
-
-        route = route.replace(":fdate",fdate );
-        route = route.replace(":tdate",tdate );
-        route = route.replace(":warehouse", warehouse ? warehouse : 0);
-        route = route.replace(":branch_id", branch_id ? branch_id : 0);
-        route = route.replace(":item",item );
-        console.log(route);
-
-        $.get( route, function( data ) {
-            $( ".show_modal" ).innerHTML = "" ;
-              $( ".show_modal" ).html( data );
-              $('#items_modal').modal('show');
-        });
+    function showItemsStockPdfError(message) {
+        const errorBox = document.getElementById('items-stock-pdf-error');
+        errorBox.textContent = message;
+        errorBox.classList.remove('d-none');
     }
+
+    function clearItemsStockPdfError() {
+        const errorBox = document.getElementById('items-stock-pdf-error');
+        errorBox.textContent = '';
+        errorBox.classList.add('d-none');
+    }
+
+    function setItemsStockPdfLoading(isLoading) {
+        const spinner = document.getElementById('items-stock-pdf-spinner');
+        const button = document.getElementById('excute');
+        if (!spinner || !button) {
+            return;
+        }
+        if (isLoading) {
+            spinner.classList.remove('d-none');
+            button.setAttribute('disabled', 'disabled');
+        } else {
+            spinner.classList.add('d-none');
+            button.removeAttribute('disabled');
+        }
+    }
+
+    async function fetchItemsStockPdf(params) {
+        clearItemsStockPdfError();
+        setItemsStockPdfLoading(true);
+        try {
+            const query = new URLSearchParams(params);
+            const response = await fetch("{{ route('items_stock_report_pdf') }}?" + query.toString(), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                const payload = await response.json();
+                throw new Error(payload.message || 'تعذر إنشاء التقرير.');
+            }
+            if (!response.ok) {
+                throw new Error('تعذر إنشاء التقرير.');
+            }
+
+            const blob = await response.blob();
+            if (window.itemsStockReportBlobUrl) {
+                URL.revokeObjectURL(window.itemsStockReportBlobUrl);
+            }
+            const blobUrl = URL.createObjectURL(blob);
+            window.itemsStockReportBlobUrl = blobUrl;
+
+            const viewer = document.getElementById('items-stock-pdf-viewer');
+            viewer.src = blobUrl;
+            $('#itemsStockReportModal').modal('show');
+        } catch (error) {
+            showItemsStockPdfError(error.message);
+        } finally {
+            setItemsStockPdfLoading(false);
+        }
+    }
+
+    $('#itemsStockReportModal').on('hidden.bs.modal', function () {
+        if (window.itemsStockReportBlobUrl) {
+            URL.revokeObjectURL(window.itemsStockReportBlobUrl);
+            window.itemsStockReportBlobUrl = null;
+        }
+        const viewer = document.getElementById('items-stock-pdf-viewer');
+        if (viewer) {
+            viewer.src = '';
+        }
+    });
 
     function searchProduct(code){
         console.log(code);
@@ -282,4 +356,20 @@
 
 
 </script>
+<style>
+    .pdf-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        margin-inline-start: 8px;
+        border: 2px solid #cfd4da;
+        border-top-color: #0d6efd;
+        border-radius: 50%;
+        animation: pdf-spin 0.7s linear infinite;
+        vertical-align: middle;
+    }
+    @keyframes pdf-spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
 @endsection 

@@ -64,6 +64,27 @@ use App\Http\Controllers\Admin\ZatcaController;
 use App\Http\Controllers\Admin\InvoiceController;
 use App\Http\Controllers\Admin\VendorBalanceReportController;
 use App\Http\Controllers\Admin\ClientBalanceReportController;
+use App\Http\Controllers\Admin\PosEndOfDayReportController;
+use App\Http\Controllers\Admin\SalesItemReportController;
+use App\Http\Controllers\Admin\PurchaseReportController;
+use App\Http\Controllers\Admin\PurchaseReturnReportController;
+use App\Http\Controllers\Admin\SalesReturnReportController;
+use App\Http\Controllers\Admin\QuotationsReportController;
+use App\Http\Controllers\Admin\ClientMovementReportController;
+use App\Http\Controllers\Admin\VendorMovementReportController;
+use App\Http\Controllers\Admin\ClientsAgingReportController;
+use App\Http\Controllers\Admin\VendorsAgingReportController;
+use App\Http\Controllers\Admin\RepresentativesReportController;
+use App\Http\Controllers\Admin\ClientStatusReportPdfController;
+use App\Http\Controllers\Admin\VendorStatusReportPdfController;
+use App\Http\Controllers\Admin\ItemsReportController;
+use App\Http\Controllers\Admin\ItemsStockReportController;
+use App\Http\Controllers\Admin\ItemsPurchasedReportController;
+use App\Http\Controllers\Admin\InventoryValueReportController;
+use App\Http\Controllers\Admin\InventoryAgingReportController;
+use App\Http\Controllers\Admin\InventoryVarianceReportController;
+use App\Http\Controllers\Admin\SalonServicesReportController;
+use App\Http\Controllers\Admin\DailySalesReportController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -440,19 +461,29 @@ Route::group(
     Route::get('/reports/expiry', [ReportController::class, 'expiryReport'])->name('reports.expiry');
     Route::post('/reports/expiry', [ReportController::class, 'expiryReport'])->name('reports.expiry.search');
     Route::get('/reports/quotations', [ReportController::class, 'quotationsReport'])->name('reports.quotations');
+    Route::get('/reports/quotations/pdf', [QuotationsReportController::class, 'pdf'])->name('reports.quotations_pdf');
     Route::get('/reports/inventory-value', [ReportController::class, 'inventoryValueReport'])->name('reports.inventory_value');
+    Route::get('/reports/inventory-value/pdf', [InventoryValueReportController::class, 'pdf'])->name('reports.inventory_value_pdf');
     Route::get('/reports/inventory-aging', [ReportController::class, 'inventoryAgingReport'])->name('reports.inventory_aging');
+    Route::get('/reports/inventory-aging/pdf', [InventoryAgingReportController::class, 'pdf'])->name('reports.inventory_aging_pdf');
     Route::get('/reports/inventory-variance', [ReportController::class, 'inventoryVarianceReport'])->name('reports.inventory_variance');
+    Route::get('/reports/inventory-variance/pdf', [InventoryVarianceReportController::class, 'pdf'])->name('reports.inventory_variance_pdf');
     Route::get('/reports/clients-balance', [ReportController::class, 'clientsBalanceReport'])->name('reports.clients_balance');
     Route::get('/reports/clients-balance/pdf', [ClientBalanceReportController::class, 'pdf'])->name('reports.clients_balance_pdf');
     Route::get('/reports/vendors-balance', [ReportController::class, 'vendorsBalanceReport'])->name('reports.vendors_balance');
     Route::get('/reports/vendors-balance/pdf', [VendorBalanceReportController::class, 'pdf'])->name('reports.vendors_balance_pdf');
     Route::get('/reports/clients-movement', [ReportController::class, 'clientsMovementReport'])->name('reports.clients_movement');
+    Route::get('/reports/clients-movement/pdf', [ClientMovementReportController::class, 'pdf'])->name('reports.clients_movement_pdf');
     Route::get('/reports/vendors-movement', [ReportController::class, 'vendorsMovementReport'])->name('reports.vendors_movement');
+    Route::get('/reports/vendors-movement/pdf', [VendorMovementReportController::class, 'pdf'])->name('reports.vendors_movement_pdf');
     Route::get('/reports/clients-aging', [ReportController::class, 'clientAging'])->name('reports.clients_aging');
+    Route::get('/reports/clients-aging/pdf', [ClientsAgingReportController::class, 'pdf'])->name('reports.clients_aging_pdf');
     Route::get('/reports/representatives', [ReportController::class, 'representativesReport'])->name('reports.representatives');
+    Route::get('/reports/representatives/pdf', [RepresentativesReportController::class, 'pdf'])->name('reports.representatives_pdf');
     Route::get('/reports/salon-services', [ReportController::class, 'salonServicesReport'])->name('reports.salon.services');
+    Route::get('/reports/salon-services/pdf', [SalonServicesReportController::class, 'pdf'])->name('reports.salon_services_pdf');
     Route::get('/reports/pos-end-of-day', [ReportController::class, 'posEndOfDayReport'])->name('reports.pos_end_of_day');
+    Route::get('/reports/pos-end-of-day/pdf', [PosEndOfDayReportController::class, 'pdf'])->name('reports.pos_end_of_day_pdf');
     // Reports: low stock
     Route::get('/reports/low-stock', [ReportController::class, 'lowStockReport'])->name('reports.low_stock');
     Route::post('/reports/low-stock', [ReportController::class, 'lowStockReport'])->name('reports.low_stock.search');
@@ -492,6 +523,7 @@ Route::group(
     Route::get('/accounts/journals/preview/{id}',[AccountsTreeController::class,'previewJournal'])->name('preview_journal');
     Route::post('/accounts/journals_search', [AccountsTreeController::class, 'journals_search'])->name('journals_search');
     Route::get('/reports/vendor-aging',[ReportController::class,'vendorAging'])->name('reports.vendor_aging');
+    Route::get('/reports/vendors-aging/pdf', [VendorsAgingReportController::class, 'pdf'])->name('reports.vendors_aging_pdf');
 
     Route::get('/accounts/manual',[JournalController::class,'create'])->name('manual_journal');
     Route::post('/accounts/manual',[JournalController::class,'store'])->name('store_manual');
@@ -559,25 +591,31 @@ Route::group(
     Route::get('/daily_sales_report', [ReportController::class, 'daily_sales_report'])->name('daily_sales_report');
     Route::get('/daily-sales-report-search/{date}/{warehouse}/{branch_id}/{customer_id?}/{vehicle_plate?}/{cost_center_id?}', [ReportController::class, 'daily_sales_report_search'])
         ->name('daily.sales.report.search');
+    Route::get('/daily-sales-report/pdf', [DailySalesReportController::class, 'pdf'])->name('daily_sales_report_pdf');
 
     Route::get('/sales_item_report', [ReportController::class, 'sales_item_report'])->name('sales_item_report');
     Route::get('/sales_item_report_search/{fdate}/{tdate}/{warehouse}/{branch_id}/{item}/{supplier}/{vehicle_plate?}/{cost_center_id?}', [ReportController::class, 'sales_item_report_search'])
         ->name('sales.item.report.search');
+    Route::get('/sales_item_report/pdf', [SalesItemReportController::class, 'pdf'])->name('sales_item_report_pdf');
 
     Route::get('/sales_return_report', [ReportController::class, 'sales_return_report'])->name('sales.return.report');
     Route::get('/sales-return-report-search/{fdate}/{tdate}/{warehouse}/{bill_no}/{vendor}/{branch_id}/{cost_center_id?}', [ReportController::class, 'sales_return_report_search'])
         ->name('sales.return.report.search');
+    Route::get('/sales-return-report/pdf', [SalesReturnReportController::class, 'pdf'])->name('sales_return_report_pdf');
 
     Route::get('/purchase_report', [ReportController::class, 'purchase_report'])->name('purchase_report');
     Route::get('/purchase-report-search/{fdate}/{tdate}/{warehouse}/{bill_no}/{vendor}/{branch_id}/{cost_center_id?}', [ReportController::class, 'purchase_report_search'])
         ->name('purchase.report.search');
+    Route::get('/purchase-report/pdf', [PurchaseReportController::class, 'pdf'])->name('purchase_report_pdf');
 
     Route::get('/purchases_return_report', [ReportController::class, 'purchases_return_report'])->name('purchases_return_report');
     Route::get('/purchases-return-report-search/{fdate}/{tdate}/{warehouse}/{bill_no}/{vendor}/{branch_id}/{cost_center_id?}', [ReportController::class, 'purchases_return_report_search'])
         ->name('purchases.return.report.search');
+    Route::get('/purchases-return-report/pdf', [PurchaseReturnReportController::class, 'pdf'])->name('purchases_return_report_pdf');
 
     Route::get('/items_report', [ReportController::class, 'items_report'])->name('items_report');
     Route::get('/items-report-search/{category}/{brand}/{warehouse}/{branch_id}', [ReportController::class, 'items_report_search'])->name('items.report.search');
+    Route::get('/items-report/pdf', [ItemsReportController::class, 'pdf'])->name('items_report_pdf');
 
     Route::get('/items_limit_report', [ReportController::class, 'items_limit_report'])->name('items_limit_report');
     Route::get('/items-limit-report-search/{category}/{brand}/{warehouse}/{branch_id}', [ReportController::class, 'items_limit_report_search'])->name('items.limit.report.search');
@@ -589,15 +627,19 @@ Route::group(
     Route::get('/items_stock_report', [ReportController::class, 'items_stock_report'])->name('items_stock_report');
     Route::get('/items-stock-report-search/{fdate}/{tdate}/{warehouse}/{branch_id}/{item}', [ReportController::class, 'items_stock_report_search'])
         ->name('items.stock.report.search');
+    Route::get('/items-stock-report/pdf', [ItemsStockReportController::class, 'pdf'])->name('items_stock_report_pdf');
 
     Route::get('/items_purchased_report', [ReportController::class, 'items_purchased_report'])->name('items_purchased_report');
     Route::get('/items-purchased-report-search/{fdate}/{tdate}/{warehouse}/{branch_id}/{item}/{supplier}', [ReportController::class, 'items_purchased_report_search'])
         ->name('items.purchased.report.search');
+    Route::get('/items-purchased-report/pdf', [ItemsPurchasedReportController::class, 'pdf'])->name('items_purchased_report_pdf');
 
     Route::get('/reports/clients-status', [CompanyStatusReportController::class, 'clients'])->name('reports.clients.status');
     Route::get('/reports/clients-status-search', [CompanyStatusReportController::class, 'clientsSearch'])->name('reports.clients.status.search');
+    Route::get('/reports/clients-status/pdf', [ClientStatusReportPdfController::class, 'pdf'])->name('reports.clients.status_pdf');
     Route::get('/reports/vendors-status', [CompanyStatusReportController::class, 'vendors'])->name('reports.vendors.status');
     Route::get('/reports/vendors-status-search', [CompanyStatusReportController::class, 'vendorsSearch'])->name('reports.vendors.status.search');
+    Route::get('/reports/vendors-status/pdf', [VendorStatusReportPdfController::class, 'pdf'])->name('reports.vendors.status_pdf');
     Route::get('/client_balance_report/{id}/{slag}',[ReportController::class,'client_balance_report'])->name('client_balance_report');
     
     Route::get('/account_movement_report', [ReportAccountController::class, 'account_movement_report'])->name('account_movement_report');

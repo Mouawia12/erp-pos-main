@@ -21,6 +21,7 @@
                     <div class="clearfix"></div> 
                 </div> 
                 <div class="card-body">
+                    <form id="daily-sales-report-form">
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group"> 
@@ -96,19 +97,35 @@
                     </div> 
                     <div class="row">
                         <div class="col-md-12 text-center">
-                            <input type="submit" class="btn btn-primary" id="excute" tabindex="-1"
+                            <button type="button" class="btn btn-primary" id="excute" tabindex="-1"
                                    style="width: 150px;
-                                    margin: 30px auto;" value="{{__('main.report')}}">
-                            </input> 
+                                    margin: 30px auto;">{{__('main.report')}}</button>
+                            <span id="daily-sales-pdf-spinner" class="pdf-spinner d-none" aria-hidden="true"></span>
                         </div>
                     </div>  
+                    </form>
                 </div>
             </div>
         </div> 
     </div> 
 
-<div class="show_modal">
-
+<div class="modal fade" id="dailySalesReportModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document" style="max-width: 95%;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{{ __('main.daily_sales_report') }}</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <iframe id="daily-sales-pdf-viewer"
+                        src=""
+                        style="width:100%; height:80vh; border:none;"></iframe>
+                <div id="daily-sales-pdf-error" class="alert alert-danger mt-3 d-none"></div>
+            </div>
+        </div>
+    </div>
 </div>
 @endcan 
 @endsection 
@@ -175,14 +192,21 @@
         now.setMilliseconds(null);
         now.setSeconds(null); 
         document.getElementById('bill_date').valueAsDate = new Date();
-        $('#excute').click(function (){
+        $('#excute').click(async function (){
             const date = document.getElementById('bill_date').value ;
             const warehouse = document.getElementById('warehouse_id').value ;
             const branch_id = document.getElementById('branch_id').value ;
             const customer_id = document.getElementById('customer_id').value || 0;
             const cost_center_id = document.getElementById('cost_center_id').value || 0;
             const vehicle_plate = vehicleInput.val() ? vehicleInput.val().trim() : 'empty';
-            showReport(date , warehouse, branch_id, customer_id, vehicle_plate, cost_center_id);
+            await fetchDailySalesPdf({
+                bill_date: date,
+                warehouse_id: warehouse,
+                branch_id: branch_id,
+                customer_id: customer_id,
+                vehicle_plate: vehicle_plate,
+                cost_center_id: cost_center_id,
+            });
         });
 
         if(customerSelect.length){
@@ -191,10 +215,6 @@
             });
             fetchCustomerVehicles(customerSelect.val());
         }
-
-        $(document).on('click', '.modal-close-btn', function (event) {
-            $('#daily_sales_modal').modal("hide"); 
-        });
 
         $('#branch_id').change(function (){
             var url = '{{route('get.warehouses.branches',":id")}}';
@@ -221,27 +241,94 @@
         document.title = "{{__('main.daily_sales_report')}}";
     });
 
-    function showReport(date , warehouse, branch_id, customer_id, vehicle_plate, cost_center_id) {
-
-        var route = '{{route('daily.sales.report.search',[":date" , ":warehouse",":branch_id",":customer",":vehicle",":cost_center"] )}}';
-
-        route = route.replace(":date", date);
-        route = route.replace(":warehouse", warehouse ? warehouse : 0);
-        route = route.replace(":branch_id", branch_id ? branch_id : 0);
-        route = route.replace(":customer", customer_id ? customer_id : 0);
-        var encodedPlate = vehicle_plate ? encodeURIComponent(vehicle_plate) : 'empty';
-        route = route.replace(":vehicle", encodedPlate ? encodedPlate : 'empty');
-        route = route.replace(":cost_center", cost_center_id ? cost_center_id : 0);
-
-        $.get(route, function( data ) {
-            $(".show_modal" ).html( data );
-            $('#daily_sales_modal').modal('show');
-        });
+    function showDailySalesPdfError(message) {
+        const errorBox = document.getElementById('daily-sales-pdf-error');
+        errorBox.textContent = message;
+        errorBox.classList.remove('d-none');
     }
 
-    $(document).on('click' , '.modal-close-btn' , function (event) {
-        $('#daily_sales_modal').modal("hide");
-        id = 0 ;
-    }); 
+    function clearDailySalesPdfError() {
+        const errorBox = document.getElementById('daily-sales-pdf-error');
+        errorBox.textContent = '';
+        errorBox.classList.add('d-none');
+    }
+
+    function setDailySalesPdfLoading(isLoading) {
+        const spinner = document.getElementById('daily-sales-pdf-spinner');
+        const button = document.getElementById('excute');
+        if (!spinner || !button) {
+            return;
+        }
+        if (isLoading) {
+            spinner.classList.remove('d-none');
+            button.setAttribute('disabled', 'disabled');
+        } else {
+            spinner.classList.add('d-none');
+            button.removeAttribute('disabled');
+        }
+    }
+
+    async function fetchDailySalesPdf(params) {
+        clearDailySalesPdfError();
+        setDailySalesPdfLoading(true);
+        try {
+            const query = new URLSearchParams(params);
+            const response = await fetch("{{ route('daily_sales_report_pdf') }}?" + query.toString(), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                const payload = await response.json();
+                throw new Error(payload.message || 'تعذر إنشاء التقرير.');
+            }
+            if (!response.ok) {
+                throw new Error('تعذر إنشاء التقرير.');
+            }
+
+            const blob = await response.blob();
+            if (window.dailySalesReportBlobUrl) {
+                URL.revokeObjectURL(window.dailySalesReportBlobUrl);
+            }
+            const blobUrl = URL.createObjectURL(blob);
+            window.dailySalesReportBlobUrl = blobUrl;
+
+            const viewer = document.getElementById('daily-sales-pdf-viewer');
+            viewer.src = blobUrl;
+            $('#dailySalesReportModal').modal('show');
+        } catch (error) {
+            showDailySalesPdfError(error.message);
+        } finally {
+            setDailySalesPdfLoading(false);
+        }
+    }
+
+    $('#dailySalesReportModal').on('hidden.bs.modal', function () {
+        if (window.dailySalesReportBlobUrl) {
+            URL.revokeObjectURL(window.dailySalesReportBlobUrl);
+            window.dailySalesReportBlobUrl = null;
+        }
+        const viewer = document.getElementById('daily-sales-pdf-viewer');
+        if (viewer) {
+            viewer.src = '';
+        }
+    });
+
 </script>
+<style>
+    .pdf-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        margin-inline-start: 8px;
+        border: 2px solid #cfd4da;
+        border-top-color: #0d6efd;
+        border-radius: 50%;
+        animation: pdf-spin 0.7s linear infinite;
+        vertical-align: middle;
+    }
+    @keyframes pdf-spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
 @endsection 

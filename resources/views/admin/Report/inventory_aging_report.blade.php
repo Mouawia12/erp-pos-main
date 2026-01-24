@@ -20,7 +20,7 @@
                     <div class="clearfix"></div>
                 </div>
                 <div class="card-body">
-                    <form method="GET" action="{{ route('reports.inventory_aging') }}">
+                    <form method="GET" action="{{ route('reports.inventory_aging') }}" id="inventory-aging-form">
                         <div class="row">
                             <div class="col-md-3">
                                 <div class="form-group">
@@ -81,9 +81,10 @@
                                 </div>
                             </div>
                             <div class="col-md-12 text-center">
-                                <button type="submit" class="btn btn-primary" style="width: 150px; margin: 30px auto;">
+                                <button type="button" id="inventory-aging-pdf-btn" class="btn btn-primary" style="width: 150px; margin: 30px auto;">
                                     {{ __('main.report') }}
                                 </button>
+                                <span id="inventory-aging-pdf-spinner" class="pdf-spinner d-none" aria-hidden="true"></span>
                             </div>
                         </div>
                     </form>
@@ -92,58 +93,20 @@
         </div>
     </div>
 
-    <div class="row mt-3">
-        <div class="col-xl-12">
-            <div class="card">
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered text-center">
-                            <thead>
-                                <tr>
-                                    <th>{{ __('main.item_name_code') }}</th>
-                                    <th>{{ __('main.warehouse') }}</th>
-                                    <th>{{ __('الفرع') }}</th>
-                                    <th>{{ __('main.quantity') }}</th>
-                                    <th>{{ __('main.last_purchase_date') }}</th>
-                                    <th>{{ __('main.days_since_last_purchase') }}</th>
-                                    <th>{{ __('main.aging_bucket') }}</th>
-                                    <th>{{ __('main.value') }}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($data as $row)
-                                    <tr>
-                                        <td>{{ $row->name }} <div class="small text-muted">{{ $row->code }}</div></td>
-                                        <td>{{ $row->warehouse_name ?? '-' }}</td>
-                                        <td>{{ $row->branch_name ?? '-' }}</td>
-                                        <td>{{ number_format($row->quantity ?? 0, 2) }}</td>
-                                        <td>{{ $row->last_purchase_date ? \Carbon\Carbon::parse($row->last_purchase_date)->format('Y-m-d') : '-' }}</td>
-                                        <td>{{ $row->days_since !== null ? $row->days_since : '-' }}</td>
-                                        <td>{{ $row->aging_bucket }}</td>
-                                        <td>{{ number_format($row->value ?? 0, 2) }}</td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="8">{{ __('main.no_data') ?? 'لا يوجد بيانات' }}</td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="row mt-3">
-                        <div class="col-md-12">
-                            <div class="alert alert-light">
-                                <strong>{{ __('main.inventory_aging_report') }}</strong>
-                                <div class="d-flex flex-wrap gap-3">
-                                    <span>0-30: {{ number_format($agingTotals['current'] ?? 0, 2) }}</span>
-                                    <span>31-60: {{ number_format($agingTotals['30'] ?? 0, 2) }}</span>
-                                    <span>61-90: {{ number_format($agingTotals['60'] ?? 0, 2) }}</span>
-                                    <span>91-120: {{ number_format($agingTotals['90'] ?? 0, 2) }}</span>
-                                    <span>120+: {{ number_format($agingTotals['over'] ?? 0, 2) }}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+    <div class="modal fade" id="inventoryAgingReportModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-xl" role="document" style="max-width: 95%;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">{{ __('main.inventory_aging_report') }}</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <iframe id="inventory-aging-pdf-viewer"
+                            src=""
+                            style="width:100%; height:80vh; border:none;"></iframe>
+                    <div id="inventory-aging-pdf-error" class="alert alert-danger mt-3 d-none"></div>
                 </div>
             </div>
         </div>
@@ -176,5 +139,100 @@
 
         document.title = "{{ __('main.inventory_aging_report') }}";
     });
+
+    function showInventoryAgingPdfError(message) {
+        const errorBox = document.getElementById('inventory-aging-pdf-error');
+        errorBox.textContent = message;
+        errorBox.classList.remove('d-none');
+    }
+
+    function clearInventoryAgingPdfError() {
+        const errorBox = document.getElementById('inventory-aging-pdf-error');
+        errorBox.textContent = '';
+        errorBox.classList.add('d-none');
+    }
+
+    function setInventoryAgingPdfLoading(isLoading) {
+        const spinner = document.getElementById('inventory-aging-pdf-spinner');
+        const button = document.getElementById('inventory-aging-pdf-btn');
+        if (!spinner || !button) {
+            return;
+        }
+        if (isLoading) {
+            spinner.classList.remove('d-none');
+            button.setAttribute('disabled', 'disabled');
+        } else {
+            spinner.classList.add('d-none');
+            button.removeAttribute('disabled');
+        }
+    }
+
+    document.getElementById('inventory-aging-pdf-btn').addEventListener('click', async () => {
+        const form = document.getElementById('inventory-aging-form');
+        if (!form) {
+            showInventoryAgingPdfError('تعذر العثور على نموذج الفلاتر.');
+            return;
+        }
+
+        clearInventoryAgingPdfError();
+        const params = new URLSearchParams(new FormData(form));
+        setInventoryAgingPdfLoading(true);
+        try {
+            const response = await fetch("{{ route('reports.inventory_aging_pdf') }}?" + params.toString(), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                const payload = await response.json();
+                throw new Error(payload.message || 'تعذر إنشاء التقرير.');
+            }
+            if (!response.ok) {
+                throw new Error('تعذر إنشاء التقرير.');
+            }
+
+            const blob = await response.blob();
+            if (window.inventoryAgingReportBlobUrl) {
+                URL.revokeObjectURL(window.inventoryAgingReportBlobUrl);
+            }
+            const blobUrl = URL.createObjectURL(blob);
+            window.inventoryAgingReportBlobUrl = blobUrl;
+
+            const viewer = document.getElementById('inventory-aging-pdf-viewer');
+            viewer.src = blobUrl;
+            $('#inventoryAgingReportModal').modal('show');
+        } catch (error) {
+            showInventoryAgingPdfError(error.message);
+        } finally {
+            setInventoryAgingPdfLoading(false);
+        }
+    });
+
+    $('#inventoryAgingReportModal').on('hidden.bs.modal', function () {
+        if (window.inventoryAgingReportBlobUrl) {
+            URL.revokeObjectURL(window.inventoryAgingReportBlobUrl);
+            window.inventoryAgingReportBlobUrl = null;
+        }
+        const viewer = document.getElementById('inventory-aging-pdf-viewer');
+        if (viewer) {
+            viewer.src = '';
+        }
+    });
 </script>
+<style>
+    .pdf-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        margin-inline-start: 8px;
+        border: 2px solid #cfd4da;
+        border-top-color: #0d6efd;
+        border-radius: 50%;
+        animation: pdf-spin 0.7s linear infinite;
+        vertical-align: middle;
+    }
+    @keyframes pdf-spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
 @endsection
